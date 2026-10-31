@@ -1,0 +1,61 @@
+# Feuille de route du laboratoire
+
+> Entreprise et données entièrement fictives. Les échéances ne sont pas fixées ; l'ordre reflète les dépendances.
+
+Le labo progresse par modules livrables. Chaque module suit les mêmes règles : local-first, typage strict, tests sans réseau, jeu d'évaluation et porte de livraison en CI, documentation Loi 25.
+
+## Module 1 — Agent Qualité (livré)
+
+**Problème** : accéder à la documentation qualité au poste de travail, sur les deux quarts, sans réponse inventée.
+
+- Corpus d'environ 30 documents qualité fictifs, avec versions contradictoires volontaires.
+- Recherche hybride BM25 + vecteurs, fusion RRF, reranker optionnel, barrière no-match.
+- Graphe LangGraph `retrieve -> gate -> answer -> verify`, branche `refuse`.
+- 50 questions de référence (35 répondables, 15 pièges), métriques de recherche, de refus, de citations et de latence.
+- CLI `alverno index | ask | eval | bench`, porte d'évaluation en CI.
+
+**Critère de sortie** : porte `full-ollama` réussie avec le modèle par défaut (`gemma4:e4b`), résultats du banc d'essai publiés dans le README.
+
+**Statut** : critère atteint le 2026-10-31 (banc d'essai `reports/bench-ollama-20261031-125148/`, résultats dans le README).
+
+## Module 2 — Couche Loi 25 et module RH
+
+**Problème** : répondre aux questions RH courantes (politique de vacances, horaires, avantages) sans exposer de renseignements personnels.
+
+- Couche transversale réutilisable : classification de sensibilité des entrées et des documents, détection et caviardage de renseignements personnels, journalisation des accès, politique de refus.
+- Séparation stricte : politiques RH générales (niveau 2) d'un côté, dossiers nominatifs (niveaux 4 et 5) hors périmètre.
+- EFVP rédigée avant l'implémentation (gabarit dans le dépôt).
+- Pièges d'évaluation dédiés : demandes visant une personne, fuites indirectes.
+
+## Module 3 — Service client et maintenance (LangGraph)
+
+**Problème** : suivre l'état d'une commande, préparer une réponse à un client, diagnostiquer un arrêt machine à partir de l'historique de la GMAO.
+
+- Agents multi-étapes en LangGraph : outils typés, mémoire d'état, points d'approbation humaine avant toute action externe.
+- Connecteurs simulés (ERP et GMAO fictifs) pour garder les tests hors réseau.
+- Brouillons seulement : aucun envoi automatique au client.
+
+## Module 4 — Banc d'essai de modèles locaux par tâche
+
+**Problème** : choisir le bon modèle pour chaque tâche selon la qualité, la latence et le matériel disponible dans une PME.
+
+- Extension de `alverno bench` : matrice tâches x modèles (`gemma4:e4b`, `ministral-3:8b`, `llama3.2:3b`, `qwen3.5:9b` après mise à jour d'Ollama, autres modèles Ollama), coût matériel et latence.
+- **Modèle de décision externe optionnel** : un modèle hébergé peut servir de référence ou d'arbitre pour comparer les résultats locaux. Désactivé par défaut, jamais requis en CI, utilisé seulement sur des données de niveau 1 ou 2 et documenté selon [loi25.md](loi25.md).
+- Recommandation écrite : quel modèle pour quelle tâche, et à quel prix matériel.
+
+## Module 5 — Orchestration pour la direction, serveur MCP et Docker
+
+**Problème** : donner à la direction une vue consolidée (qualité, RH, clients, maintenance) et rendre les agents réutilisables par d'autres outils.
+
+- Orchestrateur qui délègue aux agents spécialisés et agrège leurs réponses avec citations.
+- Serveur MCP exposant les capacités des agents (recherche qualité, état de commande) à des clients compatibles.
+- Images Docker et `docker compose` (agents + Ollama) pour un déploiement reproductible sur un serveur de l'usine.
+
+## Module 6 — Déploiement Microsoft 365 et Copilot Studio
+
+**Problème** : rejoindre les employés là où ils travaillent déjà (Teams, SharePoint).
+
+- Connexion au SharePoint de la documentation qualité comme source du corpus.
+- Agent Copilot Studio ou application Teams qui appelle les agents du labo, avec authentification de l'organisation.
+- Analyse des flux de données (lieu d'hébergement, art. 17), gouvernance des accès et plan d'adoption pour les employés.
+- Comparaison documentée : agents locaux du labo contre capacités natives de Copilot Studio, selon le coût, la qualité mesurée et la conformité.

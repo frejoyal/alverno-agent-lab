@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environments and secrets
+.venv/
+.env
+.env.*
+!.env.example
+
+# Tool caches
+.cache/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Generated eval outputs (CI and ad hoc runs); published reports are committed explicitly
+reports/ci/
+reports/eval-*.json
+reports/eval-*.md
+traces/
+traces.jsonl
+*.trace.jsonl
+*.jsonl.tmp
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

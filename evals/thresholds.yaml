@@ -1,0 +1,77 @@
+# Release gate for `alverno eval`. One profile per "<mode>-<backend>":
+#   backend "fake"   = HashEmbedder + FakeChat + NoopReranker (CI, no network);
+#   backend "ollama" = real local models.
+# `min` bounds must be reached, `max` bounds must not be exceeded. A metric
+# missing from the report, or a profile without bounds, fails the gate; a profile
+# key other than `min` or `max` makes the file invalid. Do not lower a bound to
+# make CI green: fix the regression, or justify the change in the PR and an ADR.
+#
+# Fake profiles are calibrated on data/corpus + data/eval with the hash embedder
+# (lexical signal only), so they guard against regressions in chunking, BM25,
+# fusion, gating and the eval code itself; they do not measure semantic quality.
+# Ollama profiles are calibrated on a real local run (docs/adr/0004).
+
+retrieval-fake:
+  # Calibrated 2026-10-31 on 31 documents / 50 questions (BM25 without the title,
+  # b = 0.3): hit@1 0.829, hit@3 1.0, MRR 0.914, context recall 0.948, trap refusal
+  # 0.867, false answers 0.133, over-refusal 0.057. Bounds keep one question of margin
+  # on trap refusal, false answers, over-refusal and context recall, two on hit@1 and
+  # about three on hit@3 and MRR.
+  min:
+    hit_at_1: 0.75
+    hit_at_3: 0.9
+    mrr: 0.82
+    context_recall: 0.9
+    trap_refusal_accuracy: 0.8
+  max:
+    false_answer_rate: 0.2
+    over_refusal_rate: 0.1
+    error_rate: 0.0
+
+full-fake:
+  # Same retrieval path plus FakeChat (quotes the first extract): measured key-fact
+  # recall 0.581 and citation validity 1.0 on the same run.
+  min:
+    hit_at_3: 0.9
+    context_recall: 0.9
+    trap_refusal_accuracy: 0.8
+    citation_validity_rate: 1.0
+    key_fact_recall: 0.5
+  max:
+    false_answer_rate: 0.2
+    # Guards against an agent that passes the citation bound by refusing everything.
+    over_refusal_rate: 0.1
+    error_rate: 0.0
+
+retrieval-ollama:
+  # Measured 2026-10-31 with qwen3-embedding:0.6b, no reranker, cosine gate 0.55:
+  # hit@1 0.971, hit@3 1.0, MRR 0.986, context recall 0.990, trap refusal 0.667.
+  # Retrieval alone cannot reject on-topic "absent information" traps: their cosine
+  # overlaps real questions. The full pipeline (LLM + citation check) refuses them,
+  # so the trap bounds here are deliberately loose and full-ollama is the real gate.
+  min:
+    hit_at_1: 0.9
+    hit_at_3: 0.95
+    mrr: 0.9
+    context_recall: 0.95
+    trap_refusal_accuracy: 0.55
+  max:
+    false_answer_rate: 0.45
+    over_refusal_rate: 0.15
+    error_rate: 0.0
+
+full-ollama:
+  # Measured 2026-10-31 (reports/bench-ollama-20261031-125148): gemma4:e4b and
+  # ministral-3:8b pass (trap refusal 1.0, false answers 0, over-refusal 0, citations
+  # 1.0 and 0.983, key facts 0.948 and 0.838); llama3.2:3b fails (trap refusal 0.867,
+  # false answers 0.133, over-refusal 0.114, key facts 0.733).
+  min:
+    hit_at_3: 0.9
+    context_recall: 0.95
+    trap_refusal_accuracy: 0.9
+    citation_validity_rate: 0.95
+    key_fact_recall: 0.8
+  max:
+    false_answer_rate: 0.1
+    over_refusal_rate: 0.1
+    error_rate: 0.0

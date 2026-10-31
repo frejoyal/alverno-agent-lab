@@ -1,0 +1,15 @@
+# Thresholds for the fixture corpus used by the tests.
+retrieval-fake:
+  min:
+    hit_at_3: 0.75
+    trap_refusal_accuracy: 1.0
+  max:
+    false_answer_rate: 0.0
+    error_rate: 0.0
+full-fake:
+  min:
+    hit_at_3: 0.75
+    citation_validity_rate: 1.0
+  max:
+    false_answer_rate: 0.0
+    error_rate: 0.0

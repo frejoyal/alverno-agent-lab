@@ -1,0 +1,3 @@
+# Store text with LF whatever the local core.autocrlf (developed on Windows).
+* text=auto eol=lf
+*.npz binary

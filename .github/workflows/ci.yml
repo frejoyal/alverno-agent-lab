@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, types, tests and eval gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UV_PYTHON: "3.13"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (locked, no optional reranker)
+        run: uv sync --locked
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format
+        run: uv run ruff format --check .
+
+      - name: Mypy (strict)
+        run: uv run mypy src
+
+      - name: Tests with coverage (offline)
+        run: uv run pytest -q --cov=alverno_lab --cov-report=term-missing
+
+      - name: Retrieval eval (fake backend) + release gate
+        run: >-
+          uv run alverno eval --mode retrieval --fake
+          --corpus data/corpus
+          --dataset data/eval/quality_gold.jsonl
+          --thresholds evals/thresholds.yaml
+          --out reports/ci
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-retrieval-fake
+          path: reports/ci/
+          if-no-files-found: ignore
