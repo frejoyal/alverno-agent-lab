@@ -1,0 +1,198 @@
+# Règles des valeurs synthétiques du laboratoire (décision D14 du module 2).
+#
+# Ce fichier énonce les règles que doivent respecter toutes les valeurs de
+# renseignements personnels fictives utilisées dans data/eval/ et tests/
+# (pii_detect.jsonl, hr_gold.jsonl, hr_holdout.jsonl, fixtures de tests).
+# Le paquet privacy ne lit jamais ce fichier : il ne sert pas à la détection.
+# Il décrit les règles que les tests vérifient sur les jeux d'évaluation.
+#
+# Aucune valeur ci-dessous ne désigne une personne réelle. Aucune plage de
+# NAS n'est réservée à la fiction au Canada : seul le numéro d'exemple
+# largement publié est permis, et tout autre nombre au format NAS doit
+# échouer la vérification de Luhn.
+
+version: 1
+
+nas:
+  # Seul numéro au format NAS qui passe la vérification de Luhn.
+  examples:
+    - "046 454 286"
+    - "046-454-286"
+    - "046454286"
+  luhn_valid_allowed: ["046454286"]
+  # Tout autre nombre de 9 chiffres au format NAS doit échouer Luhn.
+  other_must_fail_luhn: true
+
+# Alias demandé par la spécification (§3) : mêmes valeurs que nas.examples.
+sin_examples:
+  - "046 454 286"
+  - "046-454-286"
+  - "046454286"
+
+phones:
+  # Plage 555-0100 à 555-0199, réservée aux usages fictifs en Amérique du Nord.
+  area_codes: ["819", "873"]
+  exchange: "555"
+  line_min: "0100"
+  line_max: "0199"
+
+email_suffixes: [".example", ".test"]
+
+# Numéro d'assurance maladie fictif : préfixe ZZZ (aucun nom de famille réel
+# ne produit ce préfixe), puis une lettre, puis 8 chiffres dont les chiffres
+# 3-4 forment un mois (01-12 ou 51-62) et les chiffres 5-6 un jour (01-31).
+nam_prefix: "ZZZ"
+
+# Matricule d'employé : ALV, trait d'union facultatif, 5 chiffres.
+matricule_pattern: "^ALV-?\\d{5}$"
+
+postal_codes:
+  # Convention du labo : une région de tri d'acheminement de la région de
+  # Drummondville, avec la partie locale 9Z9 seulement. Il n'a pas été vérifié
+  # que ces codes ne sont attribués à aucune adresse réelle ; un code postal
+  # seul ne désigne pas une personne.
+  forward_sortation_areas: ["J2A", "J2B", "J2C"]
+  local_part: "9Z9"
+  case_insensitive: true
+  verified_unassigned: false
+
+bank_accounts:
+  # Convention du labo : forme complète transit (5) + institution (3) +
+  # compte (7 à 12), avec le numéro d'institution 000. Il n'a pas été vérifié
+  # que 000 n'est attribué à aucune institution financière.
+  institution: "000"
+  # Forme courte (numéro de compte seul, 7 à 12 chiffres) : commence par 000.
+  account_prefix: "000"
+  verified_unassigned: false
+
+# Règles des noms (D14), vérifiables par un test.
+names:
+  # Un item qui contient un nom ne contient aucun chiffre.
+  never_with_digits: true
+  # Le nom de famille d'un canari de nom compte au moins 4 lettres et figure
+  # dans common_surnames.
+  canary_surname_min_letters: 4
+  # Prénoms courants permis dans les jeux d'évaluation (forme avec accents ;
+  # les cas difficiles peuvent les écrire en minuscules).
+  common_given_names:
+    - Catherine
+    - Éric
+    - Isabelle
+    - Jean-François
+    - Julie
+    - Marc
+    - Marc-André
+    - Martin
+    - Mathieu
+    - Mélanie
+    - Nathalie
+    - Patrick
+    - Simon
+    - Sophie
+    - Stéphane
+    - Sylvie
+  # Surnoms des cas difficiles du banc de détection (ratés connus et publiés).
+  hard_nicknames: ["Ti-Guy", "Coco"]
+
+date_naissance:
+  # N'importe quelle date ; jamais dans le même item qu'un nom.
+  rule: "any date; never paired with a name"
+  never_with_name: true
+
+numero:
+  # Repli « numero » : 7 chiffres ou plus ; un nombre de 9 chiffres doit
+  # échouer la vérification de Luhn (seul le NAS d'exemple la passe).
+  min_digits: 7
+  nine_digit_must_fail_luhn: true
+
+# Noms de famille très courants au Québec, d'au moins 4 lettres, dont aucun
+# n'est un mot français courant. Seuls ces noms servent de canaris de nom.
+common_surnames:
+  - Tremblay
+  - Gagnon
+  - Bouchard
+  - Gauthier
+  - Morin
+  - Lavoie
+  - Fortin
+  - Ouellet
+  - Pelletier
+  - Bélanger
+  - Lévesque
+  - Bergeron
+  - Leblanc
+  - Paquette
+  - Girard
+  - Simard
+  - Caron
+  - Beaulieu
+  - Cloutier
+  - Dubé
+  - Lapointe
+  - Leclerc
+  - Lefebvre
+  - Poulin
+  - Nadeau
+  - Landry
+  - Bédard
+  - Lessard
+  - Bernier
+  - Michaud
+  - Hébert
+  - Turcotte
+  - Bérubé
+  - Vachon
+  - Bolduc
+  - Gingras
+  - Beaudoin
+  - Savard
+  - Gosselin
+  - Proulx
+  - Thériault
+  - Bilodeau
+  - Arsenault
+
+# Noms de famille qui sont aussi des mots courants. Ils servent seulement aux
+# cas difficiles du banc de détection (ratés connus et publiés), jamais comme
+# canaris.
+common_word_surnames_hard_only:
+  - Côté
+  - Couture
+
+# Rues manifestement fictives. Une adresse synthétique = numéro civique + l'une
+# de ces rues (le type de voie peut être abrégé : boul., av., ch.).
+fictional_streets:
+  - rue des Exemples
+  - boulevard de la Démonstration
+  - avenue du Fictif
+  - chemin des Essais
+  - rang du Prototype
+  - montée des Simulations
+  - place de la Maquette
+  - croissant des Hypothèses
+  - route du Laboratoire
+  - rue de l'Illustration
+
+# Autres règles :
+# - les noms sont des noms courants seulement, jamais dans le même item
+#   qu'un numéro (voir la clé names) ;
+# - les valeurs de pii_detect.jsonl ne reprennent aucun canari de hr_gold.jsonl
+#   ni de hr_holdout.jsonl, sauf le NAS d'exemple, seul NAS permis qui passe Luhn ;
+# - les boîtes de rôle de alverno.example ne sont pas des renseignements
+#   personnels (rh, paie, confidentialite, signalement, soutien-ti, qualite).
+role_mailboxes:
+  - rh@alverno.example
+  - paie@alverno.example
+  - confidentialite@alverno.example
+  - signalement@alverno.example
+  - soutien-ti@alverno.example
+  - qualite@alverno.example
+
+# Attribution de l'auteur du dépôt : seul nom réel permis, et seulement dans
+# ces fichiers.
+author_attribution:
+  name: "Frédéric Joyal"
+  allowed_files:
+    - README.md
+    - LICENSE
+    - pyproject.toml

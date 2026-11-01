@@ -1,0 +1,16 @@
+# Boîtes de courriel de service et rôles de gouvernance (fictifs). Aucune adresse personnelle.
+# La présidente a délégué par écrit la fonction de responsable de la protection des
+# renseignements personnels (RPRP) au directeur des finances et de l'administration.
+mailboxes:
+  rh: "rh@alverno.example"
+  paie: "paie@alverno.example"
+  confidentialite: "confidentialite@alverno.example"
+  signalement: "signalement@alverno.example"
+  soutien_ti: "soutien-ti@alverno.example"
+  qualite: "qualite@alverno.example"
+rprp_role: "directeur des finances et de l'administration"
+harassment_designated_role: "conseillère principale en ressources humaines"
+# Personne désignée de remplacement, lorsque la plainte vise la conseillère principale :
+# la directrice des ressources humaines (décision de gouvernance, voir RH-010). Ce rôle est
+# noté en commentaire seulement, car le schéma de contacts.yaml (spécification §3) ne
+# prévoit que mailboxes, rprp_role et harassment_designated_role.

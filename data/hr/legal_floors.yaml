@@ -1,0 +1,60 @@
+# Planchers légaux utilisés par les tests du corpus RH (état du droit au 31 octobre 2026).
+# Source unique : la fiche de faits vérifiés du 2026-10-31 (voir docs/hr-legal-sources.md).
+# direction: min -> la valeur d'Alverno doit être au moins égale au plancher ;
+# direction: max -> la valeur d'Alverno doit être au plus égale (seuils).
+- key: vacances_semaines_1_an
+  floor: 2
+  direction: min
+  source: "LNT art. 68"
+- key: vacances_semaines_3_ans
+  floor: 3
+  direction: min
+  source: "LNT art. 69"
+- key: indemnite_pct_moins_3_ans
+  floor: 4
+  direction: min
+  source: "LNT art. 67-68"
+- key: indemnite_pct_3_ans
+  floor: 6
+  direction: min
+  source: "LNT art. 69"
+- key: seuil_heures_sup
+  floor: 40
+  direction: max
+  source: "LNT art. 52"
+- key: majoration_heures_sup_pct
+  floor: 50
+  direction: min
+  source: "LNT art. 55"
+- key: repas_minutes
+  floor: 30
+  direction: min
+  source: "LNT art. 79"
+- key: repas_apres_heures
+  floor: 5
+  direction: max
+  source: "LNT art. 79"
+- key: repos_hebdo_heures
+  floor: 32
+  direction: min
+  source: "LNT art. 78"
+- key: jours_feries
+  floor: 8
+  direction: min
+  source: "LNT art. 60 ; F-1.1 art. 1-2"
+- key: jours_payes_maladie_famille
+  floor: 2
+  direction: min
+  source: "LNT art. 79.7 ; LNT art. 79.16"
+- key: jours_obligations_familiales
+  floor: 10
+  direction: min
+  source: "LNT art. 79.7"
+- key: absence_maladie_semaines
+  floor: 26
+  direction: min
+  source: "LNT art. 79.1"
+- key: conservation_harcelement_ans
+  floor: 2
+  direction: min
+  source: "LNT art. 81.19"

@@ -1,0 +1,274 @@
+# Rôles fictifs de Fabrications Alverno inc. et effectifs par quart (jour / soir).
+# Totaux alignés sur docs/company.md : 118 personnes ; production 78 (46 de jour, 32 de soir).
+# Aucun nom de personne : des rôles seulement. Schéma (spécification §3) :
+# departments: [{name, total, roles: [{id, aliases, day, evening}]}] ; le libellé de chaque
+# rôle est noté en commentaire. Les alias servent au repérage des mentions
+# de rôle (minuscules, accents conservés ; le code les normalise).
+# Petit groupe : un rôle dont l'effectif total est inférieur à 5 (convention du labo, k = 5).
+departments:
+  - name: "Direction et administration"
+    total: 12
+    roles:
+      - id: presidente
+        # Libellé : présidente
+        aliases: ["présidente", "président", "présidence"]
+        day: 1
+        evening: 0
+      - id: directeur_finances_administration
+        # Libellé : directeur des finances et de l'administration
+        aliases:
+          - "directeur des finances et de l'administration"
+          - "directrice des finances et de l'administration"
+          - "directeur des finances"
+          - "directrice des finances"
+          - "directeur financier"
+          - "directrice financière"
+        day: 1
+        evening: 0
+      - id: directrice_rh
+        # Libellé : directrice des ressources humaines
+        aliases:
+          - "directrice des ressources humaines"
+          - "directeur des ressources humaines"
+          - "directrice rh"
+          - "directeur rh"
+        day: 1
+        evening: 0
+      - id: conseillere_principale_rh
+        # Libellé : conseillère principale en ressources humaines
+        aliases:
+          - "conseillère principale en ressources humaines"
+          - "conseiller principal en ressources humaines"
+          - "conseillère principale rh"
+          - "conseiller principal rh"
+          - "conseillère en ressources humaines"
+          - "conseiller en ressources humaines"
+          - "conseillère rh"
+          - "conseiller rh"
+        day: 1
+        evening: 0
+      - id: technicienne_paie
+        # Libellé : technicienne en paie
+        aliases:
+          - "technicienne en paie"
+          - "technicien en paie"
+          - "technicienne de la paie"
+          - "technicien de la paie"
+        day: 1
+        evening: 0
+      - id: comptables
+        # Libellé : comptables
+        aliases: ["comptable", "comptables"]
+        day: 3
+        evening: 0
+      - id: agents_approvisionnement
+        # Libellé : agents d'approvisionnement
+        aliases: ["agent d'approvisionnement", "agente d'approvisionnement", "agents d'approvisionnement", "agentes d'approvisionnement", "approvisionneur", "approvisionneuse"]
+        day: 2
+        evening: 0
+      - id: adjointes_administratives
+        # Libellé : adjointes administratives
+        aliases:
+          - "adjointe administrative"
+          - "adjoint administratif"
+          - "adjointes administratives"
+          - "adjoints administratifs"
+        day: 2
+        evening: 0
+
+  - name: "Ventes et estimation"
+    total: 6
+    roles:
+      - id: estimateurs
+        # Libellé : estimateurs
+        aliases: ["estimateur", "estimatrice", "estimateurs", "estimatrices"]
+        day: 4
+        evening: 0
+      - id: charges_de_projet
+        # Libellé : chargés de projet
+        aliases: ["chargé de projet", "chargée de projet", "chargés de projet", "chargées de projet"]
+        day: 2
+        evening: 0
+
+  - name: "Ingénierie et programmation"
+    total: 8
+    roles:
+      - id: dessinateurs_cao
+        # Libellé : dessinateurs CAO
+        aliases:
+          - "dessinateur cao"
+          - "dessinatrice cao"
+          - "dessinateurs cao"
+          - "dessinateur"
+          - "dessinatrice"
+          - "dessinateurs"
+          - "dessinatrices"
+        day: 4
+        evening: 0
+      - id: programmeurs_cnc_laser
+        # Libellé : programmeurs CNC et laser
+        aliases:
+          - "programmeur cnc"
+          - "programmeuse cnc"
+          - "programmeurs cnc"
+          - "programmeur laser"
+          - "programmeuse laser"
+          - "programmeur"
+          - "programmeuse"
+          - "programmeurs"
+        day: 3
+        evening: 0
+      - id: directeur_ingenierie
+        # Libellé : directeur de l'ingénierie
+        aliases:
+          - "directeur de l'ingénierie"
+          - "directrice de l'ingénierie"
+          - "directeur ingénierie"
+          - "directrice ingénierie"
+        day: 1
+        evening: 0
+
+  - name: "Production"
+    total: 78
+    roles:
+      - id: directeur_production
+        # Libellé : directeur de production
+        aliases:
+          - "directeur de production"
+          - "directrice de production"
+          - "directeur de la production"
+          - "directrice de la production"
+        day: 1
+        evening: 0
+      - id: superviseurs_production
+        # Libellé : superviseurs de production
+        aliases:
+          - "superviseur de production"
+          - "superviseure de production"
+          - "superviseurs de production"
+          - "superviseur soudage"
+          - "superviseure soudage"
+          - "superviseur de soudage"
+          - "superviseure de soudage"
+        day: 2
+        evening: 1
+      - id: chefs_equipe
+        # Libellé : chefs d'équipe
+        aliases: ["chef d'équipe", "cheffe d'équipe", "chefs d'équipe", "cheffes d'équipe"]
+        day: 4
+        evening: 2
+      - id: soudeurs
+        # Libellé : soudeurs
+        aliases: ["soudeur", "soudeuse", "soudeurs", "soudeuses"]
+        day: 15
+        evening: 11
+      - id: machinistes
+        # Libellé : machinistes
+        aliases: ["machiniste", "machinistes"]
+        day: 8
+        evening: 6
+      - id: operateurs_laser_plieuses
+        # Libellé : opérateurs laser et plieuses
+        aliases:
+          - "opérateur laser"
+          - "opératrice laser"
+          - "opérateurs laser"
+          - "opérateur de plieuse"
+          - "opératrice de plieuse"
+          - "opérateurs de plieuses"
+          - "opérateur"
+          - "opératrice"
+          - "opérateurs"
+          - "opératrices"
+        day: 6
+        evening: 4
+      - id: peintres
+        # Libellé : peintres
+        aliases: ["peintre", "peintres"]
+        day: 4
+        evening: 3
+      - id: assembleurs
+        # Libellé : assembleurs
+        aliases: ["assembleur", "assembleuse", "assembleurs", "assembleuses"]
+        day: 6
+        evening: 5
+
+  - name: "Qualité"
+    total: 7
+    roles:
+      - id: directeur_qualite
+        # Libellé : directeur qualité
+        aliases:
+          - "directeur qualité"
+          - "directrice qualité"
+          - "directeur de la qualité"
+          - "directrice de la qualité"
+        day: 1
+        evening: 0
+      # « certifié » fait partie du titre du poste (voir docs/company.md) : ce n'est pas une
+      # affirmation de conformité. Les alias gardent ce titre, car les questions l'emploient.
+      - id: inspecteur_soudage_certifie
+        # Libellé : inspecteur en soudage certifié
+        aliases:
+          - "inspecteur en soudage certifié"
+          - "inspectrice en soudage certifiée"
+          - "inspecteur en soudage"
+          - "inspectrice en soudage"
+        day: 1
+        evening: 0
+      - id: techniciens_qualite
+        # Libellé : techniciens qualité
+        aliases:
+          - "technicien qualité"
+          - "technicienne qualité"
+          - "techniciens qualité"
+          - "techniciennes qualité"
+        day: 2
+        evening: 0
+      - id: inspecteurs
+        # Libellé : inspecteurs
+        aliases: ["inspecteur", "inspectrice", "inspecteurs", "inspectrices"]
+        day: 2
+        evening: 1
+
+  - name: "Maintenance"
+    total: 4
+    roles:
+      - id: mecaniciens_entretien
+        # Libellé : mécaniciens d'entretien
+        aliases:
+          - "mécanicien d'entretien"
+          - "mécanicienne d'entretien"
+          - "mécaniciens d'entretien"
+          - "mécanicien"
+          - "mécanicienne"
+          - "mécaniciens"
+        day: 2
+        evening: 1
+      - id: electricien_entretien
+        # Libellé : électricien d'entretien
+        aliases:
+          - "électricien d'entretien"
+          - "électricienne d'entretien"
+          - "électricien"
+          - "électricienne"
+        day: 1
+        evening: 0
+
+  - name: "Expédition et réception"
+    total: 3
+    roles:
+      - id: commis_expedition
+        # Libellé : commis à l'expédition et à la réception
+        aliases:
+          - "commis à l'expédition"
+          - "commis à la réception"
+          - "commis d'expédition"
+          - "commis"
+        day: 2
+        evening: 0
+      - id: cariste
+        # Libellé : cariste
+        aliases: ["cariste", "caristes"]
+        day: 1
+        evening: 0
