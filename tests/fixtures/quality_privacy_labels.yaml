@@ -1,0 +1,45 @@
+# Privacy labels of the Quality gold set for the module-2 screen (spec §10, transversality).
+# They live here, not in data/eval/quality_gold.jsonl, so the Quality set stays frozen.
+# allow: the HR screen must let the question through (the 35 answerable items).
+# person_targeted: the screen must refuse it with that code (q044-q046, HR questions
+# about an individual that module 1 refuses as out of scope).
+# The other Quality traps are not labelled: module 1 refuses them with its own gate.
+labels:
+  q001: allow
+  q002: allow
+  q003: allow
+  q004: allow
+  q005: allow
+  q006: allow
+  q007: allow
+  q008: allow
+  q009: allow
+  q010: allow
+  q011: allow
+  q012: allow
+  q013: allow
+  q014: allow
+  q015: allow
+  q016: allow
+  q017: allow
+  q018: allow
+  q019: allow
+  q020: allow
+  q021: allow
+  q022: allow
+  q023: allow
+  q024: allow
+  q025: allow
+  q026: allow
+  q027: allow
+  q028: allow
+  q029: allow
+  q030: allow
+  q031: allow
+  q032: allow
+  q033: allow
+  q034: allow
+  q035: allow
+  q044: person_targeted
+  q045: person_targeted
+  q046: person_targeted
