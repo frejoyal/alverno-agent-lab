@@ -17,13 +17,13 @@ from langgraph.graph.state import CompiledStateGraph
 from langsmith import tracing_context
 from pydantic import BaseModel, Field
 
-from alverno_lab.agents.quality.gate import RefusalReason, gate_decision
-from alverno_lab.agents.quality.prompts import (
-    SYSTEM_PROMPT,
-    build_user_prompt,
-    format_extract,
-    refusal_message,
+from alverno_lab.agents.quality.gate import (
+    RefusalReason,
+    Screen,
+    gate_decision,
+    screen_question,
 )
+from alverno_lab.agents.quality.prompts import QUALITY_PROMPTS, AgentPrompts, format_extract
 from alverno_lab.llm import ChatModel, LLMOutputError
 from alverno_lab.retrieval import Hit, HybridRetriever
 
@@ -206,8 +206,14 @@ def build_quality_agent(
     chat: ChatModel,
     *,
     min_confidence: float = 0.2,
+    prompts: AgentPrompts = QUALITY_PROMPTS,
+    screen: Screen = screen_question,
 ) -> CompiledStateGraph[QualityState, None, QualityState, QualityState]:
     """Compile the Quality agent graph.
+
+    ``prompts`` and ``screen`` let another module reuse the graph (the HR agent passes
+    its own prompts and a no-op screen, having screened the question before); the
+    defaults are the Quality ones.
 
     :meth:`QualityAgent.ask` runs it with LangSmith tracing off; a caller that invokes
     the compiled graph directly should do the same (``langsmith.tracing_context``).
@@ -221,7 +227,7 @@ def build_quality_agent(
         }
 
     def gate(state: QualityState) -> NodeUpdate:
-        decision = gate_decision(state["question"], state.get("hits", []), retriever)
+        decision = gate_decision(state["question"], state.get("hits", []), retriever, screen=screen)
         return {
             "decision": "answer" if decision.allowed else "refuse",
             "refusal_reason": decision.reason,
@@ -238,7 +244,7 @@ def build_quality_agent(
         hits = state.get("hits", [])
         try:
             draft = chat.complete_json(
-                SYSTEM_PROMPT, build_user_prompt(state["question"], hits), AnswerDraft
+                prompts.system, prompts.user(state["question"], hits), AnswerDraft
             )
         except LLMOutputError as exc:
             return {
@@ -298,7 +304,7 @@ def build_quality_agent(
     def refuse(state: QualityState) -> NodeUpdate:
         reason = state.get("refusal_reason") or "no_match"
         return {
-            "answer": refusal_message(reason),
+            "answer": prompts.refusal(reason),
             "citations": [],
             "confidence": 0.0,
             "refused": True,
@@ -338,6 +344,16 @@ class LegacyTracingError(RuntimeError):
     """A LangChain v1 tracing variable is set; LangChain would refuse to run the graph."""
 
 
+def check_tracing_environment() -> None:
+    """Raise :class:`LegacyTracingError` when a LangChain v1 tracing variable is set."""
+    legacy = [v for v in _V1_TRACING_VARS if os.environ.get(v, "") not in _V1_TRACING_OFF]
+    if legacy:
+        raise LegacyTracingError(
+            f"unset {', '.join(legacy)}: LangChain v1 tracing is not supported and "
+            "hosted tracing stays off (Law 25)"
+        )
+
+
 class QualityAgent:
     """Convenience wrapper: compiled graph plus :meth:`ask` returning a typed answer."""
 
@@ -354,12 +370,7 @@ class QualityAgent:
         Ollama transport errors (server down, timeout) propagate as ``OllamaError``; a
         LangChain v1 tracing variable in the environment raises :class:`LegacyTracingError`.
         """
-        legacy = [v for v in _V1_TRACING_VARS if os.environ.get(v, "") not in _V1_TRACING_OFF]
-        if legacy:
-            raise LegacyTracingError(
-                f"unset {', '.join(legacy)}: LangChain v1 tracing is not supported and "
-                "hosted tracing stays off (Law 25)"
-            )
+        check_tracing_environment()
         prompt_before = self.chat.stats.prompt_tokens
         completion_before = self.chat.stats.completion_tokens
         started = time.perf_counter()
@@ -427,5 +438,6 @@ __all__ = [
     "QualityState",
     "TraceEvent",
     "build_quality_agent",
+    "check_tracing_environment",
     "write_trace_jsonl",
 ]

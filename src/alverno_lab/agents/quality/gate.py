@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Literal
 
 from pydantic import BaseModel
 
+from alverno_lab.privacy.injection import CREDENTIAL_PATTERN, INJECTION_PATTERNS
+from alverno_lab.privacy.injection import is_injection as _shared_is_injection
 from alverno_lab.retrieval import Hit, HybridRetriever
 
 RefusalReason = Literal[
@@ -21,23 +23,9 @@ RefusalReason = Literal[
 ]
 
 # Instruction-override attempts (French and English). Questions are data, never orders.
-_INJECTION_PATTERNS = [
-    r"\b(ignore[rz]?|oublie[rz]?|néglige[rz]?)\b.{0,40}\b(instructions?|consignes?|règles?"
-    r"|directives?|prompt)\b",
-    r"\bne tiens? (plus )?pas compte\b.{0,40}\b(instructions?|consignes?|règles?)\b",
-    r"\bignore (all|any|the|your|previous|prior)\b.{0,30}\binstructions?\b",
-    r"\b(prompt|message) syst[eè]me\b",
-    r"\bsystem prompt\b",
-    r"\b(tu es|vous êtes) maintenant\b",
-    r"\byou are now\b",
-    # "agis" alone is a normal verb ("comment agis-tu si une pièce est hors tolérance?").
-    r"\b(agis|agissez)\s+(comme|en tant que|en qualité de)\b",
-    r"\b(fais comme si|faites comme si|act as|pretend)\b",
-    r"\b(mode (développeur|administrateur|admin|debug)|developer mode|admin mode|jailbreak)\b",
-    r"\binvente[rz]?\b.{0,40}\b(tolérances?|valeurs?|réponses?|normes?|chiffres?|données)\b",
-    r"\b(révèle|dévoile|affiche|montre)[rz]?\b.{0,30}\b(prompt|consignes?|instructions?)\b",
-    r"\b(mot de passe|password|jeton d'accès|clé d'api|api key)\b",
-]
+# The patterns live in privacy.injection, shared with module 2; module 1 keeps them in
+# their original order, the credential pattern last.
+_INJECTION_PATTERNS = [*INJECTION_PATTERNS, CREDENTIAL_PATTERN]
 
 # People (roles) that a pay or employee-number question can target. Instruments and
 # labour categories ("matricule de l'instrument", "taux horaire du soudage") are not people.
@@ -70,6 +58,10 @@ _PERSONAL_RE = [re.compile(p, re.IGNORECASE) for p in _PERSONAL_INFO_PATTERNS]
 _PERSONAL_RE.append(re.compile(r"\b(?:M\.|(?i:monsieur|madame|mme))\s+[A-ZÀ-Ý][a-zà-ÿ]+"))
 
 
+# A question screen: a refusal reason, or None to let the question through.
+Screen = Callable[[str], RefusalReason | None]
+
+
 class GateDecision(BaseModel):
     """Outcome of the gate node."""
 
@@ -89,9 +81,20 @@ def screen_question(question: str) -> RefusalReason | None:
     return None
 
 
-def gate_decision(question: str, hits: Sequence[Hit], retriever: HybridRetriever) -> GateDecision:
+def is_injection(question: str) -> bool:
+    """Module 1's injection screen (every pattern, the credential one included)."""
+    return _shared_is_injection(question)
+
+
+def gate_decision(
+    question: str,
+    hits: Sequence[Hit],
+    retriever: HybridRetriever,
+    *,
+    screen: Screen = screen_question,
+) -> GateDecision:
     """Screen the question, then apply the retriever's no-match barrier."""
-    reason = screen_question(question)
+    reason = screen(question)
     relevance = retriever.relevance(hits) if hits else None
     if reason is not None:
         return GateDecision(allowed=False, reason=reason, relevance=relevance)

@@ -50,10 +50,28 @@ jobs:
           --thresholds evals/thresholds.yaml
           --out reports/ci
 
-      - name: Upload eval report
+      - name: Privacy detector eval + gate
+        run: uv run alverno privacy eval --out reports/ci
+
+      - name: HR retrieval eval (fake) + gate
+        run: uv run alverno hr eval --mode retrieval --fake --out reports/ci
+
+      - name: HR full eval (fake) + gate
+        run: uv run alverno hr eval --mode full --fake --out reports/ci
+
+      # Nothing is uploaded unless the scan finds no canary of the HR gold set.
+      - name: Canary scan before upload
+        id: canary_scan
         if: always()
+        run: uv run alverno privacy scan reports/ci
+
+      - name: Upload eval reports
+        if: always() && steps.canary_scan.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: eval-retrieval-fake
-          path: reports/ci/
+          name: eval-reports
+          # The eval access logs stay out of the artifact (EFVP: reports without them).
+          path: |
+            reports/ci/
+            !reports/ci/access/
           if-no-files-found: ignore
