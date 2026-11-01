@@ -1,13 +1,23 @@
-"""Release gate: compare an :class:`EvalReport` with ``evals/thresholds.yaml``."""
+"""Release gate: compare a report (Quality, HR or detector) with ``evals/thresholds.yaml``."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Protocol
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from alverno_lab.evals.runner import EvalReport
+
+class GateReport(Protocol):
+    """What the gate reads from a report: its profile name and its metrics."""
+
+    @property
+    def profile(self) -> str: ...
+
+    @property
+    def metrics(self) -> Mapping[str, float]: ...
 
 
 class ThresholdError(ValueError):
@@ -55,7 +65,7 @@ def load_profiles(path: Path) -> dict[str, Profile]:
 
 
 def check_thresholds(
-    report: EvalReport, thresholds: Path, profile: str | None = None
+    report: GateReport, thresholds: Path, profile: str | None = None
 ) -> ThresholdResult:
     """Check every bound of the report's profile; a missing metric or an empty profile fails."""
     name = profile or report.profile

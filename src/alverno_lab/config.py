@@ -75,6 +75,26 @@ class Settings(BaseSettings):
     # Answer acceptance.
     min_confidence: float = Field(default=0.2, ge=0.0, le=1.0)
 
+    # Module 2 (HR) data, kept apart from the Quality corpus and index (docs/adr/0007).
+    hr_corpus_dir: Path = Path("data/hr/corpus")
+    hr_eval_path: Path = Path("data/eval/hr_gold.jsonl")
+    hr_index_path: Path = Path(".cache/hr/index.npz")
+    hr_roles_path: Path = Path("data/hr/org_roles.yaml")
+    hr_contacts_path: Path = Path("data/hr/contacts.yaml")
+    pii_eval_path: Path = Path("data/eval/pii_detect.jsonl")
+    # HR no-match gate (docs/adr/0011). Fake: lowest best coverage of an answerable gold
+    # item (0.125) minus 0.02, floored to 0.05 and clamped to [0.20, 0.60]. Ollama:
+    # lowest best cosine of an answerable gold item (0.497985, h031) minus 0.02,
+    # floored to the hundredth and clamped to [0.40, 0.60]: 0.47 (measured 2026-11-01).
+    hr_vector_no_match_threshold: float = 0.47
+    hr_fake_no_match_threshold: float = 0.2
+
+    # Law 25 layer. A role or group of fewer than k people is a small group (lab
+    # convention, never below 5). The access log keeps day files for at most 90 days.
+    small_group_k: int = Field(default=5, ge=5)
+    access_log_dir: Path = Path("logs/access")
+    access_log_retention_days: int = Field(default=90, ge=1, le=90)
+
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:
         host = (urlsplit(self.ollama_url).hostname or "").lower()
@@ -92,6 +112,30 @@ class Settings(BaseSettings):
             file=sys.stderr,
         )
         return self
+
+    def for_module(self, module: Literal["quality", "hr"]) -> Settings:
+        """Settings of one module: ``hr`` swaps in the HR corpus, gold set, index and
+        no-match thresholds; ``quality`` returns an unchanged copy.
+
+        ``hr`` also turns the reranker off: its gate threshold (``no_match_threshold``)
+        was calibrated for Quality only, and the HR module has no reranker calibration
+        (docs/adr/0011). The HR gate therefore always uses the cosine (or, in fake mode,
+        the coverage) threshold that ADR 0011 calibrates.
+        """
+        if module == "quality":
+            return self.model_copy()
+        if module != "hr":
+            raise ValueError(f"unknown module {module!r} (quality or hr)")
+        return self.model_copy(
+            update={
+                "corpus_dir": self.hr_corpus_dir,
+                "eval_path": self.hr_eval_path,
+                "index_path": self.hr_index_path,
+                "vector_no_match_threshold": self.hr_vector_no_match_threshold,
+                "fake_no_match_threshold": self.hr_fake_no_match_threshold,
+                "reranker": "none",
+            }
+        )
 
     def check_model_is_local(self, name: str) -> str:
         """Return ``name``; an Ollama cloud model needs the same opt-in as a remote host.

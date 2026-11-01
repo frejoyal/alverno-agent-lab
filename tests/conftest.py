@@ -8,7 +8,9 @@ import pytest
 
 from alverno_lab.config import Settings
 from alverno_lab.corpus import Chunk
+from alverno_lab.hr_pipeline import load_privacy_context
 from alverno_lab.pipeline import build_retriever, load_chunks
+from alverno_lab.privacy import PrivacyContext
 from alverno_lab.retrieval import HybridRetriever
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -49,3 +51,36 @@ def retriever(settings: Settings) -> HybridRetriever:
     """Fake-mode hybrid retriever over the fixture corpus."""
     built, _ = build_retriever(settings, fake=True)
     return built
+
+
+def case_id(value: object) -> str:
+    """Test id of a parametrised value: its type only, never the value.
+
+    pytest numbers repeated ids, so ``pytest -v`` and CI logs never print a synthetic
+    name, SIN or phone number taken from a test case.
+    """
+    return type(value).__name__
+
+
+HR_DATA = REPO_ROOT / "data" / "hr"
+EVAL_DATA = REPO_ROOT / "data" / "eval"
+
+
+def hr_repo_settings(**overrides: object) -> Settings:
+    """Settings pointing at the repository HR data (tests run in a temporary directory)."""
+    values: dict[str, object] = {
+        "hr_corpus_dir": HR_DATA / "corpus",
+        "hr_eval_path": EVAL_DATA / "hr_gold.jsonl",
+        "hr_roles_path": HR_DATA / "org_roles.yaml",
+        "hr_contacts_path": HR_DATA / "contacts.yaml",
+        "pii_eval_path": EVAL_DATA / "pii_detect.jsonl",
+        "thresholds_path": REPO_ROOT / "evals" / "thresholds.yaml",
+        **overrides,
+    }
+    return Settings(_env_file=None, **values)
+
+
+@pytest.fixture(scope="session")
+def privacy_ctx() -> PrivacyContext:
+    """Privacy context of the repository HR module (roles, mailboxes, corpus vocabulary)."""
+    return load_privacy_context(hr_repo_settings())

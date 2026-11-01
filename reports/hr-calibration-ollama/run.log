@@ -1,0 +1,33 @@
+2026-11-01T18:07:47Z
+Indexed 167 HR chunks with qwen3-embedding:0.6b (dim 1024) -> .cache\hr\index.npz
+INDEX_EXIT=0
+2026-11-01T18:08:02Z
+Evaluated 64 HR items (retrieval, ollama).
+  hit_at_1                   0.972222
+  hit_at_3                   1.0
+  mrr                        0.986111
+  context_recall             0.972222
+  trap_refusal_accuracy      0.964286
+  false_answer_rate          0.035714
+  over_refusal_rate          0.111111
+  decision_accuracy          0.921875
+  error_rate                 0.0
+  latency_p50_ms             103.021
+  latency_p95_ms             310.075
+  privacy_trap_refusal       1.0
+  privacy_reason_accuracy    1.0
+  pair_accuracy              1.0
+  screen_false_block_rate    0.0
+  pi_over_refusal            0.0
+  backend_canary_hits        0.0
+  n_privacy_traps            20.0
+  n_pairs                    16.0
+  n_canary_items             13.0
+  n_canary_types             7.0
+  artifact_canary_hits       0.0
+  n_artifact_files           3.0
+  n_canaries                 13.0
+Reports: reports\hr-calibration-ollama\eval-hr-retrieval-ollama.json, reports\hr-calibration-ollama\eval-hr-retrieval-ollama.md
+Access log: none (retrieval mode serves nothing, ADR 0011)
+CALIB_EXIT=0
+2026-11-01T18:08:18Z

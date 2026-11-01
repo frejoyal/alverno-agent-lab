@@ -8,7 +8,7 @@
 2. **Local-first** : l'inférence et les embeddings roulent sur le poste (Ollama). Rien ne sort par défaut.
 3. **Classification avant traitement** : chaque document et chaque module reçoit un niveau de sensibilité ; le niveau détermine ce qui est permis.
 4. **Refus explicite** : un agent qui reçoit une demande hors de son périmètre (notamment une demande visant une personne) refuse au lieu d'improviser.
-5. **Traçabilité** : les traces d'exécution consignent les nœuds, les durées et les décisions (extraits, citations, motif de refus), jamais le texte de la question : seule une empreinte SHA-256 courte et la longueur sont écrites.
+5. **Traçabilité** : les traces d'exécution consignent les nœuds, les durées et les décisions (extraits, citations, motif de refus), jamais le texte de la question : dans le module Qualité, seule une empreinte SHA-256 courte et la longueur sont écrites ; dans le module RH, ni empreinte ni longueur, et un journal des accès minimal consigne chaque demande ([ADR 0008](adr/0008-minimal-access-log.md)).
 
 ## Échelle de sensibilité du labo (1 à 5)
 
@@ -42,9 +42,40 @@ Chaque document du corpus déclare son niveau dans le champ `sensitivity` du fro
 
 Le jeu d'évaluation contient des pièges de ce type ; le taux de refus correct est mesuré et protégé par la porte de livraison.
 
+## Le module RH : corpus 2/5, questions qui peuvent contenir des renseignements personnels
+
+Livré le 2026-11-01. L'évaluation des facteurs relatifs à la vie privée (EFVP) a été rédigée avant l'implémentation, quand aucun code RH n'existait, puis révisée après l'implémentation et complétée des résultats mesurés : [docs/efvp/hr-module.md](efvp/hr-module.md) (version 1.1). Les décisions de conception sont dans les ADR [0006](adr/0006-deterministic-privacy-layer.md) à [0011](adr/0011-hr-gate-calibration.md).
+
+### Ce que le module traite
+
+- 18 politiques RH **fictives** (`data/hr/corpus/`), classées 2/5, qui ne nomment que des rôles ; elles restent séparées du corpus Qualité.
+- Les questions des employés, traitées en mémoire. Contrairement au module Qualité, elles contiendront souvent des renseignements personnels : ceux de la personne qui écrit ou ceux d'un tiers.
+
+### Ce que le module ne traite pas
+
+- Aucun dossier d'employé, aucune donnée du SIRH ni de la paie : l'assistant ne peut servir que le texte général des politiques.
+- Aucune réponse au sujet d'une personne : une demande qui vise une personne (attribut de dossier, identification, agrégat, petit groupe), la consultation de son propre dossier, l'information restreinte et les demandes d'avis juridique sont refusées.
+
+### Mesures
+
+- **Filtre déterministe avant la recherche** ([ADR 0006](adr/0006-deterministic-privacy-layer.md)) : détection, caviardage par marqueurs typés et classification de la question, sans modèle ni réseau. Une question refusée n'atteint ni BM25, ni le modèle de plongements, ni le LLM ; une question permise ne leur parvient que caviardée. Un rôle ou un groupe de moins de 5 personnes est un petit groupe : c'est une convention du labo, pas un seuil légal.
+- **Garde de sortie** : une réponse qui contient un renseignement personnel absent des extraits cités est retenue en entier.
+- **Journal des accès minimal** ([ADR 0008](adr/0008-minimal-access-log.md)) : un enregistrement par demande dans `logs/access/` (décision, motif, catégorie de la demande, types de renseignements retirés, documents cités), heure arrondie à l'heure, sans texte, empreinte ni longueur de la question ; conservé 90 jours au plus, destiné au RPRP et au soutien informatique sous son autorité (limite : la personne qui utilise le poste peut lire les lignes de ce poste, voir l'EFVP) ; il ne peut pas être désactivé, et si son écriture échoue, aucune réponse n'est servie.
+- **Avis de transparence** affiché par `alverno hr ask` avant la lecture de la question ; la question se tape au clavier, pour ne pas rester dans l'historique du terminal.
+- **Traces et rapports** : traces RH nettoyées (ni question, ni texte caviardé) ; en CI, les témoins du jeu RH sont cherchés dans les rapports avant tout téléversement, et les journaux d'accès des évaluations n'en font jamais partie.
+- **Local-first**, comme le module Qualité : mêmes contrôles de l'adresse Ollama, des modèles infonuagiques et du traçage hébergé.
+
+### Mesures observées
+
+Banc d'essai du 2026-11-01 (`reports/bench-hr-ollama-20261101-132355/`) : les trois modèles mesurés refusent les 20 pièges de confidentialité du jeu de référence avec le motif exact, et aucune fuite n'est trouvée sur les 13 questions avec témoins. Jeu réservé, mesuré une seule fois (`reports/hr-holdout/`) : 8 pièges de confidentialité refusés sur 10 ; les 2 pièges « propre dossier » passent le filtre, et 1 question répondable sur 10 est bloquée à tort. Cet écart hors échantillon est publié tel quel, sans retoucher les règles ([ADR 0010](adr/0010-hr-evaluation-protocol.md)). Détails : README, section « Assistant RH (module 2) ».
+
+### Décisions et confirmations
+
+Les exemptions M13 et les lexiques élargis (M14 et deuxième revue) de l'[ADR 0006](adr/0006-deterministic-privacy-layer.md), le changement des faits clés du jeu `hr_gold` et la version 1.0.1 de l'EFVP ont été confirmés par le responsable du dépôt le 2026-11-01. Les décisions réservées au RPRP, un rôle fictif, restent « à confirmer par le RPRP ».
+
 ## Pourquoi local-first
 
-- **Communication hors Québec (art. 17)** : avant de communiquer un renseignement personnel à l'extérieur du Québec, l'entreprise doit procéder à une évaluation des facteurs relatifs à la vie privée tenant compte notamment de la sensibilité du renseignement, de la finalité, des mesures de protection et du régime juridique de l'endroit de destination. Plusieurs services d'IA hébergés traitent les données hors Québec. La communication ne peut s'effectuer que si l'évaluation démontre que le renseignement bénéficierait d'une protection adéquate, et elle doit faire l'objet d'une entente écrite. Il en est de même lorsque l'entreprise confie à une personne ou à un organisme à l'extérieur du Québec la tâche de recueillir, d'utiliser, de communiquer ou de conserver un renseignement pour son compte, ce qui vise typiquement un service d'IA infonuagique. En gardant l'inférence sur le poste, le module Qualité n'effectue aucune communication de ce genre, et les modules futurs qui traiteront des renseignements personnels partent d'une base qui n'en effectue pas non plus.
+- **Communication hors Québec (art. 17)** : avant de communiquer un renseignement personnel à l'extérieur du Québec, l'entreprise doit procéder à une évaluation des facteurs relatifs à la vie privée tenant compte notamment de la sensibilité du renseignement, de la finalité, des mesures de protection et du régime juridique de l'endroit de destination. Plusieurs services d'IA hébergés traitent les données hors Québec. La communication ne peut s'effectuer que si l'évaluation démontre que le renseignement bénéficierait d'une protection adéquate, et elle doit faire l'objet d'une entente écrite. Il en est de même lorsque l'entreprise confie à une personne ou à un organisme à l'extérieur du Québec la tâche de recueillir, d'utiliser, de communiquer ou de conserver un renseignement pour son compte, ce qui vise typiquement un service d'IA infonuagique. En gardant l'inférence sur le poste, le module Qualité n'effectue aucune communication de ce genre ; le module RH, qui reçoit des questions pouvant contenir des renseignements personnels, part de la même base, et les modules futurs aussi.
 - **Secret commercial** : les spécifications clients (niveau 2) et les dessins propriétaires des clients (niveau 3) sont souvent couverts par des ententes de confidentialité. Le traitement local évite d'avoir à négocier leur transfert.
 - **Reproductibilité** : n'importe quel réviseur peut relancer les évaluations sans compte ni clé.
 - **Coût prévisible** pour une PME : pas de facturation au jeton.
@@ -56,7 +87,8 @@ Le local-first n'est pas une garantie de conformité à lui seul : la sécurité
 La loi exige une EFVP pour tout projet d'acquisition, de développement ou de refonte d'un système d'information ou de prestation électronique de services impliquant des renseignements personnels. Le responsable de la protection des renseignements personnels doit être consulté dès le début du projet, et l'évaluation doit être proportionnée à la sensibilité des renseignements, à la finalité de leur utilisation, à leur quantité, à leur répartition et à leur support.
 
 - **Module Qualité** : aucun renseignement personnel dans le corpus. Les questions libres peuvent en contenir de façon incidente : elles ne sont pas conservées (les traces n'en gardent qu'une empreinte courte et la longueur). Les demandes visant une personne que reconnaissent les motifs de filtrage des questions (salaire ou matricule d'une personne, « son nom », dossier médical, congé de maladie, titre de civilité suivi d'un nom, etc. ; motifs en français seulement) sont refusées ; ce filtrage par expressions régulières reste une défense de première ligne. Le labo documente ce constat (ce fichier, le champ `sensitivity`, les pièges d'évaluation). Dans une entreprise réelle, ce constat serait consigné dans une analyse préliminaire validée par le responsable de la protection des renseignements personnels, et revalidé à chaque changement de périmètre.
-- **Module RH (jalon 2)** et **service client (jalon 3)** : renseignements personnels prévisibles ; une EFVP sera rédigée **avant** l'implémentation, et le gabarit fera partie du dépôt.
+- **Module RH (jalon 2)** : renseignements personnels prévisibles dans les questions. L'EFVP a été rédigée **avant** l'implémentation, révisée après (version 1.0.1), puis complétée des résultats mesurés (version 1.1) : [docs/efvp/hr-module.md](efvp/hr-module.md). Gabarit réutilisable : [docs/efvp/template.md](efvp/template.md).
+- **Service client (jalon 3)** : renseignements personnels prévisibles ; une EFVP sera rédigée **avant** l'implémentation, à partir du gabarit.
 
 ## Autres obligations à garder en tête pour les modules futurs
 

@@ -1,8 +1,10 @@
 # Feuille de route du laboratoire
 
-> Entreprise et données entièrement fictives. Les échéances ne sont pas fixées ; l'ordre reflète les dépendances.
+> Entreprise et données entièrement fictives. Les échéances ne sont pas fixées.
 
 Le labo progresse par modules livrables. Chaque module suit les mêmes règles : local-first, typage strict, tests sans réseau, jeu d'évaluation et porte de livraison en CI, documentation Loi 25.
+
+**Ordre de réalisation** : modules 1 et 2 livrés ; ensuite le module 3, puis le module 5 avant le module 4, et le module 6 en dernier. Les numéros désignent les modules ; ils ne fixent pas l'ordre.
 
 ## Module 1 — Agent Qualité (livré)
 
@@ -18,14 +20,16 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 
 **Statut** : critère atteint le 2026-10-31 (banc d'essai `reports/bench-ollama-20261031-125148/`, résultats dans le README).
 
-## Module 2 — Couche Loi 25 et module RH
+## Module 2 — Couche Loi 25 et module RH (livré)
 
 **Problème** : répondre aux questions RH courantes (politique de vacances, horaires, avantages) sans exposer de renseignements personnels.
 
-- Couche transversale réutilisable : classification de sensibilité des entrées et des documents, détection et caviardage de renseignements personnels, journalisation des accès, politique de refus.
-- Séparation stricte : politiques RH générales (niveau 2) d'un côté, dossiers nominatifs (niveaux 4 et 5) hors périmètre.
-- EFVP rédigée avant l'implémentation (gabarit dans le dépôt).
-- Pièges d'évaluation dédiés : demandes visant une personne, fuites indirectes.
+- Couche transversale réutilisable (`privacy/`) : détection et caviardage de renseignements personnels, classification de la demande, politique de refus, garde de sortie, journal des accès minimal ([ADR 0006](adr/0006-deterministic-privacy-layer.md), [ADR 0008](adr/0008-minimal-access-log.md)).
+- Assistant RH : enveloppe de confidentialité autour du graphe du module 1, inchangé ; 18 politiques RH fictives (niveau 2, rôles seulement) séparées du corpus Qualité ; dossiers nominatifs (niveaux 4 et 5) hors périmètre ([ADR 0007](adr/0007-hr-envelope-and-per-module-data.md)).
+- EFVP rédigée avant l'implémentation, puis complétée des résultats mesurés : [efvp/hr-module.md](efvp/hr-module.md).
+- Évaluation : 64 questions, dont 20 pièges de confidentialité, 16 paires et 13 questions avec témoins ; bornes de confidentialité préenregistrées ; jeu réservé mesuré une seule fois ([ADR 0010](adr/0010-hr-evaluation-protocol.md), [ADR 0011](adr/0011-hr-gate-calibration.md)).
+
+**Statut** : livré le 2026-11-01. Banc d'essai `reports/bench-hr-ollama-20261101-132355/` : `gemma4:e4b` passe la porte `hr-full-ollama` (20 pièges de confidentialité refusés sur 20, aucune fuite sur 13 questions avec témoins, faits clés 0,806 pour un minimum de 0,80). Module 1 revérifié sur Ollama : portes `retrieval-ollama` et `full-ollama` réussies, aucune des 50 questions ne change de refus, de motif ni de citations (`reports/m1-check-ollama-20261101/`). Jeu réservé : 8 pièges de confidentialité refusés sur 10 (`reports/hr-holdout/`) ; l'écart est publié dans le README.
 
 ## Module 3 — Service client et maintenance (LangGraph)
 

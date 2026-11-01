@@ -1,0 +1,53 @@
+# Termes à majuscule qui ne désignent pas une personne (spécification §2 et §5.2).
+# Un terme par ligne ; le chargeur (lexicon.allowlist_terms) applique normalize()
+# et ajoute aussi chaque mot d'un terme composé de plusieurs mots.
+# Entreprise fictive, organismes, lois et lieux
+Alverno
+Fabrications Alverno
+CNESST
+CAI
+RQAP
+RAMQ
+LNT
+Québec
+Centre-du-Québec
+Canada
+Drummondville
+Revenu Québec
+Retraite Québec
+LégisQuébec
+Loi sur les normes du travail
+Charte de la langue française
+# Logiciels et services
+Teams
+SharePoint
+Outlook
+Excel
+Ollama
+# Jours fériés et fêtes
+Jour de l'An
+Vendredi saint
+Pâques
+Lundi de Pâques
+Journée nationale des patriotes
+Fête nationale
+Fête nationale du Québec
+Saint-Jean-Baptiste
+Saint-Jean
+Toussaint
+Fête du Canada
+Confédération
+Fête du Travail
+Action de grâces
+Noël
+Lendemain de Noël
+Jour du Souvenir
+Journée nationale de la vérité et de la réconciliation
+# Clients fictifs du corpus Qualité (data/corpus)
+Vélanor
+Procédés alimentaires Vélanor
+Strathène
+Coffrets électriques Strathène
+Varnokel
+Machinerie forestière Varnokel
+Agronelle

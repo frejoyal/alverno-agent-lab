@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 
 from alverno_lab.retrieval import Hit
 
@@ -88,3 +89,17 @@ def build_user_prompt(question: str, hits: Sequence[Hit]) -> str:
 def refusal_message(reason: str | None) -> str:
     """Standard refusal text, with a short reason-specific complement."""
     return REFUSAL_MESSAGE + REFUSAL_SUFFIX.get(reason or "", "")
+
+
+@dataclass(frozen=True)
+class AgentPrompts:
+    """The texts a module plugs into the graph: system prompt, user prompt, refusals."""
+
+    system: str
+    user: Callable[[str, Sequence[Hit]], str]
+    refusal: Callable[[str | None], str]
+
+
+QUALITY_PROMPTS = AgentPrompts(
+    system=SYSTEM_PROMPT, user=build_user_prompt, refusal=refusal_message
+)

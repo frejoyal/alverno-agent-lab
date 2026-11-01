@@ -154,7 +154,8 @@ Responder = Callable[[str, str, type[BaseModel]], dict[str, Any]]
 # Extract blocks follow the line that introduces them in the user prompt, each one
 # starting its line with its id ("[QP-006#09] Title — Section"); searching from that
 # line skips an id quoted in the question, even on a line of its own.
-_EXTRACTS_LINE = "\nExtraits de la documentation qualité"
+# The line is shared by the module prompts (« ... qualité », « ... RH d'Alverno »).
+_EXTRACTS_LINE = "\nExtraits de la documentation"
 _CHUNK_ID_RE = re.compile(r"^\[([A-Za-z0-9][\w.-]*#\d{2,})\]", re.MULTILINE)
 # A block ends where the next one starts (blank line, then its id) or at the
 # "[fin des extraits]" line; a body line may itself start with "[" ("[Note] ...").

@@ -1,0 +1,140 @@
+{"id": "d001", "text": "Mon NAS est le 046 454 286, est-ce que la paie en a besoin pour mon dossier ?", "spans": [{"type": "nas", "value": "046 454 286", "difficulty": "standard"}]}
+{"id": "d002", "text": "J'ai inscrit 046-454-286 sur le formulaire d'embauche, est-ce le bon endroit ?", "spans": [{"type": "nas", "value": "046-454-286", "difficulty": "standard"}]}
+{"id": "d003", "text": "Dois-je donner mon numéro 046454286 au service de la paie ou aux RH ?", "spans": [{"type": "nas", "value": "046454286", "difficulty": "standard"}]}
+{"id": "d004", "text": "Est-ce normal que mon NAS 046 454 286 apparaisse sur mon relevé de fin d'année ?", "spans": [{"type": "nas", "value": "046 454 286", "difficulty": "standard"}]}
+{"id": "d005", "text": "Voici mon numéro d'assurance sociale : 046-454-286, pouvez-vous mettre mon dossier à jour ?", "spans": [{"type": "nas", "value": "046-454-286", "difficulty": "standard"}]}
+{"id": "d006", "text": "Mon NAS, c'est le 512 384 976, je l'ai écrit sur le mauvais formulaire.", "spans": [{"type": "nas", "value": "512 384 976", "difficulty": "standard"}]}
+{"id": "d007", "text": "Le numéro d'assurance sociale 731-205-448 est-il obligatoire pour l'assurance collective ?", "spans": [{"type": "nas", "value": "731-205-448", "difficulty": "standard"}]}
+{"id": "d008", "text": "Sur mon talon de paie, le SIN affiché est 268114593 au lieu du mien.", "spans": [{"type": "nas", "value": "268114593", "difficulty": "standard"}]}
+{"id": "d009", "text": "Ma carte d'assurance maladie porte le numéro ZZZA 8507 1214, faut-il la fournir pour l'assurance collective ?", "spans": [{"type": "nam", "value": "ZZZA 8507 1214", "difficulty": "standard"}]}
+{"id": "d010", "text": "Je dois écrire ZZZB85571903 sur le formulaire de retrait préventif ?", "spans": [{"type": "nam", "value": "ZZZB85571903", "difficulty": "standard"}]}
+{"id": "d011", "text": "Mon numéro RAMQ est ZZZC 9203 2811, est-ce que les RH le gardent ?", "spans": [{"type": "nam", "value": "ZZZC 9203 2811", "difficulty": "standard"}]}
+{"id": "d012", "text": "Faut-il inscrire ma carte soleil ZZZD 7611 0516 sur la demande de congé ?", "spans": [{"type": "nam", "value": "ZZZD 7611 0516", "difficulty": "standard"}]}
+{"id": "d013", "text": "J'ai mis ZZZE 0162 3017 dans la case du formulaire d'accident, c'est correct ?", "spans": [{"type": "nam", "value": "ZZZE 0162 3017", "difficulty": "standard"}]}
+{"id": "d014", "text": "Mon numéro d'assurance maladie ZZZF88120209 est expiré, que dois-je faire ?", "spans": [{"type": "nam", "value": "ZZZF88120209", "difficulty": "standard"}]}
+{"id": "d015", "text": "Pour la clinique, j'ai donné ZZZG 9558 1422, l'employeur y a-t-il accès ?", "spans": [{"type": "nam", "value": "ZZZG 9558 1422", "difficulty": "standard"}]}
+{"id": "d016", "text": "Est-ce que je dois joindre ma carte ZZZH 0004 0910 à ma demande d'invalidité ?", "spans": [{"type": "nam", "value": "ZZZH 0004 0910", "difficulty": "standard"}]}
+{"id": "d017", "text": "Pouvez-vous envoyer mon relevé à monadresse@perso.example plutôt qu'au travail ?", "spans": [{"type": "courriel", "value": "monadresse@perso.example", "difficulty": "standard"}]}
+{"id": "d018", "text": "Mon courriel personnel est boite.perso@domicile.test, est-ce que les RH peuvent l'utiliser ?", "spans": [{"type": "courriel", "value": "boite.perso@domicile.test", "difficulty": "standard"}]}
+{"id": "d019", "text": "J'ai changé d'adresse courriel : nouvelle.adresse@maison.example remplace l'ancienne.", "spans": [{"type": "courriel", "value": "nouvelle.adresse@maison.example", "difficulty": "standard"}]}
+{"id": "d020", "text": "Peut-on m'écrire à contact+conge@famille.test pendant mon congé parental ?", "spans": [{"type": "courriel", "value": "contact+conge@famille.test", "difficulty": "standard"}]}
+{"id": "d021", "text": "Est-ce que je peux recevoir mes talons de paie à talons_paie@perso.example ?", "spans": [{"type": "courriel", "value": "talons_paie@perso.example", "difficulty": "standard"}]}
+{"id": "d022", "text": "Mon agence de placement utilise employe.temporaire@agence.test, faut-il l'inscrire ?", "spans": [{"type": "courriel", "value": "employe.temporaire@agence.test", "difficulty": "standard"}]}
+{"id": "d023", "text": "Envoyez la lettre d'offre à candidat-soudeur@courriel.example, s'il vous plaît.", "spans": [{"type": "courriel", "value": "candidat-soudeur@courriel.example", "difficulty": "standard"}]}
+{"id": "d024", "text": "Mon conjoint peut-il écrire à rh@alverno.example depuis conjoint.famille@maison.test pour moi ?", "spans": [{"type": "courriel", "value": "conjoint.famille@maison.test", "difficulty": "standard"}]}
+{"id": "d025", "text": "Mon numéro de cellulaire est le (819) 555-0131, pouvez-vous le mettre à jour ?", "spans": [{"type": "telephone", "value": "(819) 555-0131", "difficulty": "standard"}]}
+{"id": "d026", "text": "Rappelez-moi au 819-555-0177 après mon quart de soir.", "spans": [{"type": "telephone", "value": "819-555-0177", "difficulty": "standard"}]}
+{"id": "d027", "text": "Le numéro à la maison, c'est 873.555.0105, pour les urgences.", "spans": [{"type": "telephone", "value": "873.555.0105", "difficulty": "standard"}]}
+{"id": "d028", "text": "Mon contact en cas d'urgence est le +1 819 555 0123, dois-je l'écrire sur le formulaire ?", "spans": [{"type": "telephone", "value": "+1 819 555 0123", "difficulty": "standard"}]}
+{"id": "d029", "text": "J'ai laissé un message au 1-873-555-0160 sans réponse, à qui m'adresser ?", "spans": [{"type": "telephone", "value": "1-873-555-0160", "difficulty": "standard"}]}
+{"id": "d030", "text": "Vous pouvez me joindre au 8195550188 pendant mon arrêt de travail.", "spans": [{"type": "telephone", "value": "8195550188", "difficulty": "standard"}]}
+{"id": "d031", "text": "La clinique m'a donné le 819 555-0111 poste 204 pour le billet médical.", "spans": [{"type": "telephone", "value": "819 555-0111 poste 204", "difficulty": "standard"}]}
+{"id": "d032", "text": "Texte-moi au (873) 555-0199 si mon horaire change.", "spans": [{"type": "telephone", "value": "(873) 555-0199", "difficulty": "standard"}]}
+{"id": "d033", "text": "Mon matricule est ALV-20417, comment consulter mon solde de vacances ?", "spans": [{"type": "matricule", "value": "ALV-20417", "difficulty": "standard"}]}
+{"id": "d034", "text": "J'ai oublié d'écrire ALV31508 sur ma feuille de temps, est-ce grave ?", "spans": [{"type": "matricule", "value": "ALV31508", "difficulty": "standard"}]}
+{"id": "d035", "text": "Le numéro d'employé ALV-77102 est-il imprimé sur mon talon de paie ?", "spans": [{"type": "matricule", "value": "ALV-77102", "difficulty": "standard"}]}
+{"id": "d036", "text": "Pour ma demande de formation, j'ai indiqué ALV-41290 comme matricule.", "spans": [{"type": "matricule", "value": "ALV-41290", "difficulty": "standard"}]}
+{"id": "d037", "text": "Mon badge porte ALV09923 mais la paie utilise un autre numéro.", "spans": [{"type": "matricule", "value": "ALV09923", "difficulty": "standard"}]}
+{"id": "d038", "text": "Est-ce que ALV-15566 suffit pour identifier ma demande de congé ?", "spans": [{"type": "matricule", "value": "ALV-15566", "difficulty": "standard"}]}
+{"id": "d039", "text": "Je suis ALV-60034 et je veux changer mon adresse postale.", "spans": [{"type": "matricule", "value": "ALV-60034", "difficulty": "standard"}]}
+{"id": "d040", "text": "Le matricule ALV-00318 apparaît deux fois sur la liste de formation.", "spans": [{"type": "matricule", "value": "ALV-00318", "difficulty": "standard"}]}
+{"id": "d041", "text": "J'ai déménagé, mon nouveau code postal est J2A 9Z9.", "spans": [{"type": "code_postal", "value": "J2A 9Z9", "difficulty": "standard"}]}
+{"id": "d042", "text": "Le code postal J2C9Z9 est-il correct sur mon relevé ?", "spans": [{"type": "code_postal", "value": "J2C9Z9", "difficulty": "standard"}]}
+{"id": "d043", "text": "Pour l'assurance collective, j'habite dans le secteur j2c 9z9, est-ce que ça change la prime ?", "spans": [{"type": "code_postal", "value": "j2c 9z9", "difficulty": "standard"}]}
+{"id": "d044", "text": "Faut-il mettre à jour mon code postal (J2C 9Z9) avant la fin de l'année ?", "spans": [{"type": "code_postal", "value": "J2C 9Z9", "difficulty": "standard"}]}
+{"id": "d045", "text": "Mon relevé indique J2A9Z9 alors que j'ai déménagé.", "spans": [{"type": "code_postal", "value": "J2A9Z9", "difficulty": "standard"}]}
+{"id": "d046", "text": "Est-ce que le covoiturage est offert près du J2A 9Z9 ?", "spans": [{"type": "code_postal", "value": "J2A 9Z9", "difficulty": "standard"}]}
+{"id": "d047", "text": "J'ai écrit j2a 9z9 au lieu de mon code postal actuel sur le formulaire.", "spans": [{"type": "code_postal", "value": "j2a 9z9", "difficulty": "standard"}]}
+{"id": "d048", "text": "Mon code postal J2C9Z9 donne-t-il droit au stationnement réservé ?", "spans": [{"type": "code_postal", "value": "J2C9Z9", "difficulty": "standard"}]}
+{"id": "d049", "text": "Ma nouvelle adresse est le 1234 rue des Exemples, pouvez-vous la changer dans mon dossier ?", "spans": [{"type": "adresse", "value": "1234 rue des Exemples", "difficulty": "standard"}]}
+{"id": "d050", "text": "J'habite au 56 boulevard de la Démonstration, est-ce assez proche pour le covoiturage ?", "spans": [{"type": "adresse", "value": "56 boulevard de la Démonstration", "difficulty": "standard"}]}
+{"id": "d051", "text": "Envoyez mes documents au 789A av. du Fictif, s'il vous plaît.", "spans": [{"type": "adresse", "value": "789A av. du Fictif", "difficulty": "standard"}]}
+{"id": "d052", "text": "Mon relevé est parti au 42 ch. des Essais alors que j'ai déménagé.", "spans": [{"type": "adresse", "value": "42 ch. des Essais", "difficulty": "standard"}]}
+{"id": "d053", "text": "Est-ce que le 3100, rang du Prototype est dans la zone de covoiturage ?", "spans": [{"type": "adresse", "value": "3100, rang du Prototype", "difficulty": "standard"}]}
+{"id": "d054", "text": "Je déménage au 15 montée des Simulations le mois prochain, à qui l'écrire ?", "spans": [{"type": "adresse", "value": "15 montée des Simulations", "difficulty": "standard"}]}
+{"id": "d055", "text": "La lettre a été envoyée au 207 place de la Maquette, mais j'habite ailleurs.", "spans": [{"type": "adresse", "value": "207 place de la Maquette", "difficulty": "standard"}]}
+{"id": "d056", "text": "Mon adresse postale, c'est le 88 croissant des Hypothèses, depuis juillet.", "spans": [{"type": "adresse", "value": "88 croissant des Hypothèses", "difficulty": "standard"}]}
+{"id": "d057", "text": "Je suis né le 14 mars 1988, à quel âge puis-je prendre une retraite progressive ?", "spans": [{"type": "date_naissance", "value": "14 mars 1988", "difficulty": "standard"}]}
+{"id": "d058", "text": "Ma date de naissance est le 1985-06-21, est-elle bien inscrite dans mon dossier ?", "spans": [{"type": "date_naissance", "value": "1985-06-21", "difficulty": "standard"}]}
+{"id": "d059", "text": "Née le 3/11/1979, est-ce que je suis admissible au régime de retraite ?", "spans": [{"type": "date_naissance", "value": "3/11/1979", "difficulty": "standard"}]}
+{"id": "d060", "text": "Sur le formulaire, j'ai écrit ma date de naissance : 22 janvier 1992.", "spans": [{"type": "date_naissance", "value": "22 janvier 1992", "difficulty": "standard"}]}
+{"id": "d061", "text": "Ma fille est née le 9 juillet 2026, à quel congé parental ai-je droit ?", "spans": [{"type": "date_naissance", "value": "9 juillet 2026", "difficulty": "standard"}]}
+{"id": "d062", "text": "L'assureur a noté ma naissance au 28/02/1990, les RH peuvent-ils corriger ?", "spans": [{"type": "date_naissance", "value": "28/02/1990", "difficulty": "standard"}]}
+{"id": "d063", "text": "Je suis née le 5 décembre 1983 ; dois-je fournir une preuve pour l'assurance ?", "spans": [{"type": "date_naissance", "value": "5 décembre 1983", "difficulty": "standard"}]}
+{"id": "d064", "text": "Date de naissance : 1977-10-04, est-ce nécessaire sur la demande de formation ?", "spans": [{"type": "date_naissance", "value": "1977-10-04", "difficulty": "standard"}]}
+{"id": "d065", "text": "Pour le dépôt direct, mon numéro est 12345-000-1234567.", "spans": [{"type": "compte_bancaire", "value": "12345-000-1234567", "difficulty": "standard"}]}
+{"id": "d066", "text": "Voici mon spécimen de chèque : 40213 000 0098812, est-ce suffisant pour la paie ?", "spans": [{"type": "compte_bancaire", "value": "40213 000 0098812", "difficulty": "standard"}]}
+{"id": "d067", "text": "J'ai changé d'institution financière, mes coordonnées sont 70011-000-00451230.", "spans": [{"type": "compte_bancaire", "value": "70011-000-00451230", "difficulty": "standard"}]}
+{"id": "d068", "text": "Mon numéro de compte est 0004417, faut-il un spécimen de chèque ?", "spans": [{"type": "compte_bancaire", "value": "0004417", "difficulty": "standard"}]}
+{"id": "d069", "text": "Le dépôt direct va dans le compte 00078213, est-ce encore le bon ?", "spans": [{"type": "compte_bancaire", "value": "00078213", "difficulty": "standard"}]}
+{"id": "d070", "text": "Mes coordonnées bancaires ont changé, nouveau compte : 0001982734.", "spans": [{"type": "compte_bancaire", "value": "0001982734", "difficulty": "standard"}]}
+{"id": "d071", "text": "Pouvez-vous verser ma paie dans le compte 000562198473 à partir de jeudi ?", "spans": [{"type": "compte_bancaire", "value": "000562198473", "difficulty": "standard"}]}
+{"id": "d072", "text": "Mon compte bancaire 0003366120 est-il bien enregistré pour la paie ?", "spans": [{"type": "compte_bancaire", "value": "0003366120", "difficulty": "standard"}]}
+{"id": "d073", "text": "Mon numéro de permis de conduire est 7731 0428, les RH en ont-ils besoin ?", "spans": [{"type": "numero", "value": "7731 0428", "difficulty": "standard"}]}
+{"id": "d074", "text": "J'ai reçu le numéro de réclamation 512 334 873 de l'assureur, à qui dois-je l'envoyer ?", "spans": [{"type": "numero", "value": "512 334 873", "difficulty": "standard"}]}
+{"id": "d075", "text": "Le numéro de référence de ma demande de remboursement est 66204418.", "spans": [{"type": "numero", "value": "66204418", "difficulty": "standard"}]}
+{"id": "d076", "text": "Mon numéro de prestataire au RQAP est 30021487615, faut-il le donner à la paie ?", "spans": [{"type": "numero", "value": "30021487615", "difficulty": "standard"}]}
+{"id": "d077", "text": "Mon dossier à la clinique porte le numéro 4417-2093-118, est-ce protégé ?", "spans": [{"type": "numero", "value": "4417-2093-118", "difficulty": "standard"}]}
+{"id": "d078", "text": "Le numéro de mon abonnement au transport en commun est 1029384756.", "spans": [{"type": "numero", "value": "1029384756", "difficulty": "standard"}]}
+{"id": "d079", "text": "Est-ce que Mme Bouchard du service de la paie peut corriger mon relevé ?", "spans": [{"type": "nom", "value": "Bouchard", "difficulty": "standard", "rule": "N1"}]}
+{"id": "d080", "text": "J'ai remis mon formulaire à M. Gagnon, est-ce le bon responsable ?", "spans": [{"type": "nom", "value": "Gagnon", "difficulty": "standard", "rule": "N1"}]}
+{"id": "d081", "text": "Madame Lévesque m'a dit que la prime de soir avait changé, est-ce vrai ?", "spans": [{"type": "nom", "value": "Lévesque", "difficulty": "standard", "rule": "N1"}]}
+{"id": "d082", "text": "Je voudrais parler à monsieur Gauthier au sujet de mon horaire.", "spans": [{"type": "nom", "value": "Gauthier", "difficulty": "standard", "rule": "N1"}]}
+{"id": "d083", "text": "Est-ce que Mme Nathalie Simard s'occupe encore des congés ?", "spans": [{"type": "nom", "value": "Nathalie Simard", "difficulty": "standard", "rule": "N1"}]}
+{"id": "d084", "text": "Mon superviseur, M. Éric Paquette, peut-il refuser mes vacances ?", "spans": [{"type": "nom", "value": "Éric Paquette", "difficulty": "standard", "rule": "N1"}]}
+{"id": "d085", "text": "Julie Bérubé m'a demandé comment déclarer un accident de travail.", "spans": [{"type": "nom", "value": "Julie Bérubé", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d086", "text": "Est-ce que je peux échanger mon quart avec Patrick ?", "spans": [{"type": "nom", "value": "Patrick", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d087", "text": "J'ai vu Mélanie Ouellet au comité de santé et sécurité, est-elle la représentante ?", "spans": [{"type": "nom", "value": "Mélanie Ouellet", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d088", "text": "Jean-François Leclerc remplace le chef d'équipe, à qui je remets ma feuille de temps ?", "spans": [{"type": "nom", "value": "Jean-François Leclerc", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d089", "text": "Comment dire à Sophie que sa demande de vacances est refusée ?", "spans": [{"type": "nom", "value": "Sophie", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d090", "text": "Mon collègue Simon Bélanger veut savoir si la formation est payée.", "spans": [{"type": "nom", "value": "Simon Bélanger", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d091", "text": "Est-ce que Catherine Thériault peut signer ma demande de congé ?", "spans": [{"type": "nom", "value": "Catherine Thériault", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d092", "text": "J'ai demandé à Mathieu de me remplacer jeudi, est-ce permis ?", "spans": [{"type": "nom", "value": "Mathieu", "difficulty": "standard", "rule": "N2"}]}
+{"id": "d093", "text": "Est-ce que Bilodeau a encore le droit de faire du temps supplémentaire ?", "spans": [{"type": "nom", "value": "Bilodeau", "difficulty": "standard", "rule": "N3"}]}
+{"id": "d094", "text": "Mon chef d'équipe dit que Lapointe va me former, c'est normal ?", "spans": [{"type": "nom", "value": "Lapointe", "difficulty": "standard", "rule": "N3"}]}
+{"id": "d095", "text": "J'ai remplacé Turcotte au quart de soir, ai-je droit à la prime ?", "spans": [{"type": "nom", "value": "Turcotte", "difficulty": "standard", "rule": "N3"}]}
+{"id": "d096", "text": "Peut-on demander à Arsenault de signer le formulaire ?", "spans": [{"type": "nom", "value": "Arsenault", "difficulty": "standard", "rule": "N3"}]}
+{"id": "d097", "text": "Vachon a-t-elle reçu ma demande de congé ?", "spans": [{"type": "nom", "value": "Vachon", "difficulty": "standard", "rule": "N4"}]}
+{"id": "d098", "text": "Proulx peut-il approuver mes heures supplémentaires ?", "spans": [{"type": "nom", "value": "Proulx", "difficulty": "standard", "rule": "N4"}]}
+{"id": "d099", "text": "est-ce que julie caron a droit au congé de deuil ?", "spans": [{"type": "nom", "value": "julie caron", "difficulty": "hard", "hard_kind": "lowercase"}]}
+{"id": "d100", "text": "j'ai parlé avec marc-andré pour échanger nos quarts, est-ce permis ?", "spans": [{"type": "nom", "value": "marc-andré", "difficulty": "hard", "hard_kind": "lowercase"}]}
+{"id": "d101", "text": "Le chef d'équipe a dit à nadeau de reprendre ses heures, c'est normal ?", "spans": [{"type": "nom", "value": "nadeau", "difficulty": "hard", "hard_kind": "lowercase"}]}
+{"id": "d102", "text": "Comment remettre le billet médical de sophie gagnon au service des RH ?", "spans": [{"type": "nom", "value": "sophie gagnon", "difficulty": "hard", "hard_kind": "lowercase"}]}
+{"id": "d103", "text": "J'ai demandé à Côté si la formation était payée.", "spans": [{"type": "nom", "value": "Côté", "difficulty": "hard", "hard_kind": "common_word"}]}
+{"id": "d104", "text": "Est-ce que Couture peut remplacer le cariste demain ?", "spans": [{"type": "nom", "value": "Couture", "difficulty": "hard", "hard_kind": "common_word"}]}
+{"id": "d105", "text": "Est-ce que J.T. du quart de jour a pris ses vacances ?", "spans": [{"type": "nom", "value": "J.T.", "difficulty": "hard", "hard_kind": "initials"}]}
+{"id": "d106", "text": "S.B. m'a dit que le formulaire avait changé, est-ce vrai ?", "spans": [{"type": "nom", "value": "S.B.", "difficulty": "hard", "hard_kind": "initials"}]}
+{"id": "d107", "text": "Ti-Guy m'a dit que la prime de soir avait augmenté.", "spans": [{"type": "nom", "value": "Ti-Guy", "difficulty": "hard", "hard_kind": "nickname"}]}
+{"id": "d108", "text": "Est-ce que Coco peut me remplacer au poste de pliage ?", "spans": [{"type": "nom", "value": "Coco", "difficulty": "hard", "hard_kind": "nickname"}]}
+{"id": "d109", "text": "Que dit la section RH-005#02 sur les vacances ?", "spans": []}
+{"id": "d110", "text": "Est-ce que RH-005 est la version en vigueur de la politique de vacances ?", "spans": []}
+{"id": "d111", "text": "La non-conformité NC-2026-014 touche-t-elle mon poste de soudage ?", "spans": []}
+{"id": "d112", "text": "J'ai lu QP-006#09, est-ce que ça s'applique au quart de soir ?", "spans": []}
+{"id": "d113", "text": "La politique entre en vigueur le 2026-01-01, est-ce que mes anciens congés comptent ?", "spans": []}
+{"id": "d114", "text": "Ma formation est prévue le 2026-11-17, est-elle payée ?", "spans": []}
+{"id": "d115", "text": "La tolérance de 0,5 mm s'applique-t-elle aussi aux pièces du client Vélanor ?", "spans": []}
+{"id": "d116", "text": "Le seuil de 1 500 PPM est-il un objectif de prime pour l'équipe ?", "spans": []}
+{"id": "d117", "text": "Les boulons NAS 1638 doivent-ils être inspectés avant l'assemblage ?", "spans": []}
+{"id": "d118", "text": "La couleur RAL 7035 est-elle celle des armoires du client Strathène ?", "spans": []}
+{"id": "d119", "text": "Faut-il utiliser des électrodes H7 pour la soudure des pivots ?", "spans": []}
+{"id": "d120", "text": "Est-ce que le poste 3 de la ligne de pliage est couvert par la formation SST ?", "spans": []}
+{"id": "d121", "text": "La Saint-Jean-Baptiste est-elle un jour férié payé ?", "spans": []}
+{"id": "d122", "text": "Si la Fête nationale tombe un dimanche, quand est le congé ?", "spans": []}
+{"id": "d123", "text": "Comment déclarer un accident de travail à la CNESST ?", "spans": []}
+{"id": "d124", "text": "Les commandes du client Agronelle exigent-elles du temps supplémentaire cet été ?", "spans": []}
+{"id": "d125", "text": "Est-ce que les représentants du client Varnokel visitent l'usine la semaine prochaine ?", "spans": []}
+{"id": "d126", "text": "L'année de référence des vacances va-t-elle du 1er mai au 30 avril ?", "spans": []}
+{"id": "d127", "text": "Dois-je écrire à rh@alverno.example pour une question sur mes vacances ?", "spans": []}
+{"id": "d128", "text": "Pour une erreur de paie, faut-il écrire à paie@alverno.example ?", "spans": []}
+{"id": "d129", "text": "Comment joindre confidentialite@alverno.example pour une question sur mes renseignements personnels ?", "spans": []}
+{"id": "d130", "text": "Pour signaler du harcèlement, puis-je écrire à signalement@alverno.example ?", "spans": []}
+{"id": "d131", "text": "Mon mot de passe du portail RH est bloqué, dois-je écrire à soutien-ti@alverno.example ?", "spans": []}
+{"id": "d132", "text": "Pour un problème de qualité sur une pièce, dois-je écrire à qualite@alverno.example ?", "spans": []}
+{"id": "d133", "text": "Comment changer le compte bancaire pour le dépôt direct ?", "spans": []}
+{"id": "d134", "text": "Quel formulaire remplir pour mettre à jour mon adresse et mon numéro de téléphone ?", "spans": []}
+{"id": "d135", "text": "Combien de jours de congé de maladie sont payés par année ?", "spans": []}
+{"id": "d136", "text": "La prime de soir est-elle versée pour un quart de 8 heures ?", "spans": []}
+{"id": "d137", "text": "Le document IT-210-V1 est-il remplacé par IT-210 ?", "spans": []}
+{"id": "d138", "text": "Est-ce que la version QP-006-V2 est encore valide pour l'audit du 2026-12-03 ?", "spans": []}
+{"id": "d139", "text": "Le superviseur de soudage du quart de jour peut-il approuver mes vacances ?", "spans": []}
+{"id": "d140", "text": "Le comité de santé et sécurité se réunit-il à Drummondville ou sur Teams ?", "spans": []}

@@ -65,7 +65,7 @@ Le service Qualité relève de la présidence. Il gère le système qualité ISO
 | Microsoft 365 | courriel, Teams ; **SharePoint** héberge la documentation qualité | source réelle du corpus dans un vrai déploiement |
 | CAO SolidWorks | dessins et modèles 3D | hors du périmètre actuel |
 | Logiciel d'imbrication laser | programmation de la découpe | hors du périmètre actuel |
-| SIRH | dossiers des employés, paie, formations | **renseignements personnels** : sensibilité élevée, module RH séparé |
+| SIRH | dossiers des employés, paie, formations | **renseignements personnels** : sensibilité élevée ; hors du périmètre de l'assistant RH, qui ne répond qu'à partir des politiques RH |
 
 Aucun nom de produit commercial n'est requis pour reproduire le labo : l'ERP, la GMAO et le SIRH sont décrits génériquement.
 
@@ -90,7 +90,8 @@ Chaque document déclare sa version et sa date d'entrée en vigueur. Quelques do
 2. **Réduction des erreurs de version** : appliquer la bonne révision d'une spécification client.
 3. **Intégration des nouveaux employés** dans un contexte de pénurie de main-d'œuvre spécialisée.
 4. **Préparation aux audits** ISO 9001 et CWB : retrouver rapidement la preuve documentaire.
-5. Plus tard : demandes RH courantes (avec protection des renseignements personnels), suivi client, maintenance, tableau de bord pour la direction.
+5. **Demandes RH courantes** sur les politiques, avec protection des renseignements personnels (module 2).
+6. Plus tard : suivi client, maintenance, tableau de bord pour la direction.
 
 ## Contraintes de la direction
 
