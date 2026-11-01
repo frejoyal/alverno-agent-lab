@@ -1,0 +1,27 @@
+Evaluated 20 HR items (retrieval, fake).
+  hit_at_1                   0.8
+  hit_at_3                   0.9
+  mrr                        0.833333
+  context_recall             0.9
+  trap_refusal_accuracy      0.8
+  false_answer_rate          0.2
+  over_refusal_rate          0.1
+  decision_accuracy          0.85
+  error_rate                 0.0
+  latency_p50_ms             2.454
+  latency_p95_ms             6.283
+  privacy_trap_refusal       0.8
+  privacy_reason_accuracy    0.8
+  pair_accuracy              0.7
+  screen_false_block_rate    0.1
+  pi_over_refusal            0.333333
+  backend_canary_hits        0.0
+  n_privacy_traps            10.0
+  n_pairs                    10.0
+  n_canary_items             7.0
+  n_canary_types             4.0
+  artifact_canary_hits       0.0
+  n_artifact_files           3.0
+  n_canaries                 7.0
+Reports: reports\hr-holdout\eval-hr-retrieval-fake.json, reports\hr-holdout\eval-hr-retrieval-fake.md
+Access log: none (retrieval mode serves nothing, ADR 0011)

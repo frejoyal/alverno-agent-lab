@@ -6,7 +6,7 @@
 >
 > **Fictional company, fictional data.** See the [English section](#english).
 
-Laboratoire d'agents IA appliqués à une PME manufacturière québécoise. Jalon 1 : un **agent Qualité** qui répond aux questions des employés à partir de la documentation qualité, cite ses sources et refuse quand l'information n'y est pas. Une suite d'évaluations mesure ses réponses et sert de porte de livraison : une régression de la recherche fait échouer la CI.
+Laboratoire d'agents IA appliqués à une PME manufacturière québécoise. Jalon 1 : un **agent Qualité** qui répond aux questions des employés à partir de la documentation qualité, cite ses sources et refuse quand l'information n'y est pas. Une suite d'évaluations mesure ses réponses et sert de porte de livraison : une régression de la recherche fait échouer la CI. Jalon 2 : une **couche Loi 25** partagée (détection, caviardage, classification, refus, journal des accès) et un **assistant RH** qui répond aux questions sur les politiques RH sans exposer de renseignements personnels.
 
 Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, aucun service payant ; par défaut, aucune question ni aucun document ne sort du poste. Hors installation (uv, Python et dépendances PyPI), le seul trafic sortant est le téléchargement des modèles : depuis Ollama et, pour le reranker optionnel, depuis Hugging Face.
 
@@ -20,6 +20,7 @@ Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, a
 - **Agent LangGraph** : graphe `retrieve → gate → answer → verify` avec branche de refus, sortie JSON validée par pydantic, trace par nœud.
 - **Évaluations comme porte de livraison** : 50 questions dont 15 pièges, métriques de recherche, de refus et de citations, seuils versionnés ; une régression de la recherche fait échouer la CI.
 - **Loi 25 dès la conception** : inférence locale (Ollama), aucune clé d'API, refus des demandes visant une personne, traces sans le texte des questions.
+- **Assistant RH (module 2)** : couche de confidentialité déterministe exécutée avant la recherche (détection, caviardage, refus des demandes visant une personne), garde de sortie, journal des accès minimal, évaluation des facteurs relatifs à la vie privée (EFVP) rédigée avant l'implémentation.
 - **Qualité du code** : `mypy --strict`, `ruff`, tests hors réseau, couverture d'au moins 85 % exigée en CI.
 - **Prévu** : serveur MCP, conteneurs Docker, déploiement Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
 
@@ -98,6 +99,7 @@ Détails et diagrammes : [docs/architecture.md](docs/architecture.md). Décision
 uv sync
 uv run alverno ask --fake "Quel est l'intervalle d'étalonnage d'un pied à coulisse ?"
 uv run alverno eval --mode retrieval --fake
+uv run alverno hr eval --mode retrieval --fake   # module 2 : filtre de confidentialité et recherche RH
 ```
 
 **Avec les vrais modèles.** Prérequis : [uv](https://docs.astral.sh/uv/), Python 3.12 ou plus récent, [Ollama](https://ollama.com) qui écoute sur `http://localhost:11434`.
@@ -140,6 +142,21 @@ Une fois l'extra `rerank` installé, le réglage par défaut `ALVERNO_RERANKER=a
 
 Configuration par variables d'environnement préfixées `ALVERNO_` (liste complète dans la classe `Settings` de `src/alverno_lab/config.py`), par exemple `ALVERNO_CHAT_MODEL`, `ALVERNO_OLLAMA_URL`, `ALVERNO_TOP_K`.
 
+**Assistant RH (module 2).** Mêmes modèles ; l'index RH est distinct de l'index Qualité.
+
+```bash
+uv run alverno hr index                  # contrôle de confidentialité du corpus RH, puis index (data/hr/corpus/)
+uv run alverno hr ask                    # affiche l'avis de transparence, puis lit la question au clavier
+uv run alverno hr eval --mode retrieval  # filtre de confidentialité + recherche + barrière sur les 64 questions RH
+uv run alverno hr eval --mode full       # assistant complet : refus, citations, faits clés, fuites
+uv run alverno hr bench --models gemma4:e4b,ministral-3:8b,llama3.2:3b --readme README.md
+uv run alverno privacy eval              # banc du détecteur de renseignements personnels (hors ligne)
+uv run alverno privacy scan reports/ci   # cherche les témoins dans des fichiers générés (code 1 si trouvé)
+uv run alverno access purge              # supprime les journaux d'accès plus vieux que la durée de conservation
+```
+
+Tapez la question au clavier plutôt qu'en argument : un argument reste dans l'historique du terminal. Chaque demande, servie ou refusée, ajoute un enregistrement au journal des accès (`logs/access/`, ignoré par git) : décision, motif, catégorie de la demande, types de renseignements retirés et documents cités, jamais le texte de la question. Le journal est conservé 90 jours au plus et ne peut pas être désactivé ; si son écriture échoue, aucune réponse n'est servie ([ADR 0008](docs/adr/0008-minimal-access-log.md)).
+
 ### Évaluations et porte de livraison
 
 Le jeu de référence (*gold set*) `data/eval/quality_gold.jsonl` contient **50 questions** en français québécois : 35 répondables (factuelles, procédurales, numériques, multi-documents, versions) et 15 pièges (information absente du corpus, question hors sujet, injection de consignes, demande RH visant une personne).
@@ -155,7 +172,9 @@ Métriques mesurées :
 
 Chaque évaluation produit un rapport JSON et Markdown dans `reports/`. La fonction `check_thresholds` compare le rapport aux seuils de `evals/thresholds.yaml` (un profil par mode et par moteur : `retrieval-fake`, `full-fake`, `retrieval-ollama`, `full-ollama`) et retourne un **code de sortie non nul** en cas de régression.
 
-**En CI (GitHub Actions)**, aucun modèle n'est téléchargé ni appelé : un faux embedder déterministe (hachage) et un faux LLM remplacent Ollama, et ni les tests ni l'évaluation ne font d'appel réseau. Le pipeline exécute `ruff check`, `ruff format --check`, `mypy`, `pytest` (couverture d'au moins 85 %), puis `alverno eval --mode retrieval --fake` avec vérification des seuils. Si la qualité de la recherche régresse, la CI échoue.
+**Module RH.** Le jeu `data/eval/hr_gold.jsonl` contient **64 questions** : 36 répondables et 28 pièges, dont 20 pièges de confidentialité (personne nommée, rôle ou petit groupe, trait qui désigne une seule personne, agrégat, identifiant d'un tiers tapé dans la question, propre dossier). 16 paires relient un piège de confidentialité à une question jumelle répondable qui ne diffère que par sa cible, et 13 questions portent des témoins : des valeurs synthétiques qu'on cherche ensuite dans le moteur, les réponses, les rapports, les traces et le journal. En plus des métriques ci-dessus, la porte RH mesure le refus des pièges de confidentialité, l'exactitude du motif et des paires, les faux blocages du filtre, et compte les fuites de témoins. Les bornes de confidentialité ont été fixées avant toute exécution et ne bougent jamais ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md)) ; les bornes de service de `hr-full-ollama` ont aussi été fixées avant toute exécution (ce sont celles de `full-ollama`) ; celles des profils `--fake` et de `hr-retrieval-ollama`, ainsi que le seuil de la barrière RH (similarité cosinus < 0,47 avec Ollama), viennent de la première mesure ([ADR 0011](docs/adr/0011-hr-gate-calibration.md)). Profils : `hr-retrieval-fake`, `hr-full-fake`, `hr-retrieval-ollama`, `hr-full-ollama`, et `privacy-detector` pour le banc du détecteur (`data/eval/pii_detect.jsonl`). Un jeu réservé de 20 questions (`data/eval/hr_holdout.jsonl`) est mesuré une seule fois et n'entre jamais dans la CI.
+
+**En CI (GitHub Actions)**, aucun modèle n'est téléchargé ni appelé : un faux embedder déterministe (hachage) et un faux LLM remplacent Ollama, et ni les tests ni l'évaluation ne font d'appel réseau. Le pipeline exécute `ruff check`, `ruff format --check`, `mypy`, `pytest` (couverture d'au moins 85 %), puis quatre évaluations, chacune avec sa porte : `alverno eval --mode retrieval --fake` (Qualité), `alverno privacy eval` (détecteur de renseignements personnels), `alverno hr eval --mode retrieval --fake` et `alverno hr eval --mode full --fake` (RH). Avant le téléversement des rapports, `alverno privacy scan reports/ci` cherche les témoins du jeu RH dans les fichiers produits : s'il en trouve un, rien n'est téléversé ; les journaux d'accès des évaluations restent hors de l'artefact. Si la qualité de la recherche ou une borne de confidentialité régresse, la CI échoue.
 
 ### Résultats
 
@@ -184,6 +203,28 @@ Mesures prises le 2026-10-31 sur 50 questions par modèle (35 répondables, 15 p
 
 **Lecture** : les deux modèles qui passent la porte refusent les 15 pièges (aucune fausse réponse) et ne refusent aucune vraie question. `gemma4:e4b`, le modèle par défaut, est à la fois le plus exact (95 % des faits clés, toutes ses citations valides) et le plus rapide des deux (6,1 s en médiane). `ministral-3:8b` retrouve moins de faits clés (84 %) et prend 11,3 s : avec 8 192 jetons de contexte, il ne tient pas sur cette carte de 8 Go en même temps que le modèle de plongements, et Ollama les recharge à tour de rôle à chaque question ([ADR 0005](docs/adr/0005-bound-embedding-context.md)). `llama3.2:3b`, le plus rapide (3,1 s), échoue à la porte : il répond à 2 pièges sur 15 (elle en tolère au plus un), refuse 4 vraies questions sur 35 (au plus 3) et ne retrouve que 73 % des faits clés (minimum 80 %).
 
+### Assistant RH (module 2)
+
+L'assistant RH répond à partir de 18 politiques RH fictives (rôles seulement, niveau 2/5, dans `data/hr/corpus/`) avec le graphe de l'agent Qualité, inchangé, placé dans une enveloppe de confidentialité : la question est d'abord contrôlée et caviardée sans aucun appel de modèle, et une demande visant une personne est refusée avant la recherche ; la réponse passe ensuite par une garde de sortie, et chaque demande laisse un enregistrement sans texte au journal des accès. Détails : [docs/architecture.md](docs/architecture.md) et [EFVP du module RH](docs/efvp/hr-module.md).
+
+Le tableau ci-dessous est généré par `alverno hr bench --readme README.md` ; ne pas le modifier à la main.
+
+<!-- RESULTS-HR:FR -->
+
+| Modèle | porte | pièges de confidentialité refusés | motif exact | fuites | témoins persistés | refus injustifiés | citations valides | faits clés | p50 | erreurs | jetons |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | ✅ | 1,000 | 1,000 | 0 | 0 | 0,000 | 1,000 | 0,806 | 5,0 s | 0,000 | 64 170 |
+| `ministral-3:8b` | ❌ | 1,000 | 1,000 | 0 | 0 | 0,000 | 1,000 | 0,639 | 10,7 s | 0,000 | 62 803 |
+| `llama3.2:3b` | ❌ | 1,000 | 1,000 | 0 | 0 | 0,028 | 0,971 | 0,528 | 2,5 s | 0,000 | 64 463 |
+
+Mesures prises le 2026-11-01 sur 64 questions par modèle (36 répondables, 28 pièges, dont 20 pièges de confidentialité ; 16 paires). Fuites comptées sur les 13 questions avec témoins : 0 sur 13 (borne supérieure de 3/13 = 0,231 à 95 %). Recherche, identique pour tous les modèles : hit@1 0,972 · MRR 0,986 · rappel du contexte 0,972. Plongements `qwen3-embedding:0.6b`, reranker `none`, barrière `cosine` < 0,47. Porte : profil `hr-full-ollama` de `evals/thresholds.yaml`. Généré par `alverno hr bench` ; ne pas modifier à la main.
+
+<!-- /RESULTS-HR:FR -->
+
+**Lecture** : les trois modèles refusent les 20 pièges de confidentialité avec le motif exact et ne laissent fuir aucun témoin (0 fuite sur 13 questions avec témoins) : ces pièges sont refusés par le filtre déterministe, avant la recherche, donc avant tout appel de modèle. Les modèles se départagent sur le service. `gemma4:e4b`, le modèle par défaut, passe la porte : toutes ses citations sont valides, il ne refuse aucune vraie question et répond en 5,0 s en médiane. Sa marge sur les faits clés est mince : 0,806 pour un minimum de 0,80, si bien qu'un seul fait clé manqué de plus ferait échouer la porte. `ministral-3:8b` (0,639 des faits clés, 10,7 s) et `llama3.2:3b` (0,528, 2,5 s, une vraie question refusée sur 36) échouent sur les faits clés. Une première exécution avec `gemma4:e4b` avait échoué (citations valides 0,939, faits clés 0,792) : le modèle collait à son identifiant d'extrait le suffixe de l'exemple de l'invite (« [RH-007#05#02] »), et `verify` retirait cet identifiant inconnu. La correction répare ces identifiants avant `verify`, qui vérifie toujours chaque citation contre les extraits récupérés ; aucune borne n'a changé.
+
+**Jeu réservé (hors échantillon)** : 20 questions jamais consultées pendant l'écriture des règles, mesurées une seule fois après le gel des règles (mode recherche, `--fake` : le filtre est déterministe et passe avant tout appel au moteur ; rapport `reports/hr-holdout/`). Le filtre y refuse 8 pièges de confidentialité sur 10, contre 20 sur 20 sur le jeu de référence : tous les pièges qui visent une personne nommée, un rôle ou un petit groupe, une personne désignée par un trait unique ou un agrégat, mais aucun des 2 pièges « propre dossier ». Il bloque aussi à tort 1 question répondable sur 10 (0 sur 36 sur le jeu de référence), une question de politique qui contenait un renseignement personnel. C'est l'écart à attendre sur des formulations nouvelles, estimé sur un petit jeu ; il est publié tel quel et ne sert jamais à régler les règles ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md)). Une question « propre dossier » qui passe le filtre ne révèle rien du dossier : l'assistant n'a accès à aucun dossier d'employé et ne peut servir que le texte général des politiques. Aucun témoin n'a été trouvé dans les fichiers du rapport.
+
 ### Limites connues
 
 - **Calibration sur le jeu de référence** : les seuils et le réglage de BM25 ont été choisis sur les 50 questions qui servent aussi à les mesurer. Un jeu de validation séparé est prévu pour vérifier qu'ils généralisent.
@@ -196,9 +237,9 @@ Mesures prises le 2026-10-31 sur 50 questions par modèle (35 répondables, 15 p
 ### Loi 25 et protection des renseignements personnels
 
 - Le corpus ne contient **aucun renseignement personnel**. Les questions RH visant une personne font partie des pièges et doivent être refusées.
-- Le labo utilise une échelle de sensibilité de 1 à 5 ; le module Qualité est classé **2/5** (information interne, non personnelle).
-- Par défaut, aucune question ni aucun document ne quitte le poste : l'inférence est locale (**local-first**) ; l'adresse Ollama est limitée à `localhost` et les modèles infonuagiques d'Ollama sont refusés, sauf option explicite `ALVERNO_ALLOW_REMOTE_OLLAMA=true` ; le traçage LangSmith de LangGraph reste désactivé, quelles que soient les variables d'environnement. Dans cette configuration, le module n'effectue aucune communication à l'extérieur du Québec au sens de l'art. 17, même si une question contient un renseignement personnel de façon incidente (elle est traitée en mémoire et n'est jamais écrite dans les traces). L'art. 17 ne s'appliquera à un module futur, RH compris, que s'il communique des renseignements personnels à l'extérieur du Québec ou en confie le traitement à un fournisseur situé hors Québec (modèle hébergé, service infonuagique).
-- Les modules futurs qui toucheront des renseignements personnels (RH, service client) exigeront une évaluation des facteurs relatifs à la vie privée (EFVP, art. 3.3) menée dès le début du projet, en consultant le responsable de la protection des renseignements personnels, et documentée avant l'implémentation.
+- Le labo utilise une échelle de sensibilité de 1 à 5 ; le module Qualité est classé **2/5** (information interne, non personnelle), tout comme le corpus RH, qui ne nomme que des rôles.
+- Par défaut, aucune question ni aucun document ne quitte le poste : l'inférence est locale (**local-first**) ; l'adresse Ollama est limitée à `localhost` et les modèles infonuagiques d'Ollama sont refusés, sauf option explicite `ALVERNO_ALLOW_REMOTE_OLLAMA=true` ; le traçage LangSmith de LangGraph reste désactivé, quelles que soient les variables d'environnement. Dans cette configuration, le module n'effectue aucune communication à l'extérieur du Québec au sens de l'art. 17, même si une question contient un renseignement personnel de façon incidente (elle est traitée en mémoire et n'est jamais écrite dans les traces). L'art. 17 ne s'appliquera à un module, RH compris, que s'il communique des renseignements personnels à l'extérieur du Québec ou en confie le traitement à un fournisseur situé hors Québec (modèle hébergé, service infonuagique).
+- Les questions posées à l'assistant RH peuvent contenir des renseignements personnels : son évaluation des facteurs relatifs à la vie privée (EFVP, art. 3.3) a été rédigée avant l'implémentation ([docs/efvp/hr-module.md](docs/efvp/hr-module.md)). Les modules futurs qui en toucheront (service client) exigeront la même démarche, menée dès le début du projet, en consultant le responsable de la protection des renseignements personnels, et documentée avant l'implémentation.
 
 Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 
@@ -207,24 +248,26 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 | # | Module | État |
 |---|---|---|
 | 1 | Agent Qualité : RAG hybride avec évaluations et porte de livraison | livré |
-| 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | prévu |
+| 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
 | 3 | Service client et maintenance : agents multi-étapes en LangGraph | prévu |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
 | 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | prévu |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
 
-Détails : [docs/roadmap.md](docs/roadmap.md).
+Ordre de réalisation : module 3, puis module 5 avant le module 4, et module 6 en dernier. Détails : [docs/roadmap.md](docs/roadmap.md).
 
 ### Structure du dépôt
 
 ```
-src/alverno_lab/        paquet Python (config, corpus, embeddings, index, retrieval, llm, agents, evals, cli)
+src/alverno_lab/        paquet Python (config, corpus, embeddings, index, retrieval, llm, agents, privacy, evals, cli)
 data/corpus/            documents qualité fictifs (Markdown + front matter YAML)
-data/eval/              jeu de référence des évaluations
-docs/                   entreprise, architecture, Loi 25, feuille de route, ADR
+data/hr/                politiques RH fictives (rôles seulement) et données d'organisation
+data/eval/              jeux de référence des évaluations
+docs/                   entreprise, architecture, Loi 25, feuille de route, ADR, EFVP
 tests/                  tests sans réseau (faux embedder, faux LLM)
 evals/thresholds.yaml   seuils de la porte de livraison
 reports/                rapports d'évaluation et de banc d'essai générés
+logs/                   journal des accès de l'assistant RH (local, ignoré par git)
 ```
 
 ### Auteur
@@ -241,7 +284,7 @@ Licence : [MIT](LICENSE).
 
 > **Entirely fictional company and data.** Fabrications Alverno inc. does not exist. No document, person, customer or value in this repository comes from a real business. Drummondville is a real city; the company is invented.
 
-A lab of AI agents for a Québec manufacturing SME. Milestone 1: a **Quality agent** that answers employees' questions from the company's quality documentation, cites its sources and refuses when the information is not there. An evaluation suite measures its answers and acts as a release gate: a retrieval regression fails CI.
+A lab of AI agents for a Québec manufacturing SME. Milestone 1: a **Quality agent** that answers employees' questions from the company's quality documentation, cites its sources and refuses when the information is not there. An evaluation suite measures its answers and acts as a release gate: a retrieval regression fails CI. Milestone 2: a shared **Law 25 layer** (detection, redaction, classification, refusal, access log) and an **HR assistant** that answers questions about HR policies without exposing personal information.
 
 Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid service; by default, questions and documents stay on the workstation. Apart from the setup (uv, Python and the PyPI dependencies), the only outbound traffic is the model download: from Ollama and, for the optional reranker, from Hugging Face.
 
@@ -251,6 +294,7 @@ Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid
 - **LangGraph agent**: `retrieve → gate → answer → verify` graph with a refusal branch, pydantic-validated JSON output, per-node tracing.
 - **Evaluations as a release gate**: 50 questions, 15 of them traps; retrieval, refusal and citation metrics; thresholds versioned with the code. A retrieval regression fails CI.
 - **Québec Law 25 by design**: local inference (Ollama), no API key, refusal of requests about an individual, traces without the question text.
+- **HR assistant (module 2)**: a deterministic privacy layer run before retrieval (detection, redaction, refusal of requests about an individual), an output guard, a minimal access log, and a privacy impact assessment (PIA) written before implementation.
 - **Code quality**: `mypy --strict`, `ruff`, offline tests, a minimum coverage of 85% enforced in CI.
 - **Planned**: MCP server, Docker containers, Microsoft 365 and Copilot Studio deployment ([roadmap](docs/roadmap.md), in French).
 
@@ -329,6 +373,7 @@ Details and diagrams (in French): [docs/architecture.md](docs/architecture.md). 
 uv sync
 uv run alverno ask --fake "Quel est l'intervalle d'étalonnage d'un pied à coulisse ?"
 uv run alverno eval --mode retrieval --fake
+uv run alverno hr eval --mode retrieval --fake   # module 2: privacy screen and HR retrieval
 ```
 
 **With the real models.** Requirements: [uv](https://docs.astral.sh/uv/), Python 3.12+, [Ollama](https://ollama.com) listening on `http://localhost:11434`.
@@ -371,6 +416,21 @@ Once the `rerank` extra is installed, the default `ALVERNO_RERANKER=auto` enable
 
 Configuration uses environment variables prefixed with `ALVERNO_` (full list in the `Settings` class of `src/alverno_lab/config.py`), e.g. `ALVERNO_CHAT_MODEL`, `ALVERNO_OLLAMA_URL`, `ALVERNO_TOP_K`.
 
+**HR assistant (module 2).** Same models; the HR index is separate from the Quality index.
+
+```bash
+uv run alverno hr index                  # privacy check of the HR corpus, then index (data/hr/corpus/)
+uv run alverno hr ask                    # prints the transparency notice, then reads the question from the keyboard
+uv run alverno hr eval --mode retrieval  # privacy screen + retrieval + gate on the 64 HR questions
+uv run alverno hr eval --mode full       # full assistant: refusals, citations, key facts, leaks
+uv run alverno hr bench --models gemma4:e4b,ministral-3:8b,llama3.2:3b --readme README.md
+uv run alverno privacy eval              # personal information detector bench (offline)
+uv run alverno privacy scan reports/ci   # looks for canaries in generated files (exit 1 on a hit)
+uv run alverno access purge              # deletes access-log files older than the retention period
+```
+
+Type the question at the prompt rather than as an argument: an argument stays in the shell history. Every request, answered or refused, adds one record to the access log (`logs/access/`, ignored by git): decision, reason, request category, types of personal information removed and cited documents, never the question text. The log is kept 90 days at most and cannot be turned off; if writing to it fails, no answer is served ([ADR 0008](docs/adr/0008-minimal-access-log.md), in French).
+
 ### Evaluations and release gate
 
 The gold set `data/eval/quality_gold.jsonl` holds **50 questions** in Québec French: 35 answerable (factual, procedural, numeric, multi-document, revision) and 15 traps (information absent from the corpus, out-of-scope question, prompt injection, HR request about an individual).
@@ -386,7 +446,9 @@ Measured metrics:
 
 Each run writes a JSON and Markdown report to `reports/`. `check_thresholds` compares the report with `evals/thresholds.yaml` (one profile per mode and backend: `retrieval-fake`, `full-fake`, `retrieval-ollama`, `full-ollama`) and returns a **non-zero exit code** on regression.
 
-**In CI (GitHub Actions)**, no model is downloaded or called: a deterministic hash embedder and a fake LLM replace Ollama, and the tests and the evaluation make no network calls. The pipeline runs `ruff check`, `ruff format --check`, `mypy`, `pytest` (with a minimum coverage of 85%), then `alverno eval --mode retrieval --fake` with the threshold check. A retrieval quality regression fails CI.
+**HR module.** The set `data/eval/hr_gold.jsonl` holds **64 questions**: 36 answerable and 28 traps, 20 of them privacy traps (named person, role or small group, a trait that points to a single person, aggregate, a third party's identifier typed in the question, own record). 16 pairs link a privacy trap to an answerable twin question that differs only by its target, and 13 questions carry canaries: synthetic values that are then looked for in the backend, the answers, the reports, the traces and the log. On top of the metrics above, the HR gate measures privacy trap refusal, reason and pair accuracy, screen false blocks, and counts canary leaks. The privacy bounds were set before any run and never move ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md), in French); the `hr-full-ollama` service bounds were also set before any run (they are those of `full-ollama`); those of the `--fake` profiles and of `hr-retrieval-ollama`, and the HR gate threshold (cosine similarity < 0.47 with Ollama), come from the first measurement ([ADR 0011](docs/adr/0011-hr-gate-calibration.md), in French). Profiles: `hr-retrieval-fake`, `hr-full-fake`, `hr-retrieval-ollama`, `hr-full-ollama`, and `privacy-detector` for the detector bench (`data/eval/pii_detect.jsonl`). A 20-question holdout set (`data/eval/hr_holdout.jsonl`) is measured once and never enters CI.
+
+**In CI (GitHub Actions)**, no model is downloaded or called: a deterministic hash embedder and a fake LLM replace Ollama, and the tests and the evaluation make no network calls. The pipeline runs `ruff check`, `ruff format --check`, `mypy`, `pytest` (with a minimum coverage of 85%), then four evaluations, each with its gate: `alverno eval --mode retrieval --fake` (Quality), `alverno privacy eval` (personal information detector), `alverno hr eval --mode retrieval --fake` and `alverno hr eval --mode full --fake` (HR). Before the reports are uploaded, `alverno privacy scan reports/ci` looks for the HR set's canaries in the generated files: on a hit, nothing is uploaded; the evaluation access logs stay out of the artifact. A retrieval quality regression or a broken privacy bound fails CI.
 
 ### Results
 
@@ -415,6 +477,28 @@ Measured on 2026-10-31 over 50 questions per model (35 answerable, 15 traps). Re
 
 **Reading the table**: the two models that pass the gate refuse all 15 traps (no false answer) and refuse no real question. `gemma4:e4b`, the default model, is both the most accurate (95% of key facts, every citation valid) and the faster of the two (6.1 s median). `ministral-3:8b` recalls fewer key facts (84%) and takes 11.3 s: with an 8,192-token context it does not fit on this 8 GB card together with the embedding model, so Ollama reloads them in turn at every question ([ADR 0005](docs/adr/0005-bound-embedding-context.md), in French). `llama3.2:3b`, the fastest (3.1 s), fails the gate: it answers 2 of the 15 traps (the gate tolerates at most one), refuses 4 of the 35 real questions (at most 3) and recalls only 73% of key facts (minimum 80%).
 
+### HR assistant (module 2)
+
+The HR assistant answers from 18 fictional HR policies (roles only, level 2/5, in `data/hr/corpus/`) with the Quality agent's graph, unchanged, inside a privacy envelope: the question is first checked and redacted without any model call, and a request about an individual is refused before retrieval; the answer then goes through an output guard, and every request leaves a record with no text in the access log. Details (in French): [docs/architecture.md](docs/architecture.md) and the [HR module PIA](docs/efvp/hr-module.md).
+
+The table below is generated by `alverno hr bench --readme README.md`; do not hand-edit it.
+
+<!-- RESULTS-HR:EN -->
+
+| Model | gate | privacy traps refused | exact reason | leaks | persisted canaries | over-refusal | valid citations | key facts | p50 | errors | tokens |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | ✅ | 1.000 | 1.000 | 0 | 0 | 0.000 | 1.000 | 0.806 | 5.0 s | 0.000 | 64,170 |
+| `ministral-3:8b` | ❌ | 1.000 | 1.000 | 0 | 0 | 0.000 | 1.000 | 0.639 | 10.7 s | 0.000 | 62,803 |
+| `llama3.2:3b` | ❌ | 1.000 | 1.000 | 0 | 0 | 0.028 | 0.971 | 0.528 | 2.5 s | 0.000 | 64,463 |
+
+Measured on 2026-11-01 over 64 questions per model (36 answerable, 28 traps, of which 20 privacy traps; 16 pairs). Leaks counted over the 13 questions with canaries: 0 of 13 (95% upper bound 3/13 = 0.231). Retrieval, the same for every model: hit@1 0.972 · MRR 0.986 · context recall 0.972. Embeddings `qwen3-embedding:0.6b`, reranker `none`, gate `cosine` < 0.47. Gate: profile `hr-full-ollama` of `evals/thresholds.yaml`. Generated by `alverno hr bench`; do not hand-edit.
+
+<!-- /RESULTS-HR:EN -->
+
+**Reading the table**: the three models refuse all 20 privacy traps with the exact reason and leak no canary (0 leaks over 13 questions with canaries): these traps are refused by the deterministic screen, before retrieval, hence before any model call. The models differ on service. `gemma4:e4b`, the default model, passes the gate: every citation is valid, it refuses no real question and answers in 5.0 s median. Its key-fact margin is thin: 0.806 against a minimum of 0.80, so a single further missed key fact would fail the gate. `ministral-3:8b` (0.639 of key facts, 10.7 s) and `llama3.2:3b` (0.528, 2.5 s, one real question refused out of 36) fail on key facts. A first run with `gemma4:e4b` had failed (valid citations 0.939, key facts 0.792): the model glued the suffix of the prompt example onto its own chunk ID ("[RH-007#05#02]"), and `verify` dropped that unknown ID. The fix repairs such IDs before `verify`, which still checks every citation against the retrieved chunks; no bound changed.
+
+**Holdout set (out of sample)**: 20 questions never looked at while the rules were written, measured once after the rules were frozen (retrieval mode, `--fake`: the screen is deterministic and runs before any backend call; report `reports/hr-holdout/`). The screen refuses 8 of its 10 privacy traps, against 20 of 20 on the gold set: every trap about a named person, a role or small group, a person singled out by a trait or an aggregate, but neither of the 2 "own record" traps. It also wrongly blocks 1 of 10 answerable questions (0 of 36 on the gold set), a policy question that contained personal information. This is the gap to expect on new wordings, estimated on a small set; it is published as is and never used to tune the rules ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md), in French). An "own record" question that passes the screen reveals nothing from the record: the assistant has no access to any employee record and can serve only general policy text. No canary was found in the report files.
+
 ### Known limitations
 
 - **Calibrated on the gold set**: the thresholds and the BM25 setting were chosen on the same 50 questions that measure them. A separate validation set is planned to check that they generalise.
@@ -427,9 +511,9 @@ Measured on 2026-10-31 over 50 questions per model (35 answerable, 15 traps). Re
 ### Québec Law 25 (privacy)
 
 - The corpus contains **no personal information**. HR questions about an individual are part of the traps and must be refused.
-- The lab uses a 1-to-5 sensitivity scale; the Quality module is rated **2/5** (internal, non-personal information).
-- By default, questions and documents stay on the workstation: inference is local (**local-first**); the Ollama URL is restricted to `localhost` and Ollama cloud models are refused unless `ALVERNO_ALLOW_REMOTE_OLLAMA=true` is set explicitly; LangGraph's LangSmith tracing stays off whatever the environment variables say. In this configuration, the module does not communicate personal information outside Québec within the meaning of s. 17, even when a question incidentally contains personal information (it is processed in memory and never written to traces). Section 17 will apply to a future module, HR included, only if it communicates personal information outside Québec or entrusts its processing to a provider outside Québec (hosted model, cloud service).
-- Future modules handling personal information (HR, customer service) will require a privacy impact assessment (PIA, s. 3.3) conducted from the outset of the project, in consultation with the person in charge of the protection of personal information, and documented before implementation.
+- The lab uses a 1-to-5 sensitivity scale; the Quality module is rated **2/5** (internal, non-personal information), and so is the HR corpus, which names roles only.
+- By default, questions and documents stay on the workstation: inference is local (**local-first**); the Ollama URL is restricted to `localhost` and Ollama cloud models are refused unless `ALVERNO_ALLOW_REMOTE_OLLAMA=true` is set explicitly; LangGraph's LangSmith tracing stays off whatever the environment variables say. In this configuration, the module does not communicate personal information outside Québec within the meaning of s. 17, even when a question incidentally contains personal information (it is processed in memory and never written to traces). Section 17 will apply to a module, HR included, only if it communicates personal information outside Québec or entrusts its processing to a provider outside Québec (hosted model, cloud service).
+- Questions put to the HR assistant may contain personal information: its privacy impact assessment (PIA, s. 3.3) was written before implementation ([docs/efvp/hr-module.md](docs/efvp/hr-module.md), in French). Future modules handling personal information (customer service) will require the same process, conducted from the outset of the project, in consultation with the person in charge of the protection of personal information, and documented before implementation.
 
 Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 
@@ -438,24 +522,26 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 | # | Module | Status |
 |---|---|---|
 | 1 | Quality agent: hybrid RAG with evaluations and release gate | delivered |
-| 2 | Law 25 layer and HR module (classification, redaction, logging) | planned |
+| 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
 | 3 | Customer service and maintenance: multi-step LangGraph agents | planned |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
 | 5 | Orchestration for management, MCP server, Docker containers | planned |
 | 6 | Microsoft 365 and Copilot Studio deployment | planned |
 
-Details (in French): [docs/roadmap.md](docs/roadmap.md).
+Order of work: module 3, then module 5 before module 4, and module 6 last. Details (in French): [docs/roadmap.md](docs/roadmap.md).
 
 ### Repository layout
 
 ```
-src/alverno_lab/        Python package (config, corpus, embeddings, index, retrieval, llm, agents, evals, cli)
+src/alverno_lab/        Python package (config, corpus, embeddings, index, retrieval, llm, agents, privacy, evals, cli)
 data/corpus/            fictional quality documents (Markdown + YAML front matter)
-data/eval/              evaluation gold set
-docs/                   company, architecture, Law 25, roadmap, ADRs (in French)
+data/hr/                fictional HR policies (roles only) and organisation data
+data/eval/              evaluation sets
+docs/                   company, architecture, Law 25, roadmap, ADRs, PIA (in French)
 tests/                  offline tests (fake embedder, fake LLM)
 evals/thresholds.yaml   release-gate thresholds
 reports/                generated evaluation and benchmark reports
+logs/                   HR assistant access log (local, ignored by git)
 ```
 
 ### Author
