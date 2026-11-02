@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import io
 import json
@@ -50,7 +51,22 @@ from alverno_lab.evals.pii_bench import (
     write_detector_report,
 )
 from alverno_lab.evals.runner import EvalReport, run_eval, write_report
-from alverno_lab.evals.service_eval import SvcEvalReport, run_service_eval, with_service_medians
+from alverno_lab.evals.service_bench import (
+    SvcBenchRow,
+    SvcRunNote,
+    canary_hit_files,
+    ollama_server_version,
+    svc_bench_blockers,
+    svc_bench_markdown,
+    svc_bench_table,
+    svc_unmet_preconditions,
+)
+from alverno_lab.evals.service_eval import (
+    SvcEvalReport,
+    run_service_eval,
+    service_file_canaries,
+    with_service_medians,
+)
 from alverno_lab.evals.thresholds import GateReport, ThresholdError, check_thresholds
 from alverno_lab.hr_pipeline import (
     build_hr_agent,
@@ -67,6 +83,7 @@ from alverno_lab.pipeline import Backend, build_agent, build_index, build_retrie
 from alverno_lab.privacy import AccessLog, AccessLogError, PrivacyConfigError, scan_paths
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 from alverno_lab.retrieval import HybridRetriever, RerankerUnavailableError
+from alverno_lab.tools.registry import registry_sha256
 
 # Tracebacks never show local variables: they could hold a question or a detected value
 # (Law 25). Typer's default is already off; it is pinned on every app.
@@ -1148,6 +1165,178 @@ def service_eval(
         code = _ops_guard(lambda: _service_gate(reports, settings.thresholds_path))
         if code:
             raise typer.Exit(code=code)
+
+
+SVC_MARKERS = ("RESULTS-SVC:FR", "RESULTS-SVC:EN")
+
+
+def _bench_stems(name: str, k: int, taken: set[str]) -> list[str]:
+    """File stems of one model's reports (``<model>-r<i>`` when k > 1), all unused.
+
+    Names that differ only outside [\\w.-] or only by case get distinct stems, and no
+    report may overwrite another one or the summary files.
+    """
+    base = re.sub(r"[^\w.-]+", "_", name)
+    while True:
+        stems = [base] if k == 1 else [f"{base}-r{i}" for i in range(1, k + 1)]
+        if not any(stem.casefold() in taken for stem in stems):
+            taken.update(stem.casefold() for stem in stems)
+            return stems
+        base += "_"
+
+
+@service_app.command("bench")
+def service_bench(
+    models: Annotated[str, typer.Option("--models", help="Comma-separated chat models.")],
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Service gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int,
+        typer.Option("--repeats", min=1, max=9, help="Repetitions (k) of the default chat model."),
+    ] = 3,
+    readme: Annotated[
+        Path | None,
+        typer.Option(
+            "--readme",
+            exists=True,
+            dir_okay=False,
+            help="Also update the RESULTS-SVC:FR and RESULTS-SVC:EN blocks.",
+        ),
+    ] = None,
+) -> None:
+    """Run the full 3a evaluation for each chat model and write comparison tables.
+
+    The default chat model (ALVERNO_CHAT_MODEL) runs ``--repeats`` times, every other
+    model once (ADR 0015). Each repetition is gated on its own safety counts, control
+    rates and preconditions, and on the median of the service metrics (profile
+    svc-full-ollama, or svc-full-fake with ``--fake``). Writes
+    ``<out>/bench-svc-<backend>-<stamp>/`` with one report per repetition, summary.md,
+    summary.fr.md, summary.json and the access logs under ``access/``. The README is
+    rewritten (RESULTS-SVC blocks only) when no repetition has error_rate or
+    artifact_canary_hits above 0, every precondition is met and the run folder holds no
+    canary; otherwise exit 1 and the README is left as is. A run folder with a canary hit
+    is renamed ``<folder>.quarantine`` (git-ignored). Exit 2 on a user error.
+    """
+    names = list(dict.fromkeys(m.strip() for m in models.split(",") if m.strip()))
+    if not names:
+        raise typer.BadParameter("give one or more models", param_hint="--models")
+    settings = _settings(svc_eval_path=dataset, reports_dir=out, thresholds_path=thresholds)
+    settings = settings.for_module("service")
+    for name in names:
+        _ops_guard(partial(check_ops_local, settings, model=name, fake=fake))
+    # Read before any run: a broken set or fixture stops the bench before a file exists.
+    canaries = _ops_guard(partial(service_file_canaries, settings, settings.svc_eval_path))
+    if readme is not None:
+        text = readme.read_text(encoding="utf-8")
+        for marker in SVC_MARKERS:
+            _ops_guard(partial(replace_marked_block, text, marker, ""))
+    backend = "fake" if fake else "ollama"
+    version = "fake" if fake else ollama_server_version(settings.ollama_url)
+    stamp = f"{dt.datetime.now():%Y%m%d-%H%M%S}"
+    run_dir = settings.reports_dir / f"bench-svc-{backend}-{stamp}"
+    gate_file = settings.thresholds_path
+    rows: list[SvcBenchRow] = []
+    taken = {"summary", "summary.fr"}
+    for name in names:
+        k = repeats if name == settings.chat_model else 1
+        model_settings = settings.model_copy(update={"chat_model": name})
+        reports: list[SvcEvalReport] = []
+        for index, stem in enumerate(_bench_stems(name, k, taken), start=1):
+            typer.echo(f"Benchmarking {name} (repetition {index} of {k}) on the 3a set...")
+            reports.append(
+                _ops_guard(
+                    partial(
+                        run_service_eval,
+                        model_settings,
+                        mode="full",
+                        fake=fake,
+                        dataset=settings.svc_eval_path,
+                        out_dir=run_dir,
+                        limit=limit,
+                        label=name,
+                        stem=stem,
+                    )
+                )
+            )
+        gates = tuple(_gate_passed(r, gate_file) for r in with_service_medians(reports))
+        rows.append(SvcBenchRow(name, tuple(reports), gates))
+    note = SvcRunNote(
+        dataset=_shown_path(settings.svc_eval_path),
+        thresholds=_shown_path(gate_file),
+        profile=f"svc-full-{backend}",
+        ollama_version=version,
+        registry_sha256=registry_sha256(),
+    )
+    md_path = run_dir / "summary.md"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_lf(md_path, svc_bench_markdown(rows, backend, note=note))
+    _write_lf(run_dir / "summary.fr.md", svc_bench_markdown(rows, backend, "fr", note=note))
+    payload = {
+        "note": dataclasses.asdict(note),
+        "models": [
+            {
+                "model": r.model,
+                "k": r.k,
+                "gates": list(r.gates),
+                "gate_passed": r.passed,
+                "tokens": r.tokens(),
+                "reports": [report.model_dump() for report in r.reports],
+            }
+            for r in rows
+        ],
+    }
+    _write_lf(run_dir / "summary.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    # Last check on everything the run wrote, summaries included.
+    hits = canary_hit_files([run_dir], canaries)
+    if hits:
+        # Moved aside so that `git add reports/` cannot publish it (`*.quarantine/` is
+        # git-ignored).
+        quarantine = run_dir.with_name(f"{run_dir.name}.quarantine")
+        run_dir.rename(quarantine)
+        hits = [(quarantine / path.relative_to(run_dir), label) for path, label in hits]
+        run_dir, md_path = quarantine, quarantine / md_path.name
+    for path, label in hits:
+        typer.echo(f"{_shown_path(path)}: {label}")
+    blocked = svc_bench_blockers(rows)
+    unmet = svc_unmet_preconditions(rows, gate_file)
+    unchecked = not canaries or bool(unmet)
+    if readme is not None and not blocked and not hits and not unchecked:
+        text = readme.read_text(encoding="utf-8")
+        for marker, table in (
+            ("RESULTS-SVC:FR", svc_bench_table(rows, "fr", note=note)),
+            ("RESULTS-SVC:EN", svc_bench_table(rows, "en", note=note)),
+        ):
+            # Checked before the run, but the README may have been edited since.
+            text = _ops_guard(partial(replace_marked_block, text, marker, table))
+        _write_lf(readme, text)
+        typer.echo(f"Updated {readme}")
+    typer.echo(md_path.read_text(encoding="utf-8"))
+    typer.echo(f"Reports: {run_dir}")
+    if blocked or hits:
+        untouched = f"; {readme} not updated" if readme is not None else ""
+        why = (
+            f"transport errors or persisted canaries for {', '.join(blocked)}"
+            if blocked
+            else f"{len(hits)} canary hit(s) in the run folder"
+        )
+        moved = f"; reports moved to {_shown_path(run_dir)}" if hits else ""
+        typer.secho(
+            f"Error: {why}: the measurement is invalid{untouched}{moved}.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if readme is not None and unchecked:
+        why = "no canary to check" if not canaries else "gate preconditions not met"
+        for line in unmet:
+            typer.echo(f"  FAIL {line}", err=True)
+        typer.secho(f"Error: {why}: {readme} not updated.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
 
 
 @privacy_app.command("eval")

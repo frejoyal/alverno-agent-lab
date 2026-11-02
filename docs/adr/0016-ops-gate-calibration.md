@@ -1,6 +1,6 @@
 # ADR 0016 — Module 3 : calibrer les bornes de service des profils `*-full-fake`
 
-- **Statut** : accepté (partie 1 : 3a, moteurs simulés, 2026-11-02) ; la partie 2 (3b) sera ajoutée à l'étape I9
+- **Statut** : accepté (partie 1 : 3a, moteurs simulés, 2026-11-02 ; résultats 3a sur Ollama et jeu réservé, 2026-11-02) ; la partie 2 (3b) sera ajoutée à l'étape I9
 - **Date** : 2026-11-02
 
 ## Contexte
@@ -61,6 +61,41 @@ Ces listes sont des heuristiques. Avec un vrai modèle, elles peuvent retenir un
 Risques résiduels, laissés à l'approbation humaine : une affirmation fausse qui n'emploie aucun terme de ces listes est servie ; un nom de mois présent dans les faits de la commande est considéré comme appuyé, même employé pour une autre date.
 
 La règle d'écho de la garde reste désactivée en 3a ([ADR 0012](0012-ops-architecture-typed-tools.md), précisions de l'étape I6) : la mesure n'a retenu aucun brouillon par une règle de la garde, et aucun écho filtré n'a été ajouté.
+
+## Résultats 3a sur Ollama et jeu réservé (étape I8, 2026-11-02)
+
+Cette section consigne des mesures ; elle ne fixe ni ne déplace aucune borne. Les bornes de `svc-full-ollama` sont celles que l'ADR 0015 a préenregistrées.
+
+### Banc d'essai
+
+`alverno service bench --models gemma4:e4b,ministral-3:8b,llama3.2:3b --readme README.md`, Ollama 0.24.0, RTX 3060 Ti, aucune autre charge sur la carte ; rapport `reports/bench-svc-ollama-20261102-124609/`.
+
+| Modèle | k | Porte par répétition | Faits clés | Statut fidèle | Tâches réussies | Brouillons retenus |
+|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | passe, passe, passe | 0,994 | 1,000 | 0,962 | 0,000 |
+| `ministral-3:8b` | 1 | échoue | 0,800 | 0,909 | 0,654 | 0,250 |
+| `llama3.2:3b` | 1 | échoue | 0,807 | 0,870 | 0,654 | 0,188 |
+
+Valeurs médianes pour k = 3. Les 22 comptes de sécurité valent 0 pour chaque modèle et chaque répétition. Le critère de sortie du sous-module 3a (plan du module, section 6, points 1 à 3 pour `svc-*`) est atteint avec `gemma4:e4b`.
+
+**Incident du balayage, corrigé sans relancer aucun modèle.** Le balayage final avait trouvé un témoin `texte` dans le rapport de `llama3.2:3b` et dans `summary.json` : une marge du jeu de référence (un nombre court, sans type) égalait par hasard un compte écrit comme nombre JSON. Aucun texte servi ne la contenait (`answer_leak_count` et `restricted_field_exposure` à 0). Le dossier avait été mis à l'écart (`.quarantine`) et le README laissé tel quel, comme prévu. La règle a été corrigée dans `evals/canaries.py` : dans un fichier JSON ou JSONL, un témoin numérique est cherché dans les chaînes seulement, jamais dans les nombres, qui sont des mesures. Puis seul le balayage a été refait sur le dossier entier : aucune répétition n'a été relancée ni écartée, et aucune valeur mesurée n'a changé. `artifact_canary_hits` de `llama3.2:3b` passe de 1 à 0 ; les portes restent les mêmes. Les rapports d'origine sont conservés ; `rescan-20261102.json` et `summary.rescan.*` consignent l'avant et l'après. Le balayage avec les six jeux (référence et réservés) ne trouve aucun témoin.
+
+### Jeu réservé 3a, mesuré une seule fois
+
+Après le passage de la porte, avec `--no-gate`, en deux exécutions (ADR 0015) ; rapports `reports/svc-holdout/tools-fake/` et `reports/svc-holdout/full-ollama/` ; 16 items (`dataset_sha256` `3f9ad3475346378106f9d780c36f1384d004395027c295e4837541041919f9a6`).
+
+| Métrique | Mode outils, `--fake` | Mode complet, `gemma4:e4b`, k = 1 (informatif) |
+|---|---|---|
+| Faux blocages | 0,0 | 0,0 |
+| Pièges déterministes refusés, motif exact | 1,0 (8 sur 8) | 1,0 (8 sur 8) |
+| Routage exact | 0,917 (11 sur 12) | 0,917 (11 sur 12) |
+| Faits clés | 1,0 | 0,964 |
+| Tâches réussies | 0,857 (6 sur 7) | 0,857 (6 sur 7) |
+| Brouillons retenus | 0,0 | 0,0 |
+| `injected_action_count` | 1 | 1 |
+| Autres comptes de sécurité | 0 | 0 |
+
+Le même item fait les deux écarts : une demande de suivi de commande que le routage par mots-clés prend pour une demande de brouillon. Le brouillon est retenu à l'approbation ; le script de l'item ne prévoit aucune décision, la requête est abandonnée et rien n'est exécuté. L'action préparée, absente des actions attendues, compte dans `injected_action_count`. C'est l'erreur de paraphrase que l'[ADR 0012](0012-ops-architecture-typed-tools.md) prévoyait de mesurer sur le jeu réservé ; la barrière qui la rend sans effet est l'approbation humaine. Le résultat est publié tel quel et ne sert pas à régler les règles ; le jeu réservé n'est jamais remesuré.
 
 ## Partie 2 : 3b, profil `maint-full-fake`
 

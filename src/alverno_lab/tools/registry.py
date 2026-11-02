@@ -23,6 +23,8 @@ side-effect records therefore share one definition of « these exact arguments �
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import json
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Literal, get_args
@@ -63,6 +65,7 @@ __all__ = [
     "ToolSpec",
     "args_sha256",
     "canonical_json",
+    "registry_sha256",
 ]
 
 ToolName = Literal[
@@ -187,3 +190,30 @@ WRITE_TOOLS: frozenset[ToolName] = frozenset(
 READ_TOOLS: frozenset[ToolName] = frozenset(
     name for name, spec in TOOLS.items() if spec.kind == "read"
 )
+
+
+def registry_sha256() -> str:
+    """SHA-256 (hex) of the tool registry and :data:`FLOW_PLANS` (ADR 0015 « Banc d'essai »).
+
+    The digest of the canonical JSON (sorted keys, no spaces, UTF-8 characters kept) of
+    ``{"tools": [...], "flow_plans": {...}}``: one entry per tool, in :data:`TOOL_NAMES`
+    order, with its name, kind, purposes, highest sensitivity level and the JSON schema
+    of its args model (fields, types, patterns, bounds and docstrings); then the planned
+    reads of each flow, in order. Any change to a tool, an argument rule or a plan changes
+    it; the bench note records it next to the threshold and fixture digests.
+    """
+    payload = {
+        "tools": [
+            {
+                "name": spec.name,
+                "kind": spec.kind,
+                "purpose": list(spec.purpose),
+                "max_level": spec.max_level,
+                "args_schema": spec.args_model.model_json_schema(),
+            }
+            for spec in (TOOLS[name] for name in TOOL_NAMES)
+        ],
+        "flow_plans": {flow: list(plan) for flow, plan in FLOW_PLANS.items()},
+    }
+    text = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()

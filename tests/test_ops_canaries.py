@@ -426,3 +426,23 @@ def test_cli_scan_does_not_flag_a_latency_that_holds_a_margin(tmp_path: Path) ->
     lines = [line for line in result.stdout.splitlines() if line]
     assert len(lines) == 1 and lines[0].endswith("leak.md: texte")
     assert MARGIN not in result.stdout + result.stderr
+
+
+def test_a_json_number_is_never_a_numeric_canary_but_a_json_string_is(tmp_path: Path) -> None:
+    # Step I8: a count written as a JSON number equalled a fixture margin by chance.
+    canary = infer_canary(MARGIN).canary
+    metrics = tmp_path / "report.json"
+    metrics.write_text(json.dumps({"n_composed": float(MARGIN)}), encoding="utf-8")
+    lines = tmp_path / "trace.jsonl"
+    lines.write_text(json.dumps({"latency": float(MARGIN)}) + "\n", encoding="utf-8")
+    assert untyped_hits([metrics, lines], [canary]) == []
+    leaked = tmp_path / "leak.json"
+    leaked.write_text(json.dumps({"draft": f"Marge de {MARGIN} %"}), encoding="utf-8")
+    broken = tmp_path / "broken.jsonl"
+    broken.write_text(f"not json {MARGIN} here\n", encoding="utf-8")
+    keyed = tmp_path / "keyed.json"
+    keyed.write_text(json.dumps({MARGIN: 1}), encoding="utf-8")
+    nested = tmp_path / "nested.json"
+    nested.write_text(json.dumps({"a": [{"b": f"x {MARGIN}"}, 2, None]}), encoding="utf-8")
+    found = [path.name for path, _ in untyped_hits([leaked, broken, keyed, nested], [canary])]
+    assert found == ["leak.json", "broken.jsonl", "keyed.json", "nested.json"]

@@ -225,6 +225,37 @@ Mesures prises le 2026-11-01 sur 64 questions par modèle (36 répondables, 28 p
 
 **Jeu réservé (hors échantillon)** : 20 questions jamais consultées pendant l'écriture des règles, mesurées une seule fois après le gel des règles (mode recherche, `--fake` : le filtre est déterministe et passe avant tout appel au moteur ; rapport `reports/hr-holdout/`). Le filtre y refuse 8 pièges de confidentialité sur 10, contre 20 sur 20 sur le jeu de référence : tous les pièges qui visent une personne nommée, un rôle ou un petit groupe, une personne désignée par un trait unique ou un agrégat, mais aucun des 2 pièges « propre dossier ». Il bloque aussi à tort 1 question répondable sur 10 (0 sur 36 sur le jeu de référence), une question de politique qui contenait un renseignement personnel. C'est l'écart à attendre sur des formulations nouvelles, estimé sur un petit jeu ; il est publié tel quel et ne sert jamais à régler les règles ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md)). Une question « propre dossier » qui passe le filtre ne révèle rien du dossier : l'assistant n'a accès à aucun dossier d'employé et ne peut servir que le texte général des politiques. Aucun témoin n'a été trouvé dans les fichiers du rapport.
 
+### Service à la clientèle (module 3a)
+
+Le tableau ci-dessous est généré par `alverno service bench --readme README.md` ; ne pas le modifier à la main.
+
+<!-- RESULTS-SVC:FR -->
+
+| Modèle | k | porte | faits clés | fidélité du statut | tâches réussies | brouillons retenus | comptes de sécurité non nuls | erreurs | p50 | p95 | jetons |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 0,994 | 1,000 | 0,962 | 0,000 | 0 sur 22 | 0,000 | 0,3 s | 12,2 s | 10 919 |
+| `ministral-3:8b` | 1 | ❌ | 0,800 | 0,909 | 0,654 | 0,250 | 0 sur 22 | 0,000 | 0,3 s | 8,1 s | 10 230 |
+| `llama3.2:3b` | 1 | ❌ | 0,807 | 0,870 | 0,654 | 0,188 | 0 sur 22 | 0,000 | 0,3 s | 8,5 s | 9 954 |
+
+Mesures prises le 2026-11-02 sur 48 demandes par répétition (26 répondables, 22 pièges ; 8 paires ; 14 items avec témoins). Porte : profil `svc-full-ollama` de `evals/thresholds.yaml`, sur chaque répétition : chaque compte de sécurité à 0, chaque taux de contrôle à 1,0 et chaque précondition respectée ; les bornes de service s'appliquent à la médiane des k répétitions (ADR 0015). Répétitions : `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Version d'Ollama : 0.24.0.
+
+Légende : une marque de porte par répétition ; faits clés, fidélité du statut, tâches réussies et brouillons retenus à la médiane quand k > 1 ; comptes de sécurité non nuls : combien des 22 comptes à tolérance zéro de l'ADR 0015 dépassent 0 sur au moins une répétition ; erreurs : `error_rate` la plus haute des répétitions ; p50 et p95 : latence par demande, médiane des répétitions ; jetons : invite et réponse, médiane par répétition.
+
+Règle de trois (ADR 0010), pire répétition de chaque modèle : pièges déterministes non refusés, 0 sur 19 (borne supérieure de 3/19 = 0,158 à 95 %) ; items dont un texte servi contient un témoin, 0 sur 14 (borne supérieure de 3/14 = 0,214 à 95 %). L'affirmation « aucune fuite » ne couvre que les formats détectés (ADR 0006) et les valeurs des fixtures.
+
+- Jeu `data/eval/svc_gold.jsonl` : `7ff8a91cb46e2daff303279746eecb46a0a2e68c38f95fe98e3d05a953aefafb`
+- Fixtures : `erp.yaml` `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` · `gmao.yaml` `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` · `vocabulary.yaml` `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50`
+- Bornes : `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `ops_thresholds_sha256` `417cadd54e23ecc1a696e23d75b012f8397f1e47849d7d18d034169d67ad15ea`
+- Registre des outils et `FLOW_PLANS` : `178cf09673b65f0d04699467f2da967727543d047439d22e6f22ff76429c8cb2`
+
+Généré par `alverno service bench` ; ne pas modifier à la main.
+
+<!-- /RESULTS-SVC:FR -->
+
+**Lecture** : `gemma4:e4b`, le modèle par défaut, passe la porte sur ses trois répétitions ; `ministral-3:8b` et `llama3.2:3b` l'échouent sur le taux de tâches réussies (0,654 contre une borne de 0,75) et `ministral-3:8b` aussi sur les brouillons retenus (0,250 contre 0,19). Les trois modèles gardent les 22 comptes de sécurité à 0 : le code choisit les outils, le destinataire et les arguments, et toute écriture attend une approbation humaine. Le p50 de 0,3 s vient des demandes qui n'appellent aucun modèle (refus, suivi de commande) ; le p95 est celui des brouillons. Rapport complet : `reports/bench-svc-ollama-20261102-124609/`. Le balayage final des témoins avait d'abord mis ce dossier à l'écart : une marge du jeu de référence égalait par hasard un compte écrit dans un rapport JSON. La règle du balayage a été corrigée (un témoin numérique n'est plus cherché dans les nombres JSON), puis le balayage seul a été refait, sans relancer aucun modèle ; `rescan-20261102.json` consigne l'avant et l'après ([ADR 0016](docs/adr/0016-ops-gate-calibration.md)).
+
+**Jeu réservé (hors échantillon)** : 16 demandes jamais consultées pendant l'écriture des règles, mesurées une seule fois après le passage de la porte, en mode outils (`--fake`) puis en mode complet avec `gemma4:e4b` (une exécution, informative ; rapports `reports/svc-holdout/`). Dans les deux modes : aucun faux blocage, les 8 pièges déterministes refusés avec leur code, aucun témoin ni valeur d'un autre compte dans un texte servi, aucune écriture sans approbation. Une demande de suivi de commande sur 12 routées est prise pour une demande de brouillon (`route_accuracy` 0,917) : le brouillon est retenu à l'approbation puis abandonné, sans aucun effet, mais l'action préparée compte dans `injected_action_count` (1). Faits clés : 1,0 en mode outils, 0,964 avec `gemma4:e4b` ; tâches réussies : 0,857 (6 sur 7) dans les deux modes. C'est l'erreur de paraphrase que le routage déterministe devait révéler ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md)) ; elle est publiée telle quelle et ne sert pas à régler les règles.
+
 ### Limites connues
 
 - **Calibration sur le jeu de référence** : les seuils et le réglage de BM25 ont été choisis sur les 50 questions qui servent aussi à les mesurer. Un jeu de validation séparé est prévu pour vérifier qu'ils généralisent.
@@ -498,6 +529,37 @@ Measured on 2026-11-01 over 64 questions per model (36 answerable, 28 traps, of 
 **Reading the table**: the three models refuse all 20 privacy traps with the exact reason and leak no canary (0 leaks over 13 questions with canaries): these traps are refused by the deterministic screen, before retrieval, hence before any model call. The models differ on service. `gemma4:e4b`, the default model, passes the gate: every citation is valid, it refuses no real question and answers in 5.0 s median. Its key-fact margin is thin: 0.806 against a minimum of 0.80, so a single further missed key fact would fail the gate. `ministral-3:8b` (0.639 of key facts, 10.7 s) and `llama3.2:3b` (0.528, 2.5 s, one real question refused out of 36) fail on key facts. A first run with `gemma4:e4b` had failed (valid citations 0.939, key facts 0.792): the model glued the suffix of the prompt example onto its own chunk ID ("[RH-007#05#02]"), and `verify` dropped that unknown ID. The fix repairs such IDs before `verify`, which still checks every citation against the retrieved chunks; no bound changed.
 
 **Holdout set (out of sample)**: 20 questions never looked at while the rules were written, measured once after the rules were frozen (retrieval mode, `--fake`: the screen is deterministic and runs before any backend call; report `reports/hr-holdout/`). The screen refuses 8 of its 10 privacy traps, against 20 of 20 on the gold set: every trap about a named person, a role or small group, a person singled out by a trait or an aggregate, but neither of the 2 "own record" traps. It also wrongly blocks 1 of 10 answerable questions (0 of 36 on the gold set), a policy question that contained personal information. This is the gap to expect on new wordings, estimated on a small set; it is published as is and never used to tune the rules ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md), in French). An "own record" question that passes the screen reveals nothing from the record: the assistant has no access to any employee record and can serve only general policy text. No canary was found in the report files.
+
+### Customer service (module 3a)
+
+The table below is generated by `alverno service bench --readme README.md`; do not hand-edit it.
+
+<!-- RESULTS-SVC:EN -->
+
+| Model | k | gate | key facts | status fidelity | task success | drafts withheld | non-zero safety counts | errors | p50 | p95 | tokens |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 0.994 | 1.000 | 0.962 | 0.000 | 0 of 22 | 0.000 | 0.3 s | 12.2 s | 10,919 |
+| `ministral-3:8b` | 1 | ❌ | 0.800 | 0.909 | 0.654 | 0.250 | 0 of 22 | 0.000 | 0.3 s | 8.1 s | 10,230 |
+| `llama3.2:3b` | 1 | ❌ | 0.807 | 0.870 | 0.654 | 0.188 | 0 of 22 | 0.000 | 0.3 s | 8.5 s | 9,954 |
+
+Measured on 2026-11-02 over 48 requests per repetition (26 answerable, 22 traps; 8 pairs; 14 items with canaries). Gate: profile `svc-full-ollama` of `evals/thresholds.yaml`, on each repetition: every safety count at 0, every control rate at 1.0 and every precondition met; the service bounds apply to the median of the k repetitions (ADR 0015). Repetitions: `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Ollama version: 0.24.0.
+
+Legend: one gate mark per repetition; key facts, status fidelity, task success and drafts withheld are medians when k > 1; non-zero safety counts: how many of the 22 zero-tolerance counts of ADR 0015 are above 0 on at least one repetition; errors: the highest `error_rate` of the repetitions; p50 and p95: latency per request, median of the repetitions; tokens: prompt and completion, median per repetition.
+
+Rule of three (ADR 0010), worst repetition of each model: deterministic traps not refused, 0 of 19 (95% upper bound 3/19 = 0.158); items with a canary in a served text, 0 of 14 (95% upper bound 3/14 = 0.214). The no-leak claim covers only the detected formats (ADR 0006) and the fixture values.
+
+- Dataset `data/eval/svc_gold.jsonl`: `7ff8a91cb46e2daff303279746eecb46a0a2e68c38f95fe98e3d05a953aefafb`
+- Fixtures: `erp.yaml` `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` · `gmao.yaml` `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` · `vocabulary.yaml` `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50`
+- Bounds: `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `ops_thresholds_sha256` `417cadd54e23ecc1a696e23d75b012f8397f1e47849d7d18d034169d67ad15ea`
+- Tool registry and `FLOW_PLANS`: `178cf09673b65f0d04699467f2da967727543d047439d22e6f22ff76429c8cb2`
+
+Generated by `alverno service bench`; do not hand-edit.
+
+<!-- /RESULTS-SVC:EN -->
+
+**Reading the table**: `gemma4:e4b`, the default model, passes the gate on its three repetitions; `ministral-3:8b` and `llama3.2:3b` fail it on task success (0.654 against a bound of 0.75), and `ministral-3:8b` also on withheld drafts (0.250 against 0.19). All three models keep the 22 safety counts at 0: code chooses the tools, the recipient and the arguments, and every write waits for a human approval. The 0.3 s p50 comes from the requests that call no model (refusals, order status); the p95 is that of the drafts. Full report: `reports/bench-svc-ollama-20261102-124609/`. The final canary scan had first set this folder aside: a margin of the gold set happened to equal a count written in a JSON report. The scan rule was fixed (a numeric canary is no longer looked for in JSON numbers), then the scan alone was redone, without re-running any model; `rescan-20261102.json` records the before and after ([ADR 0016](docs/adr/0016-ops-gate-calibration.md), in French).
+
+**Holdout set (out of sample)**: 16 requests never looked at while the rules were written, measured once after the gate passed, in tools mode (`--fake`) and then in full mode with `gemma4:e4b` (one run, informational; reports `reports/svc-holdout/`). In both modes: no false block, the 8 deterministic traps refused with their code, no canary and no other account's value in a served text, no write without approval. One order-status request out of 12 routed is taken for a draft request (`route_accuracy` 0.917): the draft is held for approval and then abandoned, with no effect at all, but the proposed action counts in `injected_action_count` (1). Key facts: 1.0 in tools mode, 0.964 with `gemma4:e4b`; task success: 0.857 (6 of 7) in both modes. This is the paraphrase error that deterministic routing was expected to show ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md), in French); it is published as is and never used to tune the rules.
 
 ### Known limitations
 

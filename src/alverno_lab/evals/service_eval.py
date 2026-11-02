@@ -128,6 +128,7 @@ __all__ = [
     "run_service_eval",
     "service_content_metrics",
     "service_counts",
+    "service_file_canaries",
     "service_report_markdown",
     "usage_metrics",
     "with_service_medians",
@@ -323,6 +324,20 @@ def _file_canaries(source: Path, items: Sequence[SvcGoldItem]) -> list[Canary]:
     found = [loaded.canary for loaded in load_canaries(source)]
     found.extend(_contact_canary(value) for item in items for value in item.contact_canaries)
     return list(dict.fromkeys(found))
+
+
+def service_file_canaries(settings: Settings, dataset: Path | None = None) -> list[Canary]:
+    """What a run folder must never hold: the canaries of ``dataset`` (``load_canaries``)
+    and every item's contact canaries, as :func:`run_service_eval` searches them.
+
+    ``dataset`` defaults to ``settings.svc_eval_path``; the items are read against the
+    simulated ERP of ``settings`` (a :class:`~alverno_lab.evals.dataset.DatasetError` or a
+    :class:`~alverno_lab.connectors.types.ConnectorError` when they cannot be).
+    """
+    source = dataset if dataset is not None else settings.svc_eval_path
+    ctx = load_ops_context(settings, "service")
+    erp = SimErp.from_yaml(settings.ops_erp_path, quarantine=ops_quarantine(ctx))
+    return _file_canaries(source, load_svc_gold(source, erp))
 
 
 def _artifact_hits(run_dir: Path, canaries: Sequence[Canary]) -> int:

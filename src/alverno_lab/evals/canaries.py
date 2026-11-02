@@ -25,7 +25,9 @@ An untyped value made only of digits and number separators (a margin such as ``1
 a price such as ``1 245,80 $``) is not counted inside a longer number:
 :func:`untyped_hits` keeps a file only when the value stands apart from other digits
 (:func:`numeric_value_in`). A measured latency such as ``312.58`` in a report would
-otherwise hit a two-digit margin by chance, run after run (found at step I7).
+otherwise hit a two-digit margin by chance, run after run (found at step I7). In a JSON
+or JSONL file a numeric value is looked for in the strings only, never in the JSON
+numbers, which are measurements: a count of ``23.0`` once equalled a margin (step I8).
 
 Errors are :class:`~alverno_lab.evals.dataset.DatasetError` with the message
 ``<path>:<line>:<rule>`` (line 0 for a rule on the whole file): ``file.missing``,
@@ -152,10 +154,42 @@ def untyped_hits(paths: Sequence[Path], canaries: Sequence[Canary]) -> list[tupl
     for canary in canaries:
         numeric = is_numeric_value(canary.value)
         for path, _ in scan_paths(paths, [canary]):
-            if numeric and not numeric_value_in(canary.value, decode_artifact(path.read_bytes())):
+            if numeric and not numeric_value_in(canary.value, _numeric_scope(path)):
                 continue
             hits.append((path, canary))
     return hits
+
+
+def _json_strings(node: object) -> list[str]:
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, dict):
+        return [s for key, value in node.items() for s in (str(key), *_json_strings(value))]
+    if isinstance(node, list):
+        return [s for value in node for s in _json_strings(value)]
+    return []
+
+
+def _numeric_scope(path: Path) -> str:
+    """The text in which a numeric canary is looked for.
+
+    In a JSON or JSONL file, the string values and keys only: a JSON number is a
+    measurement the evaluation wrote (a count, a rate, a latency), never fixture text, and
+    a count such as ``23.0`` once equalled a fixture margin by chance (step I8). A line
+    that does not parse is kept whole, so nothing is skipped silently. Any other file is
+    decoded whole.
+    """
+    text = decode_artifact(path.read_bytes())
+    if path.suffix.lower() not in {".json", ".jsonl"}:
+        return text
+    blocks = [text] if path.suffix.lower() == ".json" else text.splitlines()
+    kept: list[str] = []
+    for block in blocks:
+        try:
+            kept.extend(_json_strings(json.loads(block)))
+        except ValueError:
+            kept.append(block)
+    return "\n".join(kept)
 
 
 def _canary_of(node: object) -> LoadedCanary | None:
