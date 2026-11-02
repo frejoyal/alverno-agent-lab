@@ -1,4 +1,7 @@
-"""Command-line interface: ``alverno index | ask | eval | bench | hr | privacy | access``."""
+"""Command-line interface.
+
+``alverno index | ask | eval | bench | hr | service | privacy | access``.
+"""
 
 from __future__ import annotations
 
@@ -10,19 +13,23 @@ import sys
 from collections.abc import Callable, Sequence
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple
+from typing import Annotated, Any, Literal, NamedTuple, NoReturn, cast
 
 import typer
 from pydantic import ValidationError
 
 from alverno_lab.agents.hr.graph import HrAnswer, write_hr_trace_jsonl
 from alverno_lab.agents.hr.prompts import notice
+from alverno_lab.agents.ops.probes import TimelineLog
+from alverno_lab.agents.ops.runtime import OpsEnvelope, OpsRuntimeError, OpsTurn
 from alverno_lab.agents.quality.graph import (
     LegacyTracingError,
     QualityAgent,
     write_trace_jsonl,
 )
+from alverno_lab.agents.service.notice import service_notice
 from alverno_lab.config import RemoteOllamaError, Settings
+from alverno_lab.connectors.types import ConnectorError
 from alverno_lab.corpus import CorpusError
 from alverno_lab.evals.canaries import UNTYPED_LABEL, LoadedCanary, load_canaries
 from alverno_lab.evals.dataset import DatasetError, load_dataset
@@ -43,6 +50,7 @@ from alverno_lab.evals.pii_bench import (
     write_detector_report,
 )
 from alverno_lab.evals.runner import EvalReport, run_eval, write_report
+from alverno_lab.evals.service_eval import SvcEvalReport, run_service_eval, with_service_medians
 from alverno_lab.evals.thresholds import GateReport, ThresholdError, check_thresholds
 from alverno_lab.hr_pipeline import (
     build_hr_agent,
@@ -54,6 +62,7 @@ from alverno_lab.hr_pipeline import (
 )
 from alverno_lab.index import IndexStoreError
 from alverno_lab.ollama import OllamaError
+from alverno_lab.ops_pipeline import OpsMode, build_service_rig, check_ops_local
 from alverno_lab.pipeline import Backend, build_agent, build_index, build_retriever
 from alverno_lab.privacy import AccessLog, AccessLogError, PrivacyConfigError, scan_paths
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
@@ -88,6 +97,13 @@ hr_app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(hr_app, name="hr")
+service_app = typer.Typer(
+    help="Customer service (module 3a): order status and reply drafts; nothing is sent.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(service_app, name="service")
 
 
 class MarkerError(ValueError):
@@ -879,6 +895,251 @@ def hr_bench(
             typer.echo(f"  FAIL {line}", err=True)
         typer.secho(f"Error: {why}: {readme} not updated.", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+# --------------------------------------------------------------------------- service (3a)
+# Errors of a module 3 command: their messages are codes, paths and rules, never a request
+# or a draft (OpsRuntimeError ``<step>:<rule>``, ConnectorError ``<file>:<rule>``). An
+# OllamaError is reported by its class name only, as in the HR commands.
+_OPS_ERRORS = (*USER_ERRORS, OpsRuntimeError, ConnectorError)
+_OPS_SAFE_MESSAGES = (*_HR_SAFE_MESSAGES, OpsRuntimeError, ConnectorError)
+_DECISIONS = {
+    "a": "approve",
+    "approuver": "approve",
+    "m": "edit",
+    "modifier": "edit",
+    "r": "reject",
+    "rejeter": "reject",
+}
+DECISION_PROMPT = "[a]pprouver / [m]odifier / [r]ejeter : "
+EDIT_PROMPT = "Texte modifié ; terminez par une ligne qui ne contient qu'un point (.) :"
+EDIT_END = "."
+APPROVED_BANNER = "--- Réponse approuvée, à envoyer vous-même (rien n'a été envoyé) ---"
+
+
+def _ops_guard[R](action: Callable[[], R]) -> R:
+    """:func:`_hr_guard` for module 3 commands: exit 2, never a request or a draft."""
+    try:
+        return action()
+    except _OPS_ERRORS as exc:
+        detail = f": {exc}" if isinstance(exc, _OPS_SAFE_MESSAGES) else ""
+        typer.secho(f"Error: {type(exc).__name__}{detail}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from None
+
+
+def _ops_mode(mode: str) -> OpsMode:
+    mode_value = mode.lower()
+    if mode_value not in ("tools", "full"):
+        raise typer.BadParameter("mode must be 'tools' or 'full'", param_hint="--mode")
+    return "full" if mode_value == "full" else "tools"
+
+
+def _stdin() -> io.TextIOBase:
+    stream = sys.stdin
+    if isinstance(stream, io.TextIOWrapper):
+        # A bad byte never raises: its error message would quote the input.
+        stream.reconfigure(encoding="utf-8", errors="replace")
+    return cast(io.TextIOBase, stream)
+
+
+def _read_choice(stream: io.TextIOBase) -> str | None:
+    """The operator's decision (approve, edit or reject); None at the end of the input.
+
+    An unknown answer is asked again: it is never logged as a decision.
+    """
+    while True:
+        typer.echo(DECISION_PROMPT, err=True, nl=False)
+        line = stream.readline()
+        if not line:
+            return None
+        choice = _DECISIONS.get(line.strip().casefold())
+        if choice is not None:
+            return choice
+        typer.echo("Choix non reconnu.", err=True)
+
+
+def _read_edit(stream: io.TextIOBase) -> str | None:
+    """The edited text: lines up to a line holding a single « . »; None at end of input."""
+    typer.echo(EDIT_PROMPT, err=True)
+    lines: list[str] = []
+    while True:
+        line = stream.readline()
+        if not line:
+            return None
+        if line.rstrip("\r\n") == EDIT_END:
+            return "\n".join(lines)
+        lines.append(line.rstrip("\r\n"))
+
+
+def _print_draft(turn: OpsTurn) -> None:
+    header = turn.header
+    typer.echo(f"--- Brouillon à relire (tour {turn.edit_round}) ---")
+    if header is not None:
+        typer.echo(header.notice)
+        typer.echo(f"Compte : {header.account_label}")
+        typer.echo(f"Destinataire : {header.recipient_function}")
+        typer.echo(f"Identifiants cités : {', '.join(header.cited_ids)}")
+    typer.echo("")
+    typer.echo(turn.text or "")
+    typer.echo("---")
+
+
+def _print_ending(turn: OpsTurn) -> None:
+    if turn.kind == "executed":
+        # EFVP step 10: the approved text is printed once, for the operator to send.
+        typer.echo(APPROVED_BANNER)
+        typer.echo(turn.text or "")
+        typer.echo("---")
+        return
+    if turn.text:
+        typer.echo(turn.text)
+    if turn.kind not in ("answered", "executed"):
+        typer.echo(f"[{turn.kind}: {turn.reason}]" if turn.reason else f"[{turn.kind}]")
+
+
+def _review(envelope: OpsEnvelope, turn: OpsTurn, stream: io.TextIOBase) -> OpsTurn:
+    """Show each pending draft and play the operator's decisions; abandon at end of input."""
+    while turn.kind == "pending":
+        _print_draft(turn)
+        shown = turn.draft_id
+        choice = _read_choice(stream)
+        edited = _read_edit(stream) if choice == "edit" else None
+        if choice is None or (choice == "edit" and edited is None):
+            return _ops_guard(partial(envelope.abandon, draft_id=shown))
+        value: dict[str, str] = {"decision": choice}
+        if edited is not None:
+            value["edited_text"] = edited
+        turn = _ops_guard(partial(envelope.decide, value, draft_id=shown))
+    return turn
+
+
+@service_app.command("ask")
+def service_ask(
+    fake: FakeOpt = False,
+    mode: Annotated[
+        str, typer.Option("--mode", help="tools (template drafter) or full.", case_sensitive=False)
+    ] = "tools",
+) -> None:
+    """Ask about one order, or prepare a reply to its contact; the request is read on stdin.
+
+    The notice (art. 8) is printed on stderr first; the request is the first line of
+    stdin. A draft is shown with its header, then ``[a]pprouver / [m]odifier /
+    [r]ejeter``; an edit is read from stdin up to a line holding a single « . ». Nothing is
+    sent: once approved, the reply is printed once, for the operator to send. The end of
+    the input (or Ctrl-C) while a draft waits abandons it. Exit 0 when the request ends
+    (answered, refused, withheld, rejected, approved or abandoned), 2 on a user error or
+    an unavailable access log (also when the abandon of Ctrl-C cannot be logged), 130 on
+    Ctrl-C.
+    """
+    ops_mode = _ops_mode(mode)
+    settings = _settings()
+    _ops_guard(lambda: check_ops_local(settings, fake=fake))
+    log = _ops_guard(
+        lambda: TimelineLog(
+            settings.access_log_dir,
+            prefix="service",
+            retention_days=settings.access_log_retention_days,
+        )
+    )
+    rig = _ops_guard(
+        lambda: build_service_rig(settings, mode=ops_mode, fake=fake, log=log, channel="cli")
+    )
+    envelope = rig.envelope
+    typer.echo(service_notice(settings.access_log_retention_days), err=True)
+    stream = _stdin()
+    typer.echo("Demande : ", err=True, nl=False)
+    request = stream.readline()
+    try:
+        turn = _ops_guard(partial(envelope.start, request))
+        turn = _review(envelope, turn, stream)
+    except KeyboardInterrupt:
+        abandoned = _ops_guard(envelope.abandon) if envelope.pending else None
+        if abandoned is not None and abandoned.kind == "audit_unavailable":
+            _audit_unavailable()
+        typer.secho("Interrompu : le brouillon est abandonné.", err=True)
+        raise typer.Exit(code=130) from None
+    _print_ending(turn)
+    if turn.kind == "audit_unavailable":
+        _audit_unavailable()
+
+
+def _audit_unavailable() -> NoReturn:
+    """Exit 2: the access log could not be written (spec I6 decision 7)."""
+    typer.secho(
+        "Error: the access log is unavailable (write or retention purge failed);"
+        " nothing was served.",
+        fg=typer.colors.RED,
+        err=True,
+    )
+    raise typer.Exit(code=2)
+
+
+def _service_gate(reports: Sequence[SvcEvalReport], thresholds: Path) -> int:
+    """Gate each repetition, its service metrics replaced by their median (ADR 0015)."""
+    codes = [_gate(report, thresholds) for report in with_service_medians(reports)]
+    return max(codes, default=1)
+
+
+@service_app.command("eval")
+def service_eval(
+    mode: Annotated[
+        str, typer.Option("--mode", help="tools or full.", case_sensitive=False)
+    ] = "tools",
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Service gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int, typer.Option("--repeats", min=1, max=9, help="Repetitions (k); one report each.")
+    ] = 1,
+) -> None:
+    """Run the 3a gold set (profile svc-<mode>-<backend>) and write its reports.
+
+    Writes ``<out>/eval-svc-<mode>-<backend>.{json,md}`` (``-r<i>`` per repetition when
+    ``--repeats`` is above 1), the run's access log in ``<out>/access/`` and its scrubbed
+    traces in ``<out>/traces/``. ``--limit`` makes the preconditions fail by design.
+    Tools mode calls no model and needs ``--fake``. Exit 1 when the gate fails, 2 on a
+    user error (including an unwritable access log).
+    """
+    ops_mode = _ops_mode(mode)
+    if ops_mode == "tools" and not fake:
+        # Tools mode calls no model: its only profile is svc-tools-fake.
+        raise typer.BadParameter(
+            "tools mode calls no model: add --fake (profile svc-tools-fake)", param_hint="--fake"
+        )
+    settings = _settings(svc_eval_path=dataset, reports_dir=out, thresholds_path=thresholds)
+    settings = settings.for_module("service")
+    _ops_guard(lambda: check_ops_local(settings, fake=fake))
+    backend = "fake" if fake else "ollama"
+    reports: list[SvcEvalReport] = []
+    for index in range(1, repeats + 1):
+        stem = f"eval-svc-{ops_mode}-{backend}" + (f"-r{index}" if repeats > 1 else "")
+        report = _ops_guard(
+            partial(
+                run_service_eval,
+                settings,
+                mode=ops_mode,
+                fake=fake,
+                dataset=settings.svc_eval_path,
+                out_dir=settings.reports_dir,
+                limit=limit,
+                stem=stem,
+            )
+        )
+        reports.append(report)
+        typer.echo(f"Evaluated {report.n_items} service items ({report.mode}, {report.backend}).")
+        for key, value in report.metrics.items():
+            typer.echo(f"  {key:30} {value}")
+        typer.echo(f"Reports: {settings.reports_dir / stem}.json, {settings.reports_dir / stem}.md")
+    typer.echo(f"Access log: {settings.reports_dir / 'access'}")
+    if gate:
+        code = _ops_guard(lambda: _service_gate(reports, settings.thresholds_path))
+        if code:
+            raise typer.Exit(code=code)
 
 
 @privacy_app.command("eval")

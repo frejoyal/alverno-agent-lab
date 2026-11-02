@@ -726,12 +726,25 @@ def test_recursion_limit_is_an_error(tmp_path: Path) -> None:
     rig.assert_clean()
 
 
-def test_error_before_routing_raises_without_a_record(tmp_path: Path) -> None:
+def test_error_before_routing_is_logged_with_an_empty_flow(tmp_path: Path) -> None:
+    # I6 F7 (ADR 0014 « Précisions »): an error before routing is an ``error`` record
+    # whose flow is empty.
     rig = make_rig(tmp_path, build_graph=_graph(("route", _fail)))
     with pytest.raises(OpsRuntimeError) as caught:
         rig.env.start(rig.world.status_request())
     assert str(caught.value) == "start:graph_error"
-    assert rig.events == [], "log:no_flow_no_record"
+    assert_no_chain(caught.value)
+    (record,) = rig.records
+    assert (record.event, record.flow, record.reason) == ("error", None, None)
+    assert record.draft_id is None and record.account_ref is None
+    rig.assert_clean()
+
+
+def test_error_before_routing_with_a_failing_log_is_audit_unavailable(tmp_path: Path) -> None:
+    rig = make_rig(tmp_path, build_graph=_graph(("route", _fail)), fail_after=0)
+    turn = rig.env.start(rig.world.status_request())
+    assert turn.kind == "audit_unavailable" and turn.reason == "audit_unavailable"
+    assert rig.events == []
     rig.assert_clean()
 
 

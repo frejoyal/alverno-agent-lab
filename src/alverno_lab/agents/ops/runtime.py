@@ -33,17 +33,18 @@ is logged. Every presented draft is checked against the protocol before ``drafte
 ``re_presented`` is written: round 0 first, then one round more per logged edit, a new
 ``action_id``, and a reply action bound to the digest of the text shown. An ending after
 a resume must match the logged decision (a rejection only after a logged rejection or an
-invalid decision), and an exception of any kind escaping a step after the flow is known
-gets an ``error`` record unless a closing record was already written, so every draft
-ends with a terminal record.
+invalid decision), and an exception of any kind escaping a step after the screen gets an
+``error`` record unless a closing record was already written, so every draft ends with a
+terminal record.
 
 A failed log write (:class:`~alverno_lab.privacy.access_log.AccessLogError`) anywhere
 gives the ``audit_unavailable`` turn: nothing is shown, no token is minted, the graph is
 not resumed and no other record is attempted. An exception escaping the graph (an
 unknown thread, a validation error, the recursion limit, a connector failure, any
-other) is logged ``error`` when the request's flow is known (``connector_unavailable``
-for a connector) and re-raised as :class:`OpsRuntimeError` ``<step>:<rule>``, outside
-the ``except`` block, so that no exception chain keeps an input value.
+other) is logged ``error`` (``connector_unavailable`` for a connector; with an empty flow
+when it comes before routing, ADR 0014 « Précisions ») and re-raised as
+:class:`OpsRuntimeError` ``<step>:<rule>``, outside the ``except`` block, so that no
+exception chain keeps an input value.
 ``LegacyTracingError`` propagates unchanged, as in modules 1 and 2.
 
 The checkpointer is an :class:`~langgraph.checkpoint.memory.InMemorySaver` whose
@@ -754,8 +755,8 @@ class OpsEnvelope:
         outcome = state.get("outcome")
         if type(outcome) is not str or outcome not in endings:
             raise _Abort("unexpected_outcome")
-        if ctx.flow is None and outcome != "refused":
-            # Only a refusal before routing has no flow (ADR 0014, ``flow``).
+        if ctx.flow is None and outcome not in ("refused", "error"):
+            # Only a refusal or an error can come before routing (ADR 0014, ``flow``).
             raise _Abort("unexpected_outcome")
         refusal = _refusal(state.get("refusal"))
         if outcome in ("refused", "withheld", "rejected") and refusal is None:
@@ -862,12 +863,11 @@ class OpsEnvelope:
         )
 
     def _fail(self, step: str, ctx: RequestContext, failure: _Failure) -> OpsTurn:
-        """Log ``error`` when the flow is known, then raise; a log failure wins."""
-        if ctx.flow is not None:
-            try:
-                self._write(ctx, "error", reason=failure.reason)
-            except AccessLogError:
-                return self._audit_unavailable(ctx)
+        """Log ``error`` (an empty flow before routing), then raise; a log failure wins."""
+        try:
+            self._write(ctx, "error", reason=failure.reason)
+        except AccessLogError:
+            return self._audit_unavailable(ctx)
         # Outside any except block: the exception has no context to show.
         raise OpsRuntimeError(f"{step}:{failure.rule}")
 
@@ -982,12 +982,13 @@ class OpsEnvelope:
     def _close_quietly(self, ctx: RequestContext) -> None:
         """An exception escapes a step: the request's ``error`` record, best effort.
 
-        Written once the flow is known, unless a closing record (or an audit failure)
-        already ended the request, or its draft is still pending. This covers what the
-        step itself does not log: a LegacyTracingError, a KeyboardInterrupt, any other
-        BaseException raised after the decision record.
+        Written with the flow when it is known (an empty one before routing), unless a
+        closing record (or an audit failure) already ended the request, or its draft is
+        still pending. This covers what the step itself does not log: a
+        LegacyTracingError, a KeyboardInterrupt, any other BaseException raised after the
+        screen or after the decision record.
         """
-        if ctx.closed or ctx.flow is None or self._pending is ctx:
+        if ctx.closed or self._pending is ctx:
             return
         try:
             self._write(ctx, "error")

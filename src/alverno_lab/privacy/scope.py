@@ -16,7 +16,9 @@ tracking refs). :func:`check_scope` then reads a text for the in-scope account.
   as a bare host name (« client03.example », « www.client03.example »).
 - Every other value (labels, surnames, « given_name surname ») matches as whole words on
   ``normalize``d text: accents and case are ignored (« Hébert » flags « HEBERT »), and a
-  line break counts as a space (a label wrapped over two lines still flags).
+  line break counts as a space (a label wrapped over two lines still flags). Inside a
+  value, a hyphen and a space are the same separator: a hyphenated label or compound
+  written with a space (or a spaced one written with a hyphen) still flags.
 
 The verdict says how many other accounts were touched, never which ones and never a
 value. In the 3a reguard node (I5/I6, i2-spec §6), :func:`check_scope` runs **before**
@@ -59,6 +61,9 @@ _ID_SHAPE_RE = re.compile(r"[A-Z]{2,4}-[A-Z0-9]+(?:-[A-Z0-9]+)*")
 _DOMAIN_SHAPE_RE = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+")
 _EMAIL_RE = re.compile(r"(?<![\w.%+-])[\w.%+-]+@([\w-]+(?:\.[\w-]+)+)")
 _WHITESPACE_RE = re.compile(r"\s+")
+# Inside a word value, a hyphen and a space separate the same words (« Brume-Haute »).
+_WORD_SEPARATOR_RE = re.compile(r"[\s-]+")
+_WORD_JOIN = "[ -]"
 
 
 @dataclass(frozen=True)
@@ -83,6 +88,17 @@ class ScopeIndex:
     _domain_patterns: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = field(
         repr=False, compare=False
     )
+
+
+def _word_pattern(word: str) -> re.Pattern[str] | None:
+    """A whole-word pattern of a ``normalize``d value; hyphens and spaces are equivalent.
+
+    None when the value holds no word (a lone hyphen), which then never matches.
+    """
+    parts = [re.escape(part) for part in _WORD_SEPARATOR_RE.split(word) if part]
+    if not parts:
+        return None
+    return re.compile(rf"(?<![\w-]){_WORD_JOIN.join(parts)}(?![\w-])")
 
 
 def _frozen(table: Mapping[str, set[str]]) -> Mapping[str, frozenset[str]]:
@@ -122,8 +138,9 @@ def build_scope_index(values_by_account: Mapping[str, Iterable[str]]) -> ScopeIn
         domains=frozen_domains,
         words=frozen_words,
         _word_patterns=tuple(
-            (re.compile(rf"(?<![\w-]){re.escape(w)}(?![\w-])"), owners)
+            (pattern, owners)
             for w, owners in frozen_words.items()
+            if (pattern := _word_pattern(w)) is not None
         ),
         _id_patterns=tuple(
             (re.compile(rf"(?<![\w-]){re.escape(i)}(?![\w-])"), owners)

@@ -13,7 +13,11 @@
   that the executor and the graphs hold) that the gold-set loaders alone may call (a
   structural test checks this). :func:`account_scope_values` is a second such module
   function: it gives the values that identify each account, for the scope index of
-  ``privacy/scope.py`` (the I6 scope wiring; in I4 only tests read it).
+  ``privacy/scope.py``; in ``src/`` only :func:`account_scope_index` reads it, the
+  entry point of the scope wiring of ``ops_pipeline.py`` (structural tests check both).
+  :func:`restricted_values`, :func:`technician_values` and :func:`planted_markers` are
+  three more, for the evaluation's exposure and injection counts only
+  (``evals/service_eval.py``; a structural test checks this).
 - :func:`project_order`, :func:`project_contact` and :func:`project_work_order` are pure.
   They copy only the ADR 0012 view fields and pass every projected free text through
   the caller's quarantine; a safety remark is dropped before quarantine.
@@ -77,11 +81,15 @@ from alverno_lab.connectors.types import (
 __all__ = [
     "SimErp",
     "SimGmao",
+    "account_scope_index",
     "account_scope_values",
     "fixture_strings",
+    "planted_markers",
     "project_contact",
     "project_order",
     "project_work_order",
+    "restricted_values",
+    "technician_values",
 ]
 
 
@@ -504,6 +512,8 @@ class SimErp:
         self._accounts = {a.account_id: a for a in fixture.accounts}
         self._contacts = {c.contact_ref: c for c in fixture.contacts}
         self._orders = {o.order_id: o for o in fixture.orders}
+        self._carriers = {c.code: c.label for c in fixture.carriers}
+        self._delays = {d.code: d.label for d in fixture.delay_reasons}
         self.executed: list[SideEffectRecord] = []
 
     @classmethod
@@ -538,6 +548,14 @@ class SimErp:
             return None
         contact = self._contacts[raw.contact_ref]
         return project_contact(contact, self._accounts[contact.account_id])
+
+    def carrier_label(self, code: str) -> str | None:
+        """The fixture label of a carrier code (read-only), or ``None`` when unknown."""
+        return self._carriers.get(code) if isinstance(code, str) else None
+
+    def delay_label(self, code: str) -> str | None:
+        """The fixture label of a delay reason code (read-only), or ``None`` when unknown."""
+        return self._delays.get(code) if isinstance(code, str) else None
 
     def record_reply_prepared(
         self, order_id: OrderId, draft_sha256: str, *, token: WriteToken
@@ -740,3 +758,56 @@ def account_scope_values(erp: SimErp) -> dict[str, frozenset[str]]:
         if order.tracking_ref is not None:
             values[order.account_id].add(order.tracking_ref)
     return {account_id: frozenset(found) for account_id, found in values.items()}
+
+
+def account_scope_index[T](erp: SimErp, build: Callable[[dict[str, frozenset[str]]], T]) -> T:
+    """The scope index of every account of ``erp``: ``build`` over :func:`account_scope_values`.
+
+    ``connectors`` imports nothing outside itself, so the caller passes the index builder
+    (``privacy.scope.build_scope_index``). This is the scope wiring's only way to the
+    account values; a structural test keeps its readers to ``ops_pipeline.py``.
+    """
+    return build(account_scope_values(erp))
+
+
+# --------------------------------------------------------------------------- metrics only
+def _decimal_forms(value: str) -> set[str]:
+    """A fixture decimal as it could be written: as stored, and with a decimal comma."""
+    return {value, value.replace(".", ",")}
+
+
+def restricted_values(erp: SimErp) -> frozenset[str]:
+    """Every price, unit cost and margin of the ERP fixture, as they could appear in a text.
+
+    Each value is given as stored (« 792.68 ») and with a decimal comma (« 792,68 »); a
+    currency or percent sign after it does not hide it from a bounded match. For the
+    evaluation's ``restricted_field_exposure`` only: like :func:`fixture_strings`, a module
+    function that no connector object exposes, and a structural test allows no reader in
+    ``src/`` but ``evals/service_eval.py``.
+    """
+    values: set[str] = set()
+    for order in erp._fixture.orders:
+        for raw in (order.price_unit, order.unit_cost, order.margin_pct):
+            values |= _decimal_forms(raw)
+    return frozenset(values)
+
+
+def technician_values(gmao: SimGmao) -> frozenset[str]:
+    """Every technician identity of the GMAO fixture: name, matricule, initials, login.
+
+    For the evaluation's ``technician_identity_exposure`` only (same reader rule as
+    :func:`restricted_values`).
+    """
+    values: set[str] = set()
+    for wo in gmao._fixture.work_orders:
+        values |= {wo.technician_name, wo.matricule, wo.initials, wo.login}
+    return frozenset(values)
+
+
+def planted_markers(connector: SimErp | SimGmao) -> frozenset[str]:
+    """The injection marker phrases planted in a fixture's free texts (evaluation only).
+
+    For the evaluation's ``injection_echo_count``, which looks for them in served texts
+    whether or not the quarantine reacted (same reader rule as :func:`restricted_values`).
+    """
+    return frozenset(planted.marker for planted in connector._fixture.planted_markers)

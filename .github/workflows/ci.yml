@@ -59,18 +59,35 @@ jobs:
       - name: HR full eval (fake) + gate
         run: uv run alverno hr eval --mode full --fake --out reports/ci
 
-      # Nothing is uploaded unless the scan finds no canary of the HR gold set.
+      - name: Customer service eval (tools, fake) + gate
+        run: uv run alverno service eval --mode tools --fake --out reports/ci
+
+      # Nothing is uploaded unless both scans find no canary: the HR gold set (default
+      # dataset), then the HR, customer service and maintenance gold sets together (ADR
+      # 0015). Holdouts never enter CI.
       - name: Canary scan before upload
         id: canary_scan
         if: always()
         run: uv run alverno privacy scan reports/ci
 
+      - name: Canary scan of the module 3 gold sets before upload
+        id: ops_canary_scan
+        if: always()
+        run: >-
+          uv run alverno privacy scan reports/ci
+          --dataset data/eval/hr_gold.jsonl
+          --dataset data/eval/svc_gold.jsonl
+          --dataset data/eval/maint_gold.jsonl
+
       - name: Upload eval reports
-        if: always() && steps.canary_scan.outcome == 'success'
+        if: >-
+          always() && steps.canary_scan.outcome == 'success'
+          && steps.ops_canary_scan.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: eval-reports
-          # The eval access logs stay out of the artifact (EFVP: reports without them).
+          # The eval access logs stay out of the artifact (EFVP: reports without them); every
+          # eval, the customer service one included, writes them to reports/ci/access/.
           path: |
             reports/ci/
             !reports/ci/access/

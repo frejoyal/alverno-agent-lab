@@ -25,14 +25,14 @@ value: the same loaders read the holdouts, whose requests stay unseen. Errors ar
 raised ``from None`` and outside any ``except`` block, so that no exception chain keeps
 a JSON line or a pydantic error that would echo one.
 
-The module also holds the ADR 0015 rendering of statuses and dates, which the service
-loader needs to recognise a forbidden status or date.
+The module also re-exports the ADR 0015 rendering of statuses and dates
+(:mod:`alverno_lab.agents.ops.rendering`), which the service loader needs to recognise
+a forbidden status or date.
 """
 
 from __future__ import annotations
 
 import dataclasses
-import datetime as dt
 import json
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from pathlib import Path
@@ -41,20 +41,29 @@ from typing import Annotated, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, JsonValue, StringConstraints, ValidationError
 
+from alverno_lab.agents.ops.rendering import (
+    FORM_STATUS,
+    MONTHS_FR,
+    STATUS_FORMS,
+    STATUS_RENDERINGS,
+    find_status_forms,
+    render_date,
+)
 from alverno_lab.connectors.types import (
     CREATE_WORK_REQUEST_TOOL,
     INDETERMINATE_CODE,
     RECORD_REPLY_TOOL,
-    OrderStatus,
 )
 from alverno_lab.evals.dataset import DatasetError
 from alverno_lab.tools.registry import TOOLS, WRITE_TOOLS, ToolName
 
 __all__ = [
     "APPROVED_TEXT",
+    "FORM_STATUS",
     "FROM_DIAGNOSIS",
     "MONTHS_FR",
     "SETTLED_OUTCOMES",
+    "STATUS_FORMS",
     "STATUS_RENDERINGS",
     "CheckedCall",
     "GoldOutcome",
@@ -63,6 +72,7 @@ __all__ = [
     "ToolCall",
     "call_rules",
     "check_call",
+    "find_status_forms",
     "id_rules",
     "load_items",
     "marker_rules",
@@ -99,41 +109,6 @@ class ToolCall(BaseModel):
 
     tool: ToolName
     args: dict[str, JsonValue]
-
-
-# --------------------------------------------------------------------------- rendering
-# ADR 0015 « Rendu des statuts et des dates »: one imposed rendering per ERP status.
-STATUS_RENDERINGS: Mapping[OrderStatus, str] = MappingProxyType(
-    {
-        "recue": "reçue",
-        "planifiee": "planifiée",
-        "en_production": "en production",
-        "en_finition": "en finition",
-        "expediee_partielle": "expédiée en partie",
-        "expediee": "expédiée",
-        "en_attente_client": "en attente du client",
-    }
-)
-MONTHS_FR: tuple[str, ...] = (
-    "janvier",
-    "février",
-    "mars",
-    "avril",
-    "mai",
-    "juin",
-    "juillet",
-    "août",
-    "septembre",
-    "octobre",
-    "novembre",
-    "décembre",
-)
-
-
-def render_date(day: dt.date) -> str:
-    """The dual rendering ``2026-11-15 (15 novembre 2026)``; day 1 is written « 1er »."""
-    number = "1er" if day.day == 1 else str(day.day)
-    return f"{day.isoformat()} ({number} {MONTHS_FR[day.month - 1]} {day.year})"
 
 
 # --------------------------------------------------------------------------- tool calls

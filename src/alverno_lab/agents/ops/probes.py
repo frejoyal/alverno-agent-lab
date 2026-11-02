@@ -321,6 +321,16 @@ class CountingConnector:
         self._count("get_order_contact")
         return self._need_erp().get_order_contact(order_id)
 
+    def carrier_label(self, code: str) -> str | None:
+        """Counted :meth:`ErpConnector.carrier_label`."""
+        self._count("carrier_label")
+        return self._need_erp().carrier_label(code)
+
+    def delay_label(self, code: str) -> str | None:
+        """Counted :meth:`ErpConnector.delay_label`."""
+        self._count("delay_label")
+        return self._need_erp().delay_label(code)
+
     def record_reply_prepared(
         self, order_id: OrderId, draft_sha256: str, *, token: WriteToken
     ) -> WriteReceipt:

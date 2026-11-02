@@ -46,7 +46,7 @@ Le module 3 reçoit un nouveau modèle, `OpsAccessLogRecord` (pydantic, figé, `
 | `draft_id` | `^[0-9a-f]{32}$` ou vide | identifiant aléatoire (uuid4) du brouillon, sans lien avec son texte ; relie les enregistrements d'une même requête (voir plus bas) | 2 et 3 |
 | `ts` | date et heure UTC, **arrondies à l'heure** | même règle que l'ADR 0008 | 1 et 2 |
 | `channel` | `Literal["cli", "eval"]` | ligne de commande ou évaluation | 1 : ne pas compter les évaluations comme de l'usage |
-| `flow` | `order_status`, `customer_reply`, `diagnosis`, `work_request`, ou vide | flux choisi par le routage ; vide quand le filtrage refuse la demande avant le routage | 1 |
+| `flow` | `order_status`, `customer_reply`, `diagnosis`, `work_request`, ou vide | flux choisi par le routage ; vide quand le filtrage ou le routage refuse la demande (`order_not_identified`, `multi_order`), et pour une erreur qui survient avant le routage (voir « Précisions ») | 1 |
 | `event` | une des 10 valeurs du tableau suivant | événement consigné | 1, 2 et 3 |
 | `reason` | `OpsRefusalCode` ou vide | code de refus ou de retenue | 1 |
 | `tool_calls` | tuple de noms, chacun `^[a-z]+\.[a-z_]+$` | outils appelés depuis l'enregistrement précédent de la requête ; le nom seulement, jamais les arguments | 2 et 3 |
@@ -86,6 +86,7 @@ Précisions :
 - L'enveloppe valide la décision de l'opérateur avec le modèle `ApprovalDecision` ([ADR 0013](0013-ops-human-approval-and-state.md)) **avant** d'écrire l'enregistrement de décision. Une valeur invalide est consignée comme `rejected` avec `invalid_decision` : aucun jeton n'est créé, et le graphe reçoit un rejet. Le nœud `approve` refait la même validation.
 - `drafted` et `re_presented` portent `action_tool` et `action_args_sha256` de l'action présentée. `approved` reprend l'empreinte de l'action approuvée : c'est celle qui sera liée au jeton. `edit_submitted` laisse `action_args_sha256` vide : l'empreinte des arguments modifiés est recalculée par `reguard`, puis inscrite sur `re_presented`.
 - Le journal consigne la **décision**, pas l'exécution : aucun enregistrement ne suit l'effet. En v1, l'effet est une écriture simulée en mémoire ; l'évaluation la vérifie par les reçus du simulateur et de l'exécuteur ([ADR 0015](0015-ops-evaluation-protocol.md)). Si l'écriture simulée échoue après `approved`, un enregistrement `error` (`connector_unavailable`) suit.
+- Une erreur qui survient avant le routage (flux encore inconnu) est consignée comme `error` avec un flux vide.
 
 ### Lien entre les enregistrements : `draft_id`
 

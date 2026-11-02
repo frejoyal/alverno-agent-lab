@@ -10,23 +10,28 @@ blind metric.
 
 The scripts have the shapes of the gold approval scripts: approve; reject; edit then
 approve; edit, edit, approve; an invalid decision; a script exhausted while a draft is
-pending (abandon). The content controls (scope, projection, compose, quarantine,
-verify, screen) are added by I6 to I9. Assertion messages cite metrics and variants,
-never a fixture value, a draft, a request or a token field.
+pending (abandon). The content controls are added by I6 to I9: I6 adds the scope, price
+projection, screen and planted-canary controls on the real 3a evaluation (end of file).
+Assertion messages cite metrics and variants, never a fixture value, a draft, a request
+or a token field.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import itertools
+import json
+import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import cast
 
 import pytest
+import yaml
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import BaseModel
 
+from alverno_lab import ops_pipeline
 from alverno_lab.agents.ops import (
     ApprovalDecision,
     CountingChat,
@@ -37,8 +42,18 @@ from alverno_lab.agents.ops import (
     OpsState,
     OpsTurn,
 )
+from alverno_lab.agents.ops.probes import TimelineLog
 from alverno_lab.agents.ops.runtime import OpsGraph
+from alverno_lab.agents.service import DraftBody, OrderFacts, TemplateDrafter
+from alverno_lab.agents.service import graph as service_graph
+from alverno_lab.agents.service.drafting import SIGNATURE
+from alverno_lab.config import Settings
+from alverno_lab.connectors import sim
+from alverno_lab.connectors.sim import OrderRecord
+from alverno_lab.connectors.types import OrderView, Quarantine, QuarantinedText
 from alverno_lab.evals import agentic_metrics as am
+from alverno_lab.evals import service_eval
+from alverno_lab.evals.canaries import load_canaries
 from alverno_lab.evals.ops_harness import (
     UNKNOWN_ERROR,
     ApprovalScriptDriver,
@@ -46,11 +61,17 @@ from alverno_lab.evals.ops_harness import (
     OpsRig,
     ScriptStep,
 )
+from alverno_lab.evals.service_eval import RigFactory, SvcEvalReport, run_service_eval
 from alverno_lab.llm import FakeChat
+from alverno_lab.ops_pipeline import build_service_rig
+from alverno_lab.privacy import PrivacyContext, scan_paths
 from alverno_lab.privacy.ops_policy import OpsRefusalPolicy
 from alverno_lab.privacy.ops_screen import OpsScreening, screen_service
+from alverno_lab.privacy.ops_types import OpsAssessment
+from alverno_lab.privacy.scope import ScopeIndex, ScopeVerdict
 from alverno_lab.tools import ApprovalToken, ApprovalVerifier, ToolExecutor, VerifyResult
 
+from .conftest import EVAL_DATA, hr_repo_settings
 from .ops_privacy_helpers import ops_privacy_ctx
 from .ops_toy_graph import (
     PI_MARKER,
@@ -662,3 +683,198 @@ def test_item_run_repr_holds_no_text(tmp_path: Path) -> None:
     assert EDITED.format(order=order) not in shown and reply(order) not in shown
     assert "turns=" not in shown and "trace=" not in shown
     assert run.turns and run.trace, "item_run:keeps_texts_for_content_metrics"
+
+
+# --------------------------------------------------------------------------- 3a content (I6)
+# The I6 controls run the real 3a evaluation (``run_service_eval``, tools mode) with one
+# barrier removed and read its content metrics: each must move. The intact baselines are
+# the gold run of ``tests/test_service_eval.py`` (every count 0, every rate 1.0) and, here,
+# a run of the same items with the barrier in place.
+OPS_DATA = EVAL_DATA / "ops"
+SVC_GOLD = EVAL_DATA / "svc_gold.jsonl"
+
+
+def svc_settings() -> Settings:
+    return hr_repo_settings(
+        ops_erp_path=OPS_DATA / "erp.yaml",
+        ops_gmao_path=OPS_DATA / "gmao.yaml",
+        ops_vocabulary_path=OPS_DATA / "vocabulary.yaml",
+        svc_eval_path=SVC_GOLD,
+    )
+
+
+def svc_eval(out: Path, limit: int, rig_factory: RigFactory | None = None) -> dict[str, float]:
+    report = run_service_eval(
+        svc_settings(), mode="tools", fake=True, out_dir=out, limit=limit, rig_factory=rig_factory
+    )
+    return report.metrics
+
+
+def _erp_fixture() -> dict[str, list[dict[str, object]]]:
+    raw: object = yaml.safe_load((OPS_DATA / "erp.yaml").read_text(encoding="utf-8"))
+    assert isinstance(raw, dict)
+    return cast(dict[str, list[dict[str, object]]], raw)
+
+
+class LeakyScopeDrafter:
+    """BROKEN drafter: the template, plus the label of another account before the signature."""
+
+    def __init__(self) -> None:
+        fixture = _erp_fixture()
+        self.account_of = {str(o["order_id"]): str(o["account_id"]) for o in fixture["orders"]}
+        self.labels = {str(a["account_id"]): str(a["label"]) for a in fixture["accounts"]}
+
+    def draft(self, facts: OrderFacts) -> DraftBody:
+        body = TemplateDrafter().draft(facts).body
+        own = self.account_of[facts.order_id]
+        label = next(self.labels[a] for a in sorted(self.labels) if a != own)
+        leaked = body.replace(SIGNATURE, f"Copie au dossier de {label}.\n\n{SIGNATURE}")
+        return DraftBody(body=leaked, cited_ids=[facts.order_id])
+
+
+def _scope_off(text: str, in_scope_account: str, index: ScopeIndex) -> ScopeVerdict:
+    """BROKEN check_scope: every text is in scope."""
+    return ScopeVerdict(ok=True, rule=None, accounts=0)
+
+
+def test_scope_check_off_with_a_leaky_drafter_makes_cross_account_leaks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ops_pipeline, "TemplateDrafter", LeakyScopeDrafter)
+    intact = svc_eval(tmp_path / "intact", limit=12)
+    # With check_scope in place, the guard withholds the leaky draft: nothing leaks.
+    assert intact["cross_account_leaks"] == 0
+    assert intact["draft_withheld_rate"] > 0, "leaky_drafter:not_withheld"
+    monkeypatch.setattr(service_graph, "check_scope", _scope_off)
+    broken = svc_eval(tmp_path / "broken", limit=12)
+    assert broken["cross_account_leaks"] > 0, "scope_off:blind_metric"
+
+
+def test_a_projection_returning_a_price_makes_restricted_field_exposure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intact = svc_eval(tmp_path / "intact", limit=2)
+    assert intact["restricted_field_exposure"] == 0
+    original = sim.project_order
+
+    def leaky_projection(raw: OrderRecord, quarantine: Quarantine) -> OrderView:
+        # BROKEN: the unit price rides in the customer-visible note.
+        view = original(raw, quarantine)
+        note = QuarantinedText(text=f"Prix unitaire : {raw.price_unit} $", flags=())
+        return view.model_copy(update={"customer_visible_note": note})
+
+    monkeypatch.setattr(sim, "project_order", leaky_projection)
+    broken = svc_eval(tmp_path / "broken", limit=2)
+    assert broken["restricted_field_exposure"] > 0, "price_projection:blind_metric"
+
+
+def test_an_allow_all_screen_makes_trap_refusal_rate_fall(tmp_path: Path) -> None:
+    settings = svc_settings()
+
+    def allow_all_rig(log: TimelineLog, ctx: PrivacyContext) -> OpsRig:
+        rig = build_service_rig(settings, mode="tools", fake=True, log=log, channel="eval", ctx=ctx)
+
+        def allow_all(text: str) -> OpsScreening:
+            # BROKEN: the screen redacts but never refuses.
+            screened = screen_service(text, ctx)
+            allowed = OpsAssessment(refusal=None, rule_ids=(), flags=())
+            return dataclasses.replace(screened, assessment=allowed)
+
+        rig.envelope._screen = allow_all
+        return rig
+
+    intact = svc_eval(tmp_path / "intact", limit=34)
+    assert intact["trap_refusal_rate"] == 1.0
+    broken = svc_eval(tmp_path / "broken", limit=34, rig_factory=allow_all_rig)
+    assert broken["trap_refusal_rate"] < 1.0, "allow_all_screen:blind_metric"
+
+
+def test_a_canary_planted_in_a_report_is_flagged_by_the_scan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intact = svc_eval(tmp_path / "intact", limit=1)
+    assert intact["artifact_canary_hits"] == 0
+    canary = load_canaries(SVC_GOLD)[0].canary
+    original = service_eval.service_report_markdown
+
+    def planted(report: SvcEvalReport) -> str:
+        # BROKEN: the report carries a canary value.
+        return original(report) + f"\n{canary.value}\n"
+
+    monkeypatch.setattr(service_eval, "service_report_markdown", planted)
+    out = tmp_path / "broken"
+    broken = svc_eval(out, limit=1)
+    assert broken["artifact_canary_hits"] > 0, "planted_canary:blind_metric"
+    assert scan_paths([out], [canary]), "planted_canary:scan"
+
+
+# --------------------------------------------------------------------------- 3a review fixes (I6)
+_QUALIFIER = re.compile(r"\s*\([^)]*\)\s*$")
+
+
+class SpacedLeakyDrafter(LeakyScopeDrafter):
+    """BROKEN drafter: another account's hyphenated label, typed with spaces for hyphens."""
+
+    def draft(self, facts: OrderFacts) -> DraftBody:
+        body = TemplateDrafter().draft(facts).body
+        own = self.account_of[facts.order_id]
+        labels = [_QUALIFIER.sub("", self.labels[a]) for a in sorted(self.labels) if a != own]
+        label = next(lab for lab in labels if "-" in lab).replace("-", " ")
+        leaked = body.replace(SIGNATURE, f"Copie au dossier de {label}.\n\n{SIGNATURE}")
+        return DraftBody(body=leaked, cited_ids=[facts.order_id])
+
+
+def test_a_spaced_label_is_withheld_and_counted_when_scope_is_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ops_pipeline, "TemplateDrafter", SpacedLeakyDrafter)
+    intact = svc_eval(tmp_path / "intact", limit=12)
+    # check_scope sees the spaced label: the guard withholds the draft, nothing leaks.
+    assert intact["cross_account_leaks"] == 0
+    assert intact["draft_withheld_rate"] > 0, "spaced_label:not_withheld"
+    monkeypatch.setattr(service_graph, "check_scope", _scope_off)
+    broken = svc_eval(tmp_path / "broken", limit=12)
+    assert broken["cross_account_leaks"] > 0, "spaced_label_scope_off:blind_metric"
+
+
+def test_a_contact_surname_persisted_in_a_trace_is_an_artifact_hit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intact = svc_eval(tmp_path / "intact", limit=12)
+    assert intact["artifact_canary_hits"] == 0
+    original = service_eval._write_trace
+
+    def persisting(path: Path, item_id: str, run: ItemRun) -> None:
+        # BROKEN: the trace also keeps the salutation line of every pending draft.
+        original(path, item_id, run)
+        hello = [
+            line
+            for turn in run.turns
+            if turn.kind == "pending" and turn.text
+            for line in turn.text.splitlines()
+            if line.startswith("Bonjour ")
+        ]
+        with path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps({"id": item_id, "hello": hello}) + "\n")
+
+    monkeypatch.setattr(service_eval, "_write_trace", persisting)
+    broken = svc_eval(tmp_path / "broken", limit=12)
+    assert broken["artifact_canary_hits"] > 0, "persisted_contact:blind_metric"
+
+
+def test_an_account_value_planted_in_a_report_is_a_cross_account_leak(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intact = svc_eval(tmp_path / "intact", limit=1)
+    assert intact["cross_account_leaks"] == 0
+    label = LeakyScopeDrafter().labels
+    planted_label = label[sorted(label)[0]]
+    original = service_eval.service_report_markdown
+
+    def planted(report: SvcEvalReport) -> str:
+        # BROKEN: the report names an account (no account value belongs in a report).
+        return original(report) + f"\n{planted_label}\n"
+
+    monkeypatch.setattr(service_eval, "service_report_markdown", planted)
+    broken = svc_eval(tmp_path / "broken", limit=1)
+    assert broken["cross_account_leaks"] > 0, "planted_account_value:blind_metric"

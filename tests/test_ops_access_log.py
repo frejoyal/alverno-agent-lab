@@ -215,7 +215,7 @@ RULE_CASES: list[tuple[Module, str, dict[str, Any], str]] = [  # Any: record fie
     ("maint", "answered", {"flow": "order_status"}, "module_flow"),
     ("service", "answered", {"flow": None}, "module_flow"),
     ("service", "drafted", {"flow": None}, "module_flow"),
-    ("service", "error", {"flow": None}, "module_flow"),
+    ("service", "error", {"flow": "diagnosis"}, "module_flow"),
     ("service", "answered", {"flow": "customer_reply"}, "event_flow"),
     ("maint", "answered", {"flow": "work_request"}, "event_flow"),
     ("service", "drafted", {"flow": "order_status"}, "event_flow"),
@@ -290,6 +290,8 @@ def test_reasons_of_a_refusal_are_the_early_codes() -> None:
 def test_refused_records_need_no_flow_and_errors_may_carry_none() -> None:
     log = ops_log(Path("unused"), "service")
     assert log.record(**fields_of("service", "refused")).flow is None
+    assert log.record(**fields_of("service", "error", flow=None, reason=None)).flow is None
+    assert log.record(**fields_of("maint", "error", flow=None, reason=None)).flow is None
     assert log.record(**fields_of("service", "error", reason=None)).reason is None
     assert log.record(**fields_of("service", "withheld", reason="cross_account")).reason
     assert log.record(**fields_of("service", "refused", reason="cross_account")).reason
@@ -548,8 +550,11 @@ def test_pi_types_are_types_only(service: OpsLog) -> None:
 
 # --------------------------------------------------------------------------- review additions
 @pytest.mark.parametrize("module", ["service", "maint"])
-@pytest.mark.parametrize("event", sorted(OPS_EVENTS - {"refused"}))
-def test_only_a_refusal_may_have_no_flow(directory: Path, module: Module, event: str) -> None:
+@pytest.mark.parametrize("event", sorted(OPS_EVENTS - {"refused", "error"}))
+def test_only_a_refusal_or_an_error_may_have_no_flow(
+    directory: Path, module: Module, event: str
+) -> None:
+    # I6 F7 (ADR 0014 « Précisions »): an error before routing has no flow either.
     log = ops_log(directory, module)
     with pytest.raises(AccessLogError) as caught:
         log.record(**fields_of(module, event, flow=None))

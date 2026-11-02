@@ -81,7 +81,7 @@ Les connecteurs sont des protocoles. Leurs seules implémentations, `SimErp` et 
 | Méthode | Retour | Qui l'appelle |
 |---|---|---|
 | `get_order(order_id)` | `OrderView \| None` | l'exécuteur d'outils (outil `erp.get_order`) |
-| `get_order_contact(order_id)` | `ContactView \| None` | le nœud `compose` seulement ; absente du registre d'outils |
+| `get_order_contact(order_id)` | `ContactView \| None` | le code seulement : le nœud `compose`, puis `guard`, `reguard` et l'en-tête de l'opérateur (voir « Précisions de l'étape I6 ») ; absente du registre d'outils |
 | `record_reply_prepared(order_id, draft_sha256, *, token)` | `WriteReceipt` | le nœud `apply` seulement, avec un jeton ([ADR 0013](0013-ops-human-approval-and-state.md)) |
 
 `OrderView` est figé, avec `extra="forbid"`. Ses champs :
@@ -114,7 +114,7 @@ Ces exclusions appliquent la collecte limitée au nécessaire ([art. 5](https://
 
 Un contact B2B est une personne physique identifiable. Le labo le traite donc comme un renseignement personnel (RP) ([art. 2](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:2), `lprp_definition_rp`) de niveau 4. L'art. 1, al. 5 exclut des sections II et III de la loi certains renseignements liés à l'exercice d'une fonction dans une entreprise ([art. 1](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:1), `lprp_coordonnees_affaires`). Sa portée pour ce module n'est pas tranchée (`lprp_coordonnees_affaires_portee`), et **le labo ne s'appuie pas sur cette exclusion** : la conception est la même que si elle n'existait pas.
 
-- Seul le nœud `compose` appelle `get_order_contact`, avec l'identifiant de la commande déjà dans le périmètre. L'accès suit le besoin de la tâche : composer l'en-tête et la salutation du brouillon ([art. 20](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:20), `lprp_acces_besoin_fonctions`).
+- Seul le nœud `compose` appelle `get_order_contact` pour écrire le brouillon, avec l'identifiant de la commande déjà dans le périmètre (lectures de contrôle et d'affichage : voir « Précisions de l'étape I6 »). L'accès suit le besoin de la tâche : composer l'en-tête et la salutation du brouillon ([art. 20](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:20), `lprp_acces_besoin_fonctions`).
 - `ContactView` n'est jamais stocké dans l'état du graphe ([ADR 0013](0013-ops-human-approval-and-state.md)) ; seul le texte composé est gardé.
 - Aucun champ du contact, et aucun libellé de compte, n'entre dans une invite, un journal ou un rapport.
 - Le libellé d'un compte qui est une entreprise individuelle (`natural_person: true`) est traité comme un nom : jamais dans une invite, et la salutation devient un « Bonjour, » neutre.
@@ -232,6 +232,15 @@ Un planificateur choisi par le modèle (une étape `PlannerStep` par `complete_j
 - `config.py` : `for_module` accepte `"service"` et `"maint"` ; les branches `quality` et `hr` restent identiques à l'octet près (un test le vérifie). Nouveaux champs : `ops_erp_path`, `ops_gmao_path`, `ops_vocabulary_path`, `svc_eval_path`, `maint_eval_path`, `ops_max_edit_rounds` (2, au plus 2), `ops_max_work_orders` (8, au plus 12) et `ops_history_days` (548).
 - Les connecteurs simulés et l'inférence locale ne communiquent rien hors du Québec ([art. 17](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:17), `lprp_communication_hors_quebec`). Un connecteur réel, ou infonuagique, exigerait une évaluation selon cet article, un nouvel ADR et une nouvelle version de l'EFVP.
 - Aucune fonction ne sert à la prospection ni à la vente additionnelle : une telle demande est refusée pour `purpose_drift` ([art. 12](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:12), `lprp_utilisation_fins`).
+
+### Précisions de l'étape I6 (2026-11-02)
+
+Ces précisions décrivent le câblage livré à l'étape I6 ; elles ne changent aucune règle de confidentialité.
+
+- **Lectures du contact par le code.** Outre `compose`, trois étapes lisent `get_order_contact` par l'identifiant de la commande déjà dans le périmètre, en mémoire seulement : `guard` et `reguard` (le contact rendu est un extrait cité de `check_output`, sans quoi le nom du destinataire serait pris pour un RP non appuyé), et l'en-tête de l'opérateur (libellé du compte et fonction du destinataire, [ADR 0013](0013-ops-human-approval-and-state.md)). Aucune ne stocke `ContactView` dans l'état, une trace, le journal ou un rapport ; aucune n'atteint une invite.
+- **Règle d'écho de `check_output` en 3a.** `guard` et `reguard` passent une liste vide de valeurs brutes (`raw_values`) : la règle d'écho ne s'applique pas en 3a. Le rédacteur ne reçoit jamais la demande (bloc de faits seulement), et une demande nomme souvent le contact du périmètre, que le brouillon doit nommer : un écho sans exception pour les extraits cités retiendrait ces brouillons. Les autres règles restent : RP détecté hors extraits, gabarit, nom propre inconnu, puis `check_scope` avant tout. Un écho filtré par les extraits cités pourra être ajouté avec le mode `full` (étape I7) s'il est mesuré.
+- **Texte approuvé.** `alverno service ask` montre le brouillon avec son en-tête avant la décision, puis, après l'approbation, affiche le texte approuvé une fois, dans un bloc à copier, avec la mention que rien n'a été envoyé.
+- **Mots d'un libellé.** Dans l'index de `check_scope`, un trait d'union et une espace séparent les mêmes mots d'une valeur : un libellé d'un autre compte, ou l'un de ses mots à trait d'union, écrit avec une espace au lieu du trait d'union est reconnu.
 
 ### Aucune nouvelle dépendance
 

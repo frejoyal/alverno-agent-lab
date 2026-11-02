@@ -11,7 +11,8 @@ model validator; each broken rule is a pydantic error whose type names the rule
 (``ops_log.<rule>``), never a value:
 
 - ``module_flow``: ``service`` goes with ``order_status``/``customer_reply``, ``maint``
-  with ``diagnosis``/``work_request``; ``flow`` may be empty only on ``refused``;
+  with ``diagnosis``/``work_request``; ``flow`` may be empty only on ``refused`` and on
+  ``error`` (an error before routing, while the flow is still unknown);
 - ``event_flow``: ``answered`` on a flow without approval, the approval events
   (``drafted`` to ``abandoned``) on a flow with approval;
 - ``account_ref``: always empty in ``maint``;
@@ -95,6 +96,8 @@ REFUSED_REASONS: frozenset[str] = (
     - {"connector_unavailable", "audit_unavailable"}
 )
 ERROR_REASONS: frozenset[str] = frozenset({"connector_unavailable"})
+# Events that may come before routing, with no flow yet.
+FLOWLESS_EVENTS: frozenset[str] = frozenset({"refused", "error"})
 # Events that carry the action presented or approved (tool and digest).
 ACTION_EVENTS: frozenset[str] = frozenset({"drafted", "re_presented", "approved"})
 
@@ -163,7 +166,8 @@ def broken_rules(rec: OpsAccessLogRecord) -> Iterator[str]:
     """The cross-field rules of ADR 0014 that ``rec`` breaks, in a fixed order."""
     event = rec.event
     if rec.flow is None:
-        if event != "refused":
+        # Only a refusal or an error can come before routing (ADR 0014, « Précisions »).
+        if event not in FLOWLESS_EVENTS:
             yield "module_flow"
     elif rec.flow not in MODULE_FLOWS[rec.module]:
         yield "module_flow"
