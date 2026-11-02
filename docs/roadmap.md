@@ -39,6 +39,8 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 - Connecteurs simulés (ERP et GMAO fictifs) pour garder les tests hors réseau.
 - Brouillons seulement : aucun envoi automatique au client.
 
+**Statut** : EFVP v1.0 ([docs/efvp/ops-module.md](efvp/ops-module.md)), registre juridique ([docs/ops-legal-sources.md](ops-legal-sources.md)) et ADR [0012](adr/0012-ops-architecture-typed-tools.md) à [0015](adr/0015-ops-evaluation-protocol.md) rédigés le 2026-11-01 ; EFVP approuvée et ADR acceptés le 2026-11-01 ; code non commencé.
+
 ## Module 4 — Banc d'essai de modèles locaux par tâche
 
 **Problème** : choisir le bon modèle pour chaque tâche selon la qualité, la latence et le matériel disponible dans une PME.
