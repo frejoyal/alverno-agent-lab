@@ -23,6 +23,17 @@
   :func:`check_ops_local`). The envelope reads the model name and the attempt count from
   that same wrapper.
 
+- :func:`build_maint_rig` wires one 3b request runner the same way: the simulated GMAO
+  (fresh, with the quarantine adapter), the counting connector, the executor, the
+  authority, the maintenance screen and refusal policy, the operator header
+  (:func:`maint_header`: the asset's name and line and the cited work orders, read from
+  state; no person) and the 3b graph with ``ops_history_days`` and
+  ``ops_max_work_orders``. The ``tools`` mode diagnoses with the ``BM25Diagnoser`` and
+  calls no model (its ``CountingChat`` must stay at 0 calls). The ``full`` mode
+  diagnoses with the ``ChatDiagnoser`` on ``CountingChat(ProbeChat(chat))``, ``chat``
+  chosen as in the 3a rig (the same ``fake-ops`` fake, whose responder answers a
+  ``Diagnosis`` with ``ops_diagnose_echo``).
+
 Nothing here reads a holdout set.
 """
 
@@ -35,6 +46,12 @@ from typing import Literal
 
 import yaml
 
+from alverno_lab.agents.maintenance import (
+    BM25Diagnoser,
+    ChatDiagnoser,
+    Diagnoser,
+    build_maint_graph,
+)
 from alverno_lab.agents.ops.fakes import make_ops_fake_chat
 from alverno_lab.agents.ops.probes import (
     CountingChat,
@@ -49,15 +66,15 @@ from alverno_lab.agents.ops.state import OpsState
 from alverno_lab.agents.service import ChatDrafter, Drafter, TemplateDrafter, build_service_graph
 from alverno_lab.config import RemoteOllamaError, Settings
 from alverno_lab.connectors.erp import ErpConnector
-from alverno_lab.connectors.sim import SimErp, account_scope_index
-from alverno_lab.connectors.types import Quarantine, QuarantinedText
+from alverno_lab.connectors.sim import SimErp, SimGmao, account_scope_index
+from alverno_lab.connectors.types import AssetView, Quarantine, QuarantinedText
 from alverno_lab.evals.ops_harness import OpsRig
 from alverno_lab.hr_pipeline import load_privacy_context
 from alverno_lab.pipeline import make_chat
 from alverno_lab.privacy import PrivacyConfigError, PrivacyContext, build_vocabulary
 from alverno_lab.privacy.access_log import MODEL_PATTERN
 from alverno_lab.privacy.ops_policy import MAINT_MAILBOX, SERVICE_MAILBOX, OpsRefusalPolicy
-from alverno_lab.privacy.ops_screen import screen_service
+from alverno_lab.privacy.ops_screen import screen_maintenance, screen_service
 from alverno_lab.privacy.quarantine import scrub_tool_text
 from alverno_lab.privacy.scope import ScopeIndex, build_scope_index
 from alverno_lab.tools.authority import ApprovalAuthority
@@ -66,9 +83,11 @@ from alverno_lab.tools.executor import ToolExecutor
 __all__ = [
     "OpsMode",
     "OpsModule",
+    "build_maint_rig",
     "build_service_rig",
     "check_ops_local",
     "load_ops_context",
+    "maint_header",
     "ops_quarantine",
     "service_header",
     "service_scope_index",
@@ -250,6 +269,94 @@ def build_service_rig(
         policy=OpsRefusalPolicy("service"),
         channel=channel,
         header_for=service_header(connector),
+        model_name=lambda: chat.model_name,
+        chat_attempts=lambda: chat.attempts,
+        max_edit_rounds=rounds,
+    )
+    return OpsRig(
+        envelope=envelope,
+        log=log,
+        timeline=shared,
+        executor=executor,
+        connector=connector,
+        sims=(sim,),
+        chat=chat,
+    )
+
+
+def maint_header(state: OpsState) -> DraftHeader:
+    """The operator header of a pending 3b work request: the asset's name (in
+    ``account_label``) and production line (in ``recipient_function``), and the cited
+    work orders. Read from the asset view in state; no person is named."""
+    ids = state.get("ids") or []
+    for record in state.get("records") or []:
+        if isinstance(record, dict) and len(ids) == 1 and record.get("asset_id") == ids[0]:
+            if "name" not in record:
+                continue
+            asset = AssetView.model_validate(record)
+            action = state.get("proposed_action") or {}
+            args = action.get("args") if isinstance(action, dict) else None
+            raw = args.get("cited_wo_ids") if isinstance(args, dict) else None
+            cited = tuple(str(c) for c in raw) if isinstance(raw, list) else ()
+            return DraftHeader(
+                account_label=asset.name, recipient_function=asset.line, cited_ids=cited
+            )
+    raise OpsRuntimeError("header:no_asset")
+
+
+def build_maint_rig(
+    settings: Settings,
+    *,
+    mode: OpsMode,
+    fake: bool,
+    log: TimelineLog,
+    channel: Literal["cli", "eval"],
+    timeline: Timeline | None = None,
+    ctx: PrivacyContext | None = None,
+) -> OpsRig:
+    """One 3b request runner and its probes (see the module docstring).
+
+    ``log`` is the maintenance access log (prefix ``maint``); the other parameters are
+    those of :func:`build_service_rig`. Building a full-mode rig calls no model: a model
+    that cannot be reached shows at the first diagnosis (``<step>:model_unavailable``).
+    """
+    if mode not in ("tools", "full"):
+        raise OpsRuntimeError("pipeline:mode")
+    check_ops_local(settings, fake=fake)
+    context = ctx if ctx is not None else load_ops_context(settings, "maint")
+    shared = log.timeline if timeline is None else timeline
+    sim = SimGmao.from_yaml(settings.ops_gmao_path, quarantine=ops_quarantine(context))
+    connector = CountingConnector(timeline=shared, gmao=sim)
+    authority = ApprovalAuthority()
+    executor = CountingExecutor(ToolExecutor(connector, connector, authority.verifier), shared)
+    diagnoser: Diagnoser
+    if mode == "full":
+        model = make_ops_fake_chat() if fake else make_chat(settings, fake=False)
+        chat = CountingChat(ProbeChat(model), shared)
+        diagnoser = ChatDiagnoser(chat)
+    else:
+        # Tools mode calls no model: the counted chat is there to prove it (0 calls).
+        chat = CountingChat(make_chat(settings, fake=fake), shared)
+        diagnoser = BM25Diagnoser()
+    rounds = settings.ops_max_edit_rounds
+    graph = build_maint_graph(
+        executor=executor,
+        gmao=connector,
+        ctx=context,
+        diagnoser=diagnoser,
+        history_days=settings.ops_history_days,
+        max_work_orders=settings.ops_max_work_orders,
+        max_edit_rounds=rounds,
+    )
+    envelope = OpsEnvelope(
+        graph,
+        module="maint",
+        screen=lambda request: screen_maintenance(request, context),
+        log=log,
+        authority=authority,
+        policy=OpsRefusalPolicy("maint"),
+        channel=channel,
+        header_for=maint_header,
         model_name=lambda: chat.model_name,
         chat_attempts=lambda: chat.attempts,
         max_edit_rounds=rounds,

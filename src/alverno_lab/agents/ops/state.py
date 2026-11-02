@@ -59,6 +59,13 @@ class OpsState(TypedDict, total=False):
     quarantine_flags: list[str]
     draft_body: str | None
     draft_citations: list[str]
+    # 3b only: the symptom code the router read, and the verified diagnosis (codes,
+    # cited work-order ids, next checks, confidence, dropped citations); 3a never sets them.
+    symptom: str | None
+    diagnosis: dict[str, JsonValue] | None
+    # 3b only: the work-order ids the run read (every cited id is one of them); the
+    # envelope logs them in ``entity_refs`` after ``ids``. 3a never sets it.
+    read_refs: list[str]
     draft_id: str | None
     draft_sha256: str | None
     proposed_action: dict[str, JsonValue] | None

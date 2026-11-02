@@ -10,6 +10,8 @@ its allowlist (:data:`NODE_KEYS`) whose value is one of:
 - a code matching ``^[a-z_]{1,40}$`` (a flow, a decision, a refusal or an error code);
 - a registered tool name;
 - a fixture id (order, asset or work order, the ADR 0014 ``entity_refs`` patterns);
+- a closed failure or symptom code of the GMAO (``HYD-FLEX``, ``SYM-FUITE``: a static
+  ``Literal``, never a value);
 - a list of at most :data:`MAX_LIST` codes, tool names or fixture ids (flags, ids read).
 
 Anything else is dropped without a trace of it: a text, an args dict, a token, an
@@ -25,6 +27,7 @@ from types import MappingProxyType
 
 from pydantic import JsonValue
 
+from alverno_lab.connectors.types import FAILURE_CODES, SYMPTOM_CODES
 from alverno_lab.tools.registry import TOOL_NAMES
 
 __all__ = ["MAX_COUNT", "MAX_LIST", "NODE_KEYS", "UNKNOWN_NODE", "scrub_entry"]
@@ -37,19 +40,21 @@ _CODE = re.compile(r"[a-z_]{1,40}")
 # The ADR 0014 entity patterns ([0-9], never \d, which matches non-ASCII digits).
 _ID = re.compile(r"CMD-[0-9]{4}-[0-9]{4}|EQ-[A-Z]{3}-[0-9]{2}|OT-[0-9]{4}-[0-9]{4}")
 _TOOLS: frozenset[str] = frozenset(TOOL_NAMES)
+# The closed codes of 3b (failure codes, INDETERMINE included, and symptom codes).
+_CLOSED_CODES: frozenset[str] = FAILURE_CODES | SYMPTOM_CODES
 
 # Per-node allowlists. The approval nodes are fixed by the I5 spec; the other names are
 # the nodes of the 3a and 3b graphs (module plan §2.4), which the flow increments fill.
 NODE_KEYS: Mapping[str, frozenset[str]] = MappingProxyType(
     {
-        "route": frozenset({"flow", "refusal", "ids", "id_count"}),
+        "route": frozenset({"flow", "refusal", "ids", "id_count", "symptom"}),
         "fetch": frozenset({"tool", "ok", "error", "refusal", "record_count", "ids"}),
         "scope_check": frozenset({"ok", "refusal"}),
         "gate": frozenset({"ok", "refusal", "record_count"}),
         "quarantine": frozenset({"flags", "flag_count"}),
         "draft": frozenset({"ok", "error", "citation_count"}),
         "diagnose": frozenset({"ok", "error", "code_count", "citation_count"}),
-        "verify": frozenset({"ok", "refusal", "dropped_count", "citation_count"}),
+        "verify": frozenset({"ok", "refusal", "dropped_count", "citation_count", "codes", "ids"}),
         "compose": frozenset({"ok", "refusal"}),
         "compose_internal": frozenset({"ok", "refusal"}),
         "guard": frozenset({"ok", "refusal", "rule"}),
@@ -64,10 +69,15 @@ NODE_KEYS: Mapping[str, frozenset[str]] = MappingProxyType(
 
 
 def _atom(value: object) -> bool:
-    """Whether a string is a code, a registered tool name or a fixture id."""
+    """Whether a string is a code, a registered tool name, a fixture id or a closed code."""
     if type(value) is not str:
         return False
-    return _CODE.fullmatch(value) is not None or value in _TOOLS or _ID.fullmatch(value) is not None
+    return (
+        _CODE.fullmatch(value) is not None
+        or value in _TOOLS
+        or _ID.fullmatch(value) is not None
+        or value in _CLOSED_CODES
+    )
 
 
 def _kept(value: object) -> JsonValue | None:

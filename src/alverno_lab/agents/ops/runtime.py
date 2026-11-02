@@ -909,8 +909,11 @@ class OpsEnvelope:
         # The first draft id is the request's; a later change is caught by _check.
         if ctx.draft_id is None and type(draft_id) is str and _HEX32.fullmatch(draft_id):
             ctx.draft_id = draft_id
-        if "ids" in state:
-            ctx.entity_refs = _unique(state.get("ids"), _ENTITY, MAX_ENTITY_REFS)
+        if "ids" in state or "read_refs" in state:
+            # ``ids`` first, then the records a 3b run read (absent in 3a: unchanged).
+            ids, read = state.get("ids"), state.get("read_refs")
+            refs = [*(ids if type(ids) is list else []), *(read if type(read) is list else [])]
+            ctx.entity_refs = _unique(refs, _ENTITY, MAX_ENTITY_REFS)
         if "quarantine_flags" in state:
             ctx.quarantine_flags = _unique(state.get("quarantine_flags"), _FLAG)
         edit_round = state.get("edit_round")

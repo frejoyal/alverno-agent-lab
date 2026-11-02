@@ -357,6 +357,11 @@ class CountingConnector:
         self._count("list_work_orders")
         return self._need_gmao().list_work_orders(asset_id, symptom_code, since_days, limit)
 
+    def symptom_labels(self) -> Mapping[SymptomCode, str]:
+        """Counted :meth:`GmaoConnector.symptom_labels`."""
+        self._count("symptom_labels")
+        return self._need_gmao().symptom_labels()
+
     def failure_catalog(self) -> tuple[FailureCodeView, ...]:
         """Counted :meth:`GmaoConnector.failure_catalog`."""
         self._count("failure_catalog")

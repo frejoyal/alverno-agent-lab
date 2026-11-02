@@ -30,8 +30,9 @@ from __future__ import annotations
 
 import datetime as dt
 import re
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Literal
 
 import yaml
@@ -658,6 +659,13 @@ class SimGmao:
             if wo.opened_on >= start and (symptom_code is None or wo.symptom_code == symptom_code)
         ]
         return tuple(project_work_order(wo, self._quarantine) for wo in selected[:count])
+
+    def symptom_labels(self) -> Mapping[SymptomCode, str]:
+        """The fixture label of each of the 8 symptom codes (read-only, closed list).
+
+        Read by the 3b routing code to recognise a symptom in a request; not a tool.
+        """
+        return MappingProxyType({s.code: s.label for s in self._fixture.symptom_codes})
 
     def failure_catalog(self) -> tuple[FailureCodeView, ...]:
         """The 16 catalogue codes, in fixture order (``INDETERMINE`` is not an entry)."""

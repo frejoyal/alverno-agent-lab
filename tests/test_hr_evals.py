@@ -321,14 +321,14 @@ def test_block_sha256_hashes_any_range_in_order(tmp_path: Path) -> None:
 def test_ops_hash_is_independent_of_the_hr_range() -> None:
     """ADR 0015: the module 3 block has its own hash; the HR range ends before it.
 
-    The ops hash is the ledger row of 2026-11-02 (ADR 0016 calibrated svc-full-fake);
+    The ops hash is the last ledger row of 2026-11-02 (ADR 0016 calibrated both *-full-fake);
     the HR hash never moved.
     """
     assert thresholds_sha256(THRESHOLDS) == (
         "243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a"
     )
     assert ops_thresholds_sha256(THRESHOLDS) == (
-        "417cadd54e23ecc1a696e23d75b012f8397f1e47849d7d18d034169d67ad15ea"
+        "38a8da90c633311e929551c65ce9ca704fc15249fa36d3b5ef335e17366f0ffe"
     )
 
 

@@ -227,7 +227,7 @@ PINNED: dict[str, dict[str, dict[str, float]]] = {
         "max": {"negative_flag_rate": 0.05},
     },
     # Module 3 (ADR 0015). Tools mode: deterministic service bounds. Full fake: service
-    # bounds calibrated once by ADR 0016 (svc on 2026-11-02; maint comes with I9).
+    # bounds calibrated once by ADR 0016 (svc and maint on 2026-11-02).
     "svc-tools-fake": _svc(
         {"key_fact_recall": 1.0, "status_fidelity": 1.0, "task_success": 1.0},
         {"draft_withheld_rate": 0.0},
@@ -241,7 +241,14 @@ PINNED: dict[str, dict[str, dict[str, float]]] = {
         {"draft_withheld_rate": 0.19},
     ),
     "maint-tools-fake": _maint({"citation_validity_rate": 1.0}),
-    "maint-full-fake": _maint({}),
+    "maint-full-fake": _maint(
+        {
+            "diagnosis_hit_at_3": 0.68,
+            "diagnosis_hit_at_1": 0.68,
+            "frequency_trap_hit_at_1": 0.0,
+            "citation_validity_rate": 0.97,
+        }
+    ),
     "maint-full-ollama": _maint(
         {
             "diagnosis_hit_at_3": 0.8,

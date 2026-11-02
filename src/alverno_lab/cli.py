@@ -1,6 +1,6 @@
 """Command-line interface.
 
-``alverno index | ask | eval | bench | hr | service | privacy | access``.
+``alverno index | ask | eval | bench | hr | service | maint | privacy | access``.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from pydantic import ValidationError
 
 from alverno_lab.agents.hr.graph import HrAnswer, write_hr_trace_jsonl
 from alverno_lab.agents.hr.prompts import notice
+from alverno_lab.agents.maintenance.notice import maint_notice
 from alverno_lab.agents.ops.probes import TimelineLog
 from alverno_lab.agents.ops.runtime import OpsEnvelope, OpsRuntimeError, OpsTurn
 from alverno_lab.agents.quality.graph import (
@@ -44,6 +45,7 @@ from alverno_lab.evals.hr import (
     run_hr_eval,
     unmet_preconditions,
 )
+from alverno_lab.evals.maint_eval import MaintEvalReport, run_maint_eval, with_maint_medians
 from alverno_lab.evals.pii_bench import (
     file_sha256,
     load_detector_set,
@@ -78,7 +80,12 @@ from alverno_lab.hr_pipeline import (
 )
 from alverno_lab.index import IndexStoreError
 from alverno_lab.ollama import OllamaError
-from alverno_lab.ops_pipeline import OpsMode, build_service_rig, check_ops_local
+from alverno_lab.ops_pipeline import (
+    OpsMode,
+    build_maint_rig,
+    build_service_rig,
+    check_ops_local,
+)
 from alverno_lab.pipeline import Backend, build_agent, build_index, build_retriever
 from alverno_lab.privacy import AccessLog, AccessLogError, PrivacyConfigError, scan_paths
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
@@ -121,6 +128,13 @@ service_app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(service_app, name="service")
+maint_app = typer.Typer(
+    help="Maintenance (module 3b): machine diagnosis and work requests; nothing is sent.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(maint_app, name="maint")
 
 
 class MarkerError(ValueError):
@@ -1337,6 +1351,217 @@ def service_bench(
             typer.echo(f"  FAIL {line}", err=True)
         typer.secho(f"Error: {why}: {readme} not updated.", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+# --------------------------------------------------------------------------- maint (3b)
+ARGS_PROMPT = (
+    "Arguments modifiés, un par ligne au format champ=valeur (failure_code, symptom_code, "
+    "cited_wo_ids séparés par des virgules) ; terminez par une ligne qui ne contient qu'un "
+    "point (.) :"
+)
+EXECUTED_BANNER = "--- Demande de travail approuvée, enregistrée dans la GMAO simulée ---"
+
+
+def _read_args(stream: io.TextIOBase) -> dict[str, Any] | None:
+    """Edited arguments: ``field=value`` lines up to a line holding a single « . ».
+
+    ``cited_wo_ids`` is a comma-separated list. A line without « = » is skipped with a
+    notice (it never reaches the log). None at the end of the input.
+    """
+    typer.echo(ARGS_PROMPT, err=True)
+    edited: dict[str, Any] = {}
+    while True:
+        line = stream.readline()
+        if not line:
+            return None
+        text = line.rstrip("\r\n")
+        if text == EDIT_END:
+            return edited
+        field, separator, value = text.partition("=")
+        if not separator or not field.strip():
+            typer.echo("Ligne ignorée : format champ=valeur attendu.", err=True)
+            continue
+        key, raw = field.strip(), value.strip()
+        if key == "cited_wo_ids":
+            edited[key] = [part.strip() for part in raw.split(",") if part.strip()]
+        else:
+            edited[key] = raw
+
+
+def _print_work_request(envelope: OpsEnvelope, turn: OpsTurn) -> None:
+    header = turn.header
+    typer.echo(f"--- Demande de travail à approuver (tour {turn.edit_round}) ---")
+    if header is not None:
+        typer.echo(header.notice)
+        typer.echo(f"Équipement : {header.account_label}")
+        typer.echo(f"Ligne : {header.recipient_function}")
+        typer.echo(f"Bons de travail cités : {', '.join(header.cited_ids)}")
+    typer.echo("")
+    typer.echo(turn.text or "")
+    action = envelope.presented_action
+    if action is not None:
+        typer.echo("")
+        typer.echo(f"Écriture préparée : {action.tool}")
+        for key, value in action.args.items():
+            shown = ", ".join(map(str, value)) if isinstance(value, list) else value
+            typer.echo(f"  {key} = {shown}")
+    typer.echo("---")
+
+
+def _maint_review(envelope: OpsEnvelope, turn: OpsTurn, stream: io.TextIOBase) -> OpsTurn:
+    """Show each pending work request and play the operator's decisions."""
+    while turn.kind == "pending":
+        _print_work_request(envelope, turn)
+        shown = turn.draft_id
+        choice = _read_choice(stream)
+        edited = _read_args(stream) if choice == "edit" else None
+        if choice is None or (choice == "edit" and edited is None):
+            return _ops_guard(partial(envelope.abandon, draft_id=shown))
+        value: dict[str, Any] = {"decision": choice}
+        action = envelope.presented_action
+        if edited is not None:
+            # Merged over the presented arguments: the operator names only what changes.
+            value["edited_args"] = {**(action.args if action is not None else {}), **edited}
+        turn = _ops_guard(partial(envelope.decide, value, draft_id=shown))
+    return turn
+
+
+def _print_maint_ending(turn: OpsTurn) -> None:
+    if turn.kind == "executed":
+        typer.echo(EXECUTED_BANNER)
+        typer.echo(turn.text or "")
+        typer.echo("---")
+        return
+    _print_ending(turn)
+
+
+@maint_app.command("ask")
+def maint_ask(
+    fake: FakeOpt = False,
+    mode: Annotated[
+        str,
+        typer.Option(
+            "--mode",
+            help="tools (BM25 diagnosis, no model) or full (local model diagnosis).",
+            case_sensitive=False,
+        ),
+    ] = "tools",
+) -> None:
+    """Diagnose one machine, or prepare a work request for it; the request is read on stdin.
+
+    The notice (art. 8) is printed on stderr first; the request is the first line of
+    stdin. A work request is shown with its header, the diagnosis and the prepared write,
+    then ``[a]pprouver / [m]odifier / [r]ejeter``; an edit is read from stdin as
+    ``field=value`` lines up to a line holding a single « . ». Nothing is sent; an
+    approved work request is written to the simulated GMAO. The end of the input (or
+    Ctrl-C) while a request waits abandons it. ``--mode full`` diagnoses with the local
+    model (``--fake``: the ops echo fake, no model). Exit 0 when the request ends, 2 on a
+    user error, an unavailable access log or a model that cannot be reached
+    (``start:model_unavailable``), 130 on Ctrl-C.
+    """
+    ops_mode = _ops_mode(mode)
+    settings = _settings()
+    _ops_guard(lambda: check_ops_local(settings, fake=fake))
+    log = _ops_guard(
+        lambda: TimelineLog(
+            settings.access_log_dir,
+            prefix="maint",
+            retention_days=settings.access_log_retention_days,
+        )
+    )
+    rig = _ops_guard(
+        lambda: build_maint_rig(settings, mode=ops_mode, fake=fake, log=log, channel="cli")
+    )
+    envelope = rig.envelope
+    typer.echo(maint_notice(settings.access_log_retention_days), err=True)
+    stream = _stdin()
+    typer.echo("Demande : ", err=True, nl=False)
+    request = stream.readline()
+    try:
+        turn = _ops_guard(partial(envelope.start, request))
+        turn = _maint_review(envelope, turn, stream)
+    except KeyboardInterrupt:
+        abandoned = _ops_guard(envelope.abandon) if envelope.pending else None
+        if abandoned is not None and abandoned.kind == "audit_unavailable":
+            _audit_unavailable()
+        typer.secho("Interrompu : la demande de travail est abandonnée.", err=True)
+        raise typer.Exit(code=130) from None
+    _print_maint_ending(turn)
+    if turn.kind == "audit_unavailable":
+        _audit_unavailable()
+
+
+def _maint_gate(reports: Sequence[MaintEvalReport], thresholds: Path) -> int:
+    """Gate each repetition, its service metrics replaced by their median (ADR 0015)."""
+    codes = [_gate(report, thresholds) for report in with_maint_medians(reports)]
+    return max(codes, default=1)
+
+
+@maint_app.command("eval")
+def maint_eval(
+    mode: Annotated[
+        str, typer.Option("--mode", help="tools or full.", case_sensitive=False)
+    ] = "tools",
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Maintenance gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int, typer.Option("--repeats", min=1, max=9, help="Repetitions (k); one report each.")
+    ] = 1,
+) -> None:
+    """Run the 3b gold set (profile maint-<mode>-<backend>) and write its reports.
+
+    Writes ``<out>/eval-maint-<mode>-<backend>.{json,md}`` (``-r<i>`` per repetition when
+    ``--repeats`` is above 1), the run's access log in ``<out>/access/`` and its scrubbed
+    traces in ``<out>/traces/``. ``--limit`` makes the preconditions fail by design.
+    Tools mode diagnoses with BM25, calls no model and needs ``--fake``; full mode
+    diagnoses with the local model (profile maint-full-ollama) or, with ``--fake``, the
+    ops echo fake (maint-full-fake). Exit 1 when the gate fails, 2 on a user error
+    (including an unwritable access log or an unreachable model).
+    """
+    ops_mode = _ops_mode(mode)
+    if ops_mode == "tools" and not fake:
+        # Tools mode calls no model: its only profile is maint-tools-fake.
+        raise typer.BadParameter(
+            "tools mode calls no model: add --fake (profile maint-tools-fake)",
+            param_hint="--fake",
+        )
+    settings = _settings(maint_eval_path=dataset, reports_dir=out, thresholds_path=thresholds)
+    settings = settings.for_module("maint")
+    _ops_guard(lambda: check_ops_local(settings, fake=fake))
+    backend = "fake" if fake else "ollama"
+    reports: list[MaintEvalReport] = []
+    for index in range(1, repeats + 1):
+        stem = f"eval-maint-{ops_mode}-{backend}" + (f"-r{index}" if repeats > 1 else "")
+        report = _ops_guard(
+            partial(
+                run_maint_eval,
+                settings,
+                mode=ops_mode,
+                fake=fake,
+                dataset=settings.maint_eval_path,
+                out_dir=settings.reports_dir,
+                limit=limit,
+                stem=stem,
+            )
+        )
+        reports.append(report)
+        typer.echo(
+            f"Evaluated {report.n_items} maintenance items ({report.mode}, {report.backend})."
+        )
+        for key, value in report.metrics.items():
+            typer.echo(f"  {key:30} {value}")
+        typer.echo(f"Reports: {settings.reports_dir / stem}.json, {settings.reports_dir / stem}.md")
+    typer.echo(f"Access log: {settings.reports_dir / 'access'}")
+    if gate:
+        code = _ops_guard(lambda: _maint_gate(reports, settings.thresholds_path))
+        if code:
+            raise typer.Exit(code=code)
 
 
 @privacy_app.command("eval")

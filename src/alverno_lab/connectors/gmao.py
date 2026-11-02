@@ -7,6 +7,7 @@ the ``diagnosis`` and ``work_request`` flows; ``create_work_request`` is called 
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Protocol
 
 from alverno_lab.connectors.types import (
@@ -38,6 +39,10 @@ class GmaoConnector(Protocol):
         limit: int = DEFAULT_WORK_ORDER_LIMIT,
     ) -> tuple[WorkOrderView, ...]:
         """Newest work orders of the asset in the window, filtered by symptom when given."""
+        ...
+
+    def symptom_labels(self) -> Mapping[SymptomCode, str]:
+        """The label of each closed symptom code (read by the 3b routing code; not a tool)."""
         ...
 
     def failure_catalog(self) -> tuple[FailureCodeView, ...]:

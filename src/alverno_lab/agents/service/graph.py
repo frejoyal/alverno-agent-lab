@@ -77,6 +77,7 @@ from alverno_lab.agents.ops.approval import (
     ToolCaller,
     add_approval_nodes,
 )
+from alverno_lab.agents.ops.guards import quarantine_stop
 from alverno_lab.agents.ops.rendering import FORM_STATUS, MONTHS_FR, find_status_forms
 from alverno_lab.agents.ops.runtime import ModelUnavailableError, OpsGraph
 from alverno_lab.agents.ops.scrub import scrub_entry
@@ -96,7 +97,6 @@ from alverno_lab.connectors.types import RECORD_REPLY_TOOL, ContactView, OrderVi
 from alverno_lab.privacy.guard import check_output
 from alverno_lab.privacy.lexicon import normalize
 from alverno_lab.privacy.ops_policy import SERVICE_MAILBOX
-from alverno_lab.privacy.quarantine import scrub_tool_text
 from alverno_lab.privacy.scope import ScopeError, ScopeIndex, check_scope
 from alverno_lab.privacy.types import PrivacyContext
 from alverno_lab.tools.registry import RecordReplyPreparedArgs
@@ -137,8 +137,6 @@ SERVICE_NODES: tuple[str, ...] = (
 
 # Both connector codes of the executor become the « connector_unavailable » refusal.
 _CONNECTOR_ERRORS: frozenset[str] = frozenset({"connector_error", "connector_unavailable"})
-# Quarantine flags that withhold an edit: an order, an action request or a secret.
-_EDIT_STOP_FLAGS: frozenset[str] = frozenset({"injection", "action_request", "credential"})
 _BRACES_RE = re.compile(r"\{[^{}\n]*\}")
 _WORD_RE = re.compile(r"[a-z]+")
 # A link or an e-mail address: the body never needs one (the signature is filled by code).
@@ -283,12 +281,6 @@ def find_unsupported_terms(body: str, block: str) -> list[str]:
     if len(used & _ENGLISH_WORDS) >= _ENGLISH_MIN:
         found.append("foreign")
     return found
-
-
-def quarantine_stop(text: str, ctx: PrivacyContext) -> bool:
-    """Whether the quarantine rules flag ``text``: an injection, an action request or a
-    credential (the same rules for a model draft in ``guard`` and an edit in ``reguard``)."""
-    return bool(set(scrub_tool_text(text, ctx).flags) & _EDIT_STOP_FLAGS)
 
 
 def verify_body(

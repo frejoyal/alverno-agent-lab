@@ -65,6 +65,12 @@ jobs:
       - name: Customer service eval (full, fake) + gate
         run: uv run alverno service eval --mode full --fake --out reports/ci
 
+      - name: Maintenance eval (tools, fake) + gate
+        run: uv run alverno maint eval --mode tools --fake --out reports/ci
+
+      - name: Maintenance eval (full, fake) + gate
+        run: uv run alverno maint eval --mode full --fake --out reports/ci
+
       # Nothing is uploaded unless both scans find no canary: the HR gold set (default
       # dataset), then the HR, customer service and maintenance gold sets together (ADR
       # 0015). Holdouts never enter CI.
