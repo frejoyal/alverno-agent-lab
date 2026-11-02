@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Protocol
@@ -62,6 +63,45 @@ def load_profiles(path: Path) -> dict[str, Profile]:
         return {str(name): Profile.model_validate(body or {}) for name, body in raw.items()}
     except ValidationError as exc:
         raise ThresholdError(f"{path}: invalid profile: {exc}") from exc
+
+
+def block_sha256(path: Path, first: str, last: str) -> str:
+    """SHA-256 of a range of profiles, by the ADR 0010 « Registre des empreintes » method.
+
+    UTF-8 text, line endings normalised to LF, from the start of the line that begins with
+    ``first`` to the end of the last indented line of the block that begins with ``last``,
+    final newline included. Raises :class:`ThresholdError` when the file is unreadable or
+    either line is missing, or when ``last`` only appears before ``first``.
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        raise ThresholdError(f"thresholds file not readable: {path}") from None
+    rows = raw.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    try:
+        start = next(i for i, row in enumerate(rows) if row.startswith(first))
+        # Searched from ``start``: a last block placed before the first one is a reordered
+        # file, not a valid range.
+        stop = next(i for i in range(start, len(rows)) if rows[i].startswith(last))
+    except StopIteration:
+        raise ThresholdError(
+            f"{path}: profiles {first} to {last} not found in order (hash range)"
+        ) from None
+    end = stop + 1
+    while end < len(rows) and rows[end].startswith((" ", "\t")):
+        end += 1
+    text = "\n".join(rows[start:end]) + "\n"
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+# Module 3 range (ADR 0015 « Registre des empreintes du module 3 »).
+FIRST_OPS_PROFILE = "svc-tools-fake:"
+LAST_OPS_PROFILE = "maint-full-ollama:"
+
+
+def ops_thresholds_sha256(path: Path) -> str:
+    """``ops_thresholds_sha256``: the ``svc-tools-fake`` to ``maint-full-ollama`` range."""
+    return block_sha256(path, FIRST_OPS_PROFILE, LAST_OPS_PROFILE)
 
 
 def check_thresholds(
