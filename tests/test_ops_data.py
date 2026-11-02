@@ -78,7 +78,10 @@ from .test_ops_fixtures import (
 
 # SHA-256 of each holdout file's bytes (ADR 0015 registry). The holdout session fills it
 # (increment I2); until then the hash test is skipped and the files are never touched.
-HOLDOUT_SHA256: dict[str, str] = {}
+HOLDOUT_SHA256: dict[str, str] = {
+    "svc_holdout.jsonl": "3f9ad3475346378106f9d780c36f1384d004395027c295e4837541041919f9a6",
+    "maint_holdout.jsonl": "0a782f2acc93028ed458befcbcb7e1a6f0040552cdc57333bd054972e19267b7",
+}
 HOLDOUT_FILES = frozenset({"svc_holdout.jsonl", "maint_holdout.jsonl"})
 
 # Latest SHA-256 rows of the ADR 0015 registry (file bytes). A data change needs a new
