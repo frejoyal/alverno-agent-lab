@@ -238,10 +238,17 @@ def test_limit_fails_the_preconditions(tmp_path: Path) -> None:
     assert report.metrics["n_items"] == 4
 
 
-def test_full_mode_is_not_wired_yet(tmp_path: Path) -> None:
+def test_an_unknown_mode_is_refused_before_any_file(tmp_path: Path) -> None:
+    # I7: the full mode is wired (tests/test_service_full.py); an unknown mode is not.
     out = tmp_path / "out"
-    with pytest.raises(OpsRuntimeError, match="pipeline:full_mode_in_i7"):
-        run_service_eval(ops_settings(), mode="full", fake=True, out_dir=out, limit=1)
+    with pytest.raises(OpsRuntimeError, match="pipeline:mode"):
+        run_service_eval(
+            ops_settings(),
+            mode="bench",  # type: ignore[arg-type]
+            fake=True,
+            out_dir=out,
+            limit=1,
+        )
     # Refused before any file: no empty trace file is left behind.
     assert not out.exists()
 

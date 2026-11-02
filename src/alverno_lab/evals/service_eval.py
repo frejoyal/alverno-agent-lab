@@ -49,6 +49,22 @@ rate, so that it always fails the gate):
   expectations), ``injection_echo_count`` (planted marker phrases in served texts) and
   ``must_not_include_hits`` (the independent oracle of :mod:`~alverno_lab.evals.oracles`).
 
+Informational metrics, without bound (ADR 0015 « latence p50 et p95, étapes, jetons »):
+``n_chat_calls`` (model calls, retries of the chat model excluded), ``prompt_tokens`` and
+``completion_tokens`` (the counters of the run's chat models), ``latency_p50_ms`` and
+``latency_p95_ms`` (wall time of each item, from the request to its last turn), and
+``output_pi_<rule>``: the drafts withheld ``output_pi`` by the guard, by rule
+(``quarantine`` for the quarantine rules on a model draft, then the ``check_output``
+rules ``detected``, ``placeholder``, ``echo``, ``proper_noun``; I7 spec decision 6), read
+from the guard's trace entry (a code, never a text).
+
+In full mode, a model that cannot be reached (server down or model not pulled) ends the
+run at the first draft
+(:class:`~alverno_lab.agents.ops.runtime.OpsRuntimeError` ``eval:model_unavailable``):
+the run would measure nothing. A timeout or an invalid model output is not that case:
+the item's draft fails (``draft_failed``), it counts in ``error_rate`` and the run goes
+on to a published report.
+
 The report holds ids, codes, booleans, counts and metrics: never a request, a draft, a
 contact, a canary or an edit. The scrubbed traces go to ``<out_dir>/traces/<stem>.jsonl``
 (one line per item, no text). Floats are rounded to 6 decimals.
@@ -60,6 +76,7 @@ import datetime as dt
 import json
 import re
 import statistics
+import time
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
 from typing import Literal
@@ -67,7 +84,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, JsonValue
 
 from alverno_lab.agents.ops.probes import ProbeChat, TimelineLog
-from alverno_lab.agents.ops.runtime import OpsTurn
+from alverno_lab.agents.ops.runtime import OpsRuntimeError, OpsTurn
 from alverno_lab.agents.ops.state import text_sha256
 from alverno_lab.config import Settings
 from alverno_lab.connectors.sim import (
@@ -79,9 +96,9 @@ from alverno_lab.connectors.sim import (
 )
 from alverno_lab.connectors.types import args_sha256
 from alverno_lab.evals.agentic_metrics import COUNT_METRICS, agentic_metrics
-from alverno_lab.evals.canaries import infer_canary, load_canaries
+from alverno_lab.evals.canaries import infer_canary, load_canaries, untyped_hits
 from alverno_lab.evals.hr import artifact_canary_hits, rule_of_three, thresholds_sha256
-from alverno_lab.evals.metrics import fact_in_text
+from alverno_lab.evals.metrics import fact_in_text, percentile
 from alverno_lab.evals.ops_gold import ToolCall, check_call
 from alverno_lab.evals.ops_harness import ApprovalScriptDriver, ItemRun, OpsRig, ScriptStep
 from alverno_lab.evals.oracles import date_forms, fold, forbidden_hits, status_faithful, value_in
@@ -102,6 +119,7 @@ from alverno_lab.text import normalize_for_match
 from alverno_lab.tools.registry import TOOLS
 
 __all__ = [
+    "GUARD_RULES",
     "SERVICE_METRICS",
     "RigFactory",
     "SvcEvalReport",
@@ -111,6 +129,7 @@ __all__ = [
     "service_content_metrics",
     "service_counts",
     "service_report_markdown",
+    "usage_metrics",
     "with_service_medians",
     "write_service_report",
 ]
@@ -127,6 +146,10 @@ SERVICE_METRICS: tuple[str, ...] = (
     "draft_withheld_rate",
 )
 _ROUTE_REFUSALS = frozenset({"order_not_identified", "multi_order"})
+# The rules of ``check_output`` (privacy.guard), counted when the guard withholds a draft.
+GUARD_RULES: tuple[str, ...] = ("quarantine", "detected", "placeholder", "echo", "proper_noun")
+# The envelope's error code when the full-mode model cannot be reached.
+_MODEL_UNAVAILABLE = ":model_unavailable"
 _COMPOSED_KINDS = frozenset({"answered", "pending"})
 # Initials (« MT »): matched with their case, as whole words.
 _INITIALS = re.compile(r"[A-Z]{1,3}")
@@ -172,6 +195,7 @@ class SvcItemResult(BaseModel):
     connector_calls: int = 0
     chat_calls: int = 0
     residual_threads: int = 0
+    guard_rule: str | None = None
 
 
 class SvcEvalReport(BaseModel):
@@ -301,6 +325,18 @@ def _file_canaries(source: Path, items: Sequence[SvcGoldItem]) -> list[Canary]:
     return list(dict.fromkeys(found))
 
 
+def _artifact_hits(run_dir: Path, canaries: Sequence[Canary]) -> int:
+    """Σ over files and canaries of the matches (each canary counted once per file).
+
+    Module 3 strings that have no inferred type are carried as ``adresse`` canaries; they
+    go through :func:`untyped_hits`, so a margin or a price is not found inside a longer
+    number such as a measured latency.
+    """
+    untyped = [c for c in canaries if c.type is PIType.ADRESSE]
+    typed = [c for c in canaries if c.type is not PIType.ADRESSE]
+    return artifact_canary_hits([run_dir], typed) + len(untyped_hits([run_dir], untyped))
+
+
 def _scope_hits(files: Iterable[Path], values: Sequence[tuple[str, str]]) -> int:
     """Σ over ``files`` and ``values`` of the matches (each value counted once per file)."""
     texts = [decode_artifact(path.read_bytes()) for path in files]
@@ -318,6 +354,15 @@ def _approved_text(run: ItemRun) -> str | None:
     for turn in run.turns:
         if turn.kind == "executed" and turn.text is not None:
             return turn.text
+    return None
+
+
+def _guard_rule(run: ItemRun) -> str | None:
+    """The ``check_output`` rule of a guard that withheld the text (``output_pi``), or None."""
+    for entry in run.trace:
+        if entry.get("node") == "guard" and entry.get("refusal") == "output_pi":
+            rule = entry.get("rule")
+            return rule if isinstance(rule, str) else None
     return None
 
 
@@ -480,6 +525,7 @@ def _score(
         connector_calls=run.connector_calls,
         chat_calls=run.chat_calls,
         residual_threads=run.residual_threads,
+        guard_rule=_guard_rule(run),
     )
 
 
@@ -582,9 +628,28 @@ def _prompts(rig: OpsRig) -> list[str]:
     return []
 
 
-def _config(settings: Settings, mode: SvcMode, dataset: Path) -> dict[str, str]:
+def usage_metrics(
+    rigs: Sequence[OpsRig], results: Sequence[SvcItemResult], latencies: Sequence[float]
+) -> dict[str, float]:
+    """The informational metrics: model calls, tokens, item latency, guard rules."""
+    chats = {id(rig.chat): rig.chat for rig in rigs if rig.chat is not None}
+    metrics = {
+        "n_chat_calls": float(sum(r.chat_calls for r in results)),
+        "prompt_tokens": float(sum(chat.stats.prompt_tokens for chat in chats.values())),
+        "completion_tokens": float(sum(chat.stats.completion_tokens for chat in chats.values())),
+        "latency_p50_ms": percentile(latencies, 50),
+        "latency_p95_ms": percentile(latencies, 95),
+    }
+    for rule in GUARD_RULES:
+        metrics[f"output_pi_{rule}"] = float(sum(r.guard_rule == rule for r in results))
+    return metrics
+
+
+def _config(settings: Settings, mode: SvcMode, dataset: Path, model: str) -> dict[str, str]:
     config = {
         "chat_model": settings.chat_model if mode == "full" else "none",
+        # The model the drafter really called (``fake-ops`` for the full-mode fake).
+        "drafter_model": model if mode == "full" else "none",
         "drafter": "template" if mode == "tools" else "chat",
         "ops_max_edit_rounds": str(settings.ops_max_edit_rounds),
         "access_log_retention_days": str(settings.access_log_retention_days),
@@ -633,7 +698,11 @@ def run_service_eval(
     by default each item gets :func:`~alverno_lab.ops_pipeline.build_service_rig`.
 
     Raise :class:`~alverno_lab.privacy.AccessLogError` when the access log cannot be
-    written (``audit_unavailable``): the run would measure nothing.
+    written (``audit_unavailable``): the run would measure nothing. Raise
+    :class:`~alverno_lab.agents.ops.runtime.OpsRuntimeError` ``eval:model_unavailable``
+    when the full-mode model cannot be reached (server down or model not pulled): it is
+    seen at the first draft, so the access log and the (emptied) trace file of the run
+    are already in ``out_dir``, and no report is written.
     """
     source = dataset if dataset is not None else settings.svc_eval_path
     run_dir = out_dir if out_dir is not None else settings.reports_dir
@@ -654,9 +723,12 @@ def run_service_eval(
             return rig_factory(log, ctx)
         return build_service_rig(settings, mode=mode, fake=fake, log=log, channel="eval", ctx=ctx)
 
-    # The first rig is built before any file is written: a mode that cannot run yet
-    # (full mode before I7) or a broken setting leaves ``out_dir`` untouched.
+    # The first rig is built before any file is written: an unknown mode or a broken
+    # setting leaves ``out_dir`` untouched. An unreachable model is seen only at the first
+    # draft, after the trace file is emptied (see the docstring).
     ready = [build()]
+    first_chat = ready[0].chat
+    model = first_chat.model_name if first_chat is not None else settings.chat_model
 
     def factory() -> OpsRig:
         rig = ready.pop() if ready else build()
@@ -670,24 +742,31 @@ def run_service_eval(
     driver = ApprovalScriptDriver(factory)
     runs: list[ItemRun] = []
     results: list[SvcItemResult] = []
+    latencies: list[float] = []
     for item in items:
+        started = time.perf_counter()
         run = driver.run(
             item.id, item.request, _script(item), auto_send_trap=item.family == "auto_send"
         )
+        latencies.append((time.perf_counter() - started) * 1000)
         if _audit_failed(run.turns):
             raise AccessLogError(f"access log not writable in {log.directory}")
+        if run.error is not None and run.error.endswith(_MODEL_UNAVAILABLE):
+            # Full mode without a reachable model: every draft would end in an error.
+            raise OpsRuntimeError("eval:model_unavailable")
         _write_trace(trace_path, item.id, run)
         runs.append(run)
         results.append(_score(item, run, probes, mode=mode, prompts=_prompts(rigs[-1])))
     metrics: dict[str, float] = {k: float(v) for k, v in agentic_metrics(runs).items()}
     metrics.update(service_content_metrics(results))
     metrics.update({k: float(v) for k, v in svc_preconditions(items).items()})
+    metrics.update(usage_metrics(rigs, results, latencies))
     report = SvcEvalReport(
         mode=mode,
         backend=backend,
         label=label,
         created_at=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
-        config=_config(settings, mode, source),
+        config=_config(settings, mode, source, model),
         dataset=source.as_posix(),
         dataset_sha256=file_sha256(source),
         n_items=len(results),
@@ -703,7 +782,7 @@ def run_service_eval(
     outside = probes.outside_values(_in_scope(item, probes) for item in items)
     scope_hits = _scope_hits(own, probes.outside_values(()))
     scope_hits += _scope_hits((p for p in _files(run_dir) if p not in own), outside)
-    report.metrics["artifact_canary_hits"] = float(artifact_canary_hits([run_dir], canaries))
+    report.metrics["artifact_canary_hits"] = float(_artifact_hits(run_dir, canaries))
     report.metrics["cross_account_leaks"] += float(scope_hits)
     report.metrics["n_artifact_files"] = float(len(_files(run_dir)))
     report.metrics["n_canaries"] = float(len(canaries))

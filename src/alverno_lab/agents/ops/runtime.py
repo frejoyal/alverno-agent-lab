@@ -44,7 +44,10 @@ unknown thread, a validation error, the recursion limit, a connector failure, an
 other) is logged ``error`` (``connector_unavailable`` for a connector; with an empty flow
 when it comes before routing, ADR 0014 « Précisions ») and re-raised as
 :class:`OpsRuntimeError` ``<step>:<rule>``, outside the ``except`` block, so that no
-exception chain keeps an input value.
+exception chain keeps an input value. A chat model that cannot be reached (full mode,
+:class:`ModelUnavailableError`) is a backend failure like a connector's: it is logged
+``error`` with ``connector_unavailable`` and re-raised as ``<step>:model_unavailable``, so
+that a caller can tell it from a connector failure without reading any value.
 ``LegacyTracingError`` propagates unchanged, as in modules 1 and 2.
 
 The checkpointer is an :class:`~langgraph.checkpoint.memory.InMemorySaver` whose
@@ -115,6 +118,7 @@ __all__ = [
     "RECURSION_LIMIT",
     "DraftHeader",
     "DraftNotice",
+    "ModelUnavailableError",
     "OpsEnvelope",
     "OpsGraph",
     "OpsRuntimeError",
@@ -187,6 +191,17 @@ _CLOSING_EVENTS: frozenset[str] = frozenset(
 
 class OpsRuntimeError(RuntimeError):
     """The envelope could not complete a step. The message is ``<step>:<rule>``, no value."""
+
+
+class ModelUnavailableError(ConnectorError):
+    """The chat model of the full mode could not be reached or did not answer.
+
+    Raised by a drafter (``draft:model_unavailable``, no value, never chained) when the
+    model server is down or the model is not pulled; a timeout or an invalid model output
+    is not one (that item's draft fails, the run goes on). It escapes the
+    graph to the envelope, which logs ``error`` with ``connector_unavailable`` (the model
+    is a backend, like a connector) and raises ``<step>:model_unavailable``.
+    """
 
 
 class DraftHeader(BaseModel):
@@ -289,6 +304,8 @@ def _classify(exc: Exception) -> _Failure:
     """The rule (and refusal reason) of an exception; the exception itself is dropped."""
     if isinstance(exc, _Abort):
         return _Failure(exc.rule)
+    if isinstance(exc, ModelUnavailableError):
+        return _Failure("model_unavailable", "connector_unavailable")
     if isinstance(exc, ConnectorError):
         return _Failure("connector_unavailable", "connector_unavailable")
     if isinstance(exc, KeyError):

@@ -47,6 +47,7 @@ from alverno_lab.agents.ops.probes import (
 from alverno_lab.agents.ops.runtime import (
     DRAFT_NOTICE,
     DraftHeader,
+    ModelUnavailableError,
     OpsEnvelope,
     OpsRuntimeError,
     OpsTurn,
@@ -80,6 +81,7 @@ __all__ = [
     "EditCheck",
     "EditChecker",
     "FailingLog",
+    "ModelUnavailableError",
     "OpsEnvelope",
     "OpsRuntimeError",
     "OpsState",

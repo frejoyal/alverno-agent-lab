@@ -241,11 +241,10 @@ def test_an_unwritable_access_log_exits_2(_ops_env: Path, monkeypatch: pytest.Mo
 @pytest.mark.parametrize(
     ("args", "env", "message"),
     [
-        (["--mode", "full"], {}, "pipeline:full_mode_in_i7"),
         (["--mode", "nope"], {}, "mode must be"),
         ([], {"ALVERNO_ALLOW_REMOTE_OLLAMA": "true"}, "RemoteOllamaError"),
     ],
-    ids=["full", "bad_mode", "remote"],
+    ids=["bad_mode", "remote"],
 )
 def test_ask_usage_errors_exit_2(
     monkeypatch: pytest.MonkeyPatch, args: list[str], env: dict[str, str], message: str
@@ -344,11 +343,10 @@ def test_eval_repeats_write_one_report_each(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("args", "message"),
     [
-        (["--mode", "full"], "pipeline:full_mode_in_i7"),
         (["--mode", "nope"], "mode must be"),
         (["--dataset", "absent.jsonl"], "file.missing"),
     ],
-    ids=["full", "bad_mode", "no_dataset"],
+    ids=["bad_mode", "no_dataset"],
 )
 def test_eval_usage_errors_exit_2(tmp_path: Path, args: list[str], message: str) -> None:
     out = tmp_path / "out"

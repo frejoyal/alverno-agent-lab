@@ -1,8 +1,10 @@
 """Customer service (module 3a): deterministic routing, facts, drafter and graph (ADR 0012).
 
 - :mod:`~alverno_lab.agents.service.route`: ``route_service``, pure, no model;
-- :mod:`~alverno_lab.agents.service.drafting`: the « Faits de la commande » block and the
-  tools-mode ``TemplateDrafter``;
+- :mod:`~alverno_lab.agents.service.drafting`: the « Faits de la commande » block, the
+  tools-mode ``TemplateDrafter`` and the full-mode ``ChatDrafter``;
+- :mod:`~alverno_lab.agents.service.prompts`: the French system prompt of the
+  ``ChatDrafter``;
 - :mod:`~alverno_lab.agents.service.graph`: ``build_service_graph``, the builder an
   :class:`~alverno_lab.agents.ops.runtime.OpsEnvelope` compiles with its checkpointer.
 
@@ -15,8 +17,10 @@ from __future__ import annotations
 from alverno_lab.agents.service.drafting import (
     FACTS_HEADER,
     MAX_BODY_CHARS,
+    ChatDrafter,
     DraftBody,
     Drafter,
+    DraftError,
     LabelSource,
     OrderFacts,
     TemplateDrafter,
@@ -35,6 +39,7 @@ from alverno_lab.agents.service.graph import (
     service_answer,
     verify_body,
 )
+from alverno_lab.agents.service.prompts import DATA_RULE, DRAFT_SYSTEM_PROMPT
 from alverno_lab.agents.service.route import (
     ORDER_ID_RE,
     RouteRefusal,
@@ -46,13 +51,17 @@ from alverno_lab.agents.service.route import (
 )
 
 __all__ = [
+    "DATA_RULE",
+    "DRAFT_SYSTEM_PROMPT",
     "FACTS_HEADER",
     "MAX_BODY_CHARS",
     "NEUTRAL_SALUTATION",
     "ORDER_ID_RE",
     "SIGNATURE_TEXT",
     "TO_PREFIX",
+    "ChatDrafter",
     "DraftBody",
+    "DraftError",
     "Drafter",
     "LabelSource",
     "OrderFacts",

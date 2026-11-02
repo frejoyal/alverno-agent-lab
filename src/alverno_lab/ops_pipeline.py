@@ -16,7 +16,12 @@
   screen and refusal policy, the operator header (read from the contact by code, for
   display only) and the 3a graph. ``ops_max_edit_rounds`` goes to both the envelope and
   the ``approve`` node. The ``tools`` mode drafts with the ``TemplateDrafter`` and calls
-  no model; the ``full`` mode comes with increment I7.
+  no model (its ``CountingChat`` must stay at 0 calls). The ``full`` mode drafts with the
+  ``ChatDrafter`` on ``CountingChat(ProbeChat(chat))``: ``chat`` is the fake of
+  :func:`~alverno_lab.agents.ops.fakes.make_ops_fake_chat` with ``fake=True``, else the
+  local Ollama model of :func:`~alverno_lab.pipeline.make_chat` (after
+  :func:`check_ops_local`). The envelope reads the model name and the attempt count from
+  that same wrapper.
 
 Nothing here reads a holdout set.
 """
@@ -30,16 +35,18 @@ from typing import Literal
 
 import yaml
 
+from alverno_lab.agents.ops.fakes import make_ops_fake_chat
 from alverno_lab.agents.ops.probes import (
     CountingChat,
     CountingConnector,
     CountingExecutor,
+    ProbeChat,
     Timeline,
     TimelineLog,
 )
 from alverno_lab.agents.ops.runtime import DraftHeader, OpsEnvelope, OpsRuntimeError
 from alverno_lab.agents.ops.state import OpsState
-from alverno_lab.agents.service import TemplateDrafter, build_service_graph
+from alverno_lab.agents.service import ChatDrafter, Drafter, TemplateDrafter, build_service_graph
 from alverno_lab.config import RemoteOllamaError, Settings
 from alverno_lab.connectors.erp import ErpConnector
 from alverno_lab.connectors.sim import SimErp, account_scope_index
@@ -203,11 +210,10 @@ def build_service_rig(
 
     ``log`` is the service access log (its timeline is the rig's); ``timeline``, when
     given, must be that same timeline. ``ctx`` reuses an ops context already loaded (an
-    evaluation builds one rig per item). ``mode="full"`` is not wired yet.
+    evaluation builds one rig per item). Building a full-mode rig calls no model: a model
+    that cannot be reached shows at the first draft (``<step>:model_unavailable``).
     """
-    if mode == "full":
-        raise OpsRuntimeError("pipeline:full_mode_in_i7")
-    if mode != "tools":
+    if mode not in ("tools", "full"):
         raise OpsRuntimeError("pipeline:mode")
     check_ops_local(settings, fake=fake)
     context = ctx if ctx is not None else load_ops_context(settings, "service")
@@ -216,7 +222,15 @@ def build_service_rig(
     connector = CountingConnector(timeline=shared, erp=sim)
     authority = ApprovalAuthority()
     executor = CountingExecutor(ToolExecutor(connector, connector, authority.verifier), shared)
-    chat = CountingChat(make_chat(settings, fake=fake), shared)
+    drafter: Drafter
+    if mode == "full":
+        model = make_ops_fake_chat() if fake else make_chat(settings, fake=False)
+        chat = CountingChat(ProbeChat(model), shared)
+        drafter = ChatDrafter(chat)
+    else:
+        # Tools mode calls no model: the counted chat is there to prove it (0 calls).
+        chat = CountingChat(make_chat(settings, fake=fake), shared)
+        drafter = TemplateDrafter()
     scope_index = service_scope_index(sim)
     rounds = settings.ops_max_edit_rounds
     graph = build_service_graph(
@@ -224,7 +238,7 @@ def build_service_rig(
         erp=connector,
         ctx=context,
         scope_index=scope_index,
-        drafter=TemplateDrafter(),
+        drafter=drafter,
         max_edit_rounds=rounds,
     )
     envelope = OpsEnvelope(

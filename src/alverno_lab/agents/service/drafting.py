@@ -15,6 +15,28 @@ French template per status family that restates every fact present, with
 ``{salutation}`` first, ``{signature}`` last and the order id as its only citation. It
 calls no model. Its wording avoids every status form of the ADR 0015 table but the
 imposed rendering of the order's own status.
+
+:class:`ChatDrafter` is the drafter of the full mode (I7 spec decision 1): one
+``complete_json`` call with the system prompt of
+:mod:`~alverno_lab.agents.service.prompts` and, as the user message, the facts block and
+nothing else. Its failures carry no value and no chain:
+
+- a model that cannot serve any draft (the server is down,
+  :class:`~alverno_lab.ollama.OllamaUnavailableError`, or the model is not pulled,
+  :class:`~alverno_lab.ollama.OllamaModelNotFoundError`) raises
+  :class:`~alverno_lab.agents.ops.runtime.ModelUnavailableError`, a
+  ``ConnectorError``: the ``draft`` node lets it escape, and the envelope logs ``error``
+  with ``connector_unavailable`` and raises ``<step>:model_unavailable``, as
+  ``runtime._classify`` does for a connector failure. Every later item would fail the
+  same way, so the evaluation stops there (as the module 1 and 2 runners do);
+- any other failure raises :class:`DraftError`, and the ``draft`` node turns it into its
+  ``draft_failed`` error (``outcome="error"``, no refusal reason), which counts in
+  ``error_rate`` for that item only: an invalid model output
+  (:class:`~alverno_lab.llm.LLMOutputError`, after the one repair retry of the chat
+  model) is ``draft:invalid_output``, a timeout
+  (:class:`~alverno_lab.ollama.OllamaTimeoutError`) is ``draft:timeout``, and any other
+  exception (an HTTP or protocol error included) is ``draft:chat_error``. One slow
+  answer must not throw away a whole run.
 """
 
 from __future__ import annotations
@@ -28,15 +50,32 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from alverno_lab.agents.ops.rendering import STATUS_RENDERINGS, render_date
+from alverno_lab.agents.ops.runtime import ModelUnavailableError
+from alverno_lab.agents.service.prompts import (
+    DRAFT_SYSTEM_PROMPT,
+    FACTS_HEADER,
+    MAX_BODY_CHARS,
+    SALUTATION,
+    SIGNATURE,
+)
 from alverno_lab.connectors.types import OrderId, OrderStatus, OrderView
+from alverno_lab.llm import ChatModel, LLMOutputError
+from alverno_lab.ollama import (
+    OllamaModelNotFoundError,
+    OllamaTimeoutError,
+    OllamaUnavailableError,
+)
 
 __all__ = [
+    "DRAFT_SYSTEM_PROMPT",
     "FACTS_HEADER",
     "MAX_BODY_CHARS",
     "PLACEHOLDERS",
     "SALUTATION",
     "SIGNATURE",
+    "ChatDrafter",
     "DraftBody",
+    "DraftError",
     "Drafter",
     "LabelSource",
     "OrderFacts",
@@ -45,10 +84,6 @@ __all__ = [
     "order_facts",
 ]
 
-FACTS_HEADER = "Faits de la commande"
-MAX_BODY_CHARS = 1200
-SALUTATION = "{salutation}"
-SIGNATURE = "{signature}"
 PLACEHOLDERS: frozenset[str] = frozenset({SALUTATION, SIGNATURE})
 
 _SPACES_RE = re.compile(r"\s+")
@@ -218,3 +253,41 @@ class TemplateDrafter:
             ]
         )
         return DraftBody(body=body, cited_ids=[facts.order_id])
+
+
+class DraftError(RuntimeError):
+    """The model gave no usable draft. The message is ``draft:<rule>``, never a value."""
+
+
+class ChatDrafter:
+    """The full-mode drafter: one ``complete_json`` call on the facts block only.
+
+    ``chat`` is the counted, probed model of the rig. The user message is exactly
+    :attr:`OrderFacts.block`: no account label, no contact, no request text.
+    """
+
+    def __init__(self, chat: ChatModel) -> None:
+        self.chat = chat
+
+    def draft(self, facts: OrderFacts) -> DraftBody:
+        """The model's body and citations; raise :class:`DraftError` or
+        :class:`~alverno_lab.agents.ops.runtime.ModelUnavailableError` (module doc)."""
+        rule: str | None = None
+        drafted: object = None
+        try:
+            drafted = self.chat.complete_json(DRAFT_SYSTEM_PROMPT, facts.block, DraftBody)
+        # Never chained: the model's error may quote its output or the facts.
+        except LLMOutputError:
+            rule = "invalid_output"
+        except (OllamaUnavailableError, OllamaModelNotFoundError):
+            # Server down or model not pulled: every draft would fail the same way.
+            rule = "model_unavailable"
+        except OllamaTimeoutError:
+            rule = "timeout"
+        except Exception:
+            rule = "chat_error"
+        if rule == "model_unavailable":
+            raise ModelUnavailableError("draft:model_unavailable")
+        if rule is not None or not isinstance(drafted, DraftBody):
+            raise DraftError(f"draft:{rule or 'invalid_output'}")
+        return drafted

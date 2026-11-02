@@ -39,7 +39,7 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 - Connecteurs simulés (ERP et GMAO fictifs) pour garder les tests hors réseau.
 - Brouillons seulement : aucun envoi automatique au client.
 
-**Statut** : EFVP v1.0 ([docs/efvp/ops-module.md](efvp/ops-module.md)), registre juridique ([docs/ops-legal-sources.md](ops-legal-sources.md)) et ADR [0012](adr/0012-ops-architecture-typed-tools.md) à [0015](adr/0015-ops-evaluation-protocol.md) rédigés le 2026-11-01 ; EFVP approuvée et ADR acceptés le 2026-11-01 ; données fictives, jeux de référence, jeux réservés (empreintes épinglées) et profils préenregistrés versés le 2026-11-01 (étape I2) ; code des agents non commencé.
+**Statut** : EFVP v1.0 ([docs/efvp/ops-module.md](efvp/ops-module.md)), registre juridique ([docs/ops-legal-sources.md](ops-legal-sources.md)) et ADR [0012](adr/0012-ops-architecture-typed-tools.md) à [0015](adr/0015-ops-evaluation-protocol.md) rédigés le 2026-11-01 ; EFVP approuvée et ADR acceptés le 2026-11-01 ; données fictives, jeux de référence, jeux réservés (empreintes épinglées) et profils préenregistrés versés le 2026-11-01 (étape I2) ; le 2026-11-02, connecteurs simulés, outils typés, couche de confidentialité, approbation humaine et sous-module 3a en mode outils et en mode complet simulé (étapes I3 à I7), portes `svc-tools-fake` et `svc-full-fake` franchies, bornes simulées calibrées une fois ([ADR 0016](adr/0016-ops-gate-calibration.md)) ; mesure Ollama et jeu réservé 3a, puis sous-module 3b, à venir.
 
 ## Module 4 — Banc d'essai de modèles locaux par tâche
 

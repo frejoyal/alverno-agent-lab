@@ -31,7 +31,7 @@ from alverno_lab.agents.service.notice import service_notice
 from alverno_lab.config import RemoteOllamaError, Settings
 from alverno_lab.connectors.types import ConnectorError
 from alverno_lab.corpus import CorpusError
-from alverno_lab.evals.canaries import UNTYPED_LABEL, LoadedCanary, load_canaries
+from alverno_lab.evals.canaries import UNTYPED_LABEL, LoadedCanary, load_canaries, untyped_hits
 from alverno_lab.evals.dataset import DatasetError, load_dataset
 from alverno_lab.evals.hr import (
     HrBenchRow,
@@ -1017,7 +1017,12 @@ def _review(envelope: OpsEnvelope, turn: OpsTurn, stream: io.TextIOBase) -> OpsT
 def service_ask(
     fake: FakeOpt = False,
     mode: Annotated[
-        str, typer.Option("--mode", help="tools (template drafter) or full.", case_sensitive=False)
+        str,
+        typer.Option(
+            "--mode",
+            help="tools (template drafter) or full (local model drafter; ops fake with --fake).",
+            case_sensitive=False,
+        ),
     ] = "tools",
 ) -> None:
     """Ask about one order, or prepare a reply to its contact; the request is read on stdin.
@@ -1026,10 +1031,11 @@ def service_ask(
     stdin. A draft is shown with its header, then ``[a]pprouver / [m]odifier /
     [r]ejeter``; an edit is read from stdin up to a line holding a single « . ». Nothing is
     sent: once approved, the reply is printed once, for the operator to send. The end of
-    the input (or Ctrl-C) while a draft waits abandons it. Exit 0 when the request ends
-    (answered, refused, withheld, rejected, approved or abandoned), 2 on a user error or
-    an unavailable access log (also when the abandon of Ctrl-C cannot be logged), 130 on
-    Ctrl-C.
+    the input (or Ctrl-C) while a draft waits abandons it. ``--mode full`` drafts with the
+    local model (``--fake``: the ops echo fake, no model). Exit 0 when the request ends
+    (answered, refused, withheld, rejected, approved or abandoned), 2 on a user error, an
+    unavailable access log (also when the abandon of Ctrl-C cannot be logged) or a model
+    that cannot be reached (``start:model_unavailable``), 130 on Ctrl-C.
     """
     ops_mode = _ops_mode(mode)
     settings = _settings()
@@ -1102,8 +1108,10 @@ def service_eval(
     Writes ``<out>/eval-svc-<mode>-<backend>.{json,md}`` (``-r<i>`` per repetition when
     ``--repeats`` is above 1), the run's access log in ``<out>/access/`` and its scrubbed
     traces in ``<out>/traces/``. ``--limit`` makes the preconditions fail by design.
-    Tools mode calls no model and needs ``--fake``. Exit 1 when the gate fails, 2 on a
-    user error (including an unwritable access log).
+    Tools mode calls no model and needs ``--fake``; full mode drafts with the local model
+    (profile svc-full-ollama) or, with ``--fake``, the ops echo fake (svc-full-fake). Exit
+    1 when the gate fails, 2 on a user error (including an unwritable access log, or a
+    model that cannot be reached: ``eval:model_unavailable``).
     """
     ops_mode = _ops_mode(mode)
     if ops_mode == "tools" and not fake:
@@ -1239,7 +1247,11 @@ def _labelled_hits(
     typed = [c.canary for c in canaries if c.label != UNTYPED_LABEL]
     untyped = [c.canary for c in canaries if c.label == UNTYPED_LABEL]
     hits = [(path, pi_type.value) for path, pi_type in scan_paths(paths, typed)]
-    hits.extend((path, UNTYPED_LABEL) for path, _ in scan_paths(paths, untyped))
+    # One texte line per file, in walk order; a number inside a longer one is no hit.
+    confirmed = {path for path, _ in untyped_hits(paths, untyped)}
+    hits.extend(
+        (path, UNTYPED_LABEL) for path, _ in scan_paths(paths, untyped) if path in confirmed
+    )
     return hits
 
 

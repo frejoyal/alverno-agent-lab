@@ -25,17 +25,26 @@ argument and joins the contact; the drafter only writes a body from the facts.
 - ``compose_internal`` (``order_status``): a French answer for the operator, made of the
   facts block lines.
 - ``draft`` (``customer_reply``): the drafter gets the facts only (no account label, no
-  contact, no request) and returns ``DraftBody``.
+  contact, no request) and returns ``DraftBody``. A drafter failure is an ``error``
+  without reason (``draft_failed``), except a model that cannot be reached
+  (:class:`~alverno_lab.agents.ops.runtime.ModelUnavailableError`), which escapes to the
+  envelope like a connector failure.
 - ``verify``: numbers grounded in the facts (``find_ungrounded_numbers``), cited and
   written order ids among those read, every status form the rendering of the ERP status,
-  no placeholder but ``{salutation}`` and ``{signature}``; else ``ungrounded``.
+  no placeholder but ``{salutation}`` and ``{signature}``, and no closed-list term the
+  facts do not hold (:func:`find_unsupported_terms`: a number or a date written in
+  words, a link or an e-mail address, a commercial commitment, English function
+  words); else ``ungrounded``.
 - ``compose`` (code): the salutation (civility and surname, or « Bonjour, » for a sole
   proprietorship), the signature (the service role mailbox) and the « À : » line, from
   ``get_order_contact``. The contact view is never stored in state; only the composed
   text is.
-- ``guard``: ``check_scope`` first (``cross_account``), then ``check_output`` with the
-  facts block and, for a reply, the in-scope contact as cited extracts (``output_pi``).
-  A failure withholds the text.
+- ``guard``: ``check_scope`` first (``cross_account``); for a reply, the quarantine
+  rules on the composed text, as ``reguard`` applies them to an edit (an injection, an
+  action request or a credential is ``output_pi``, rule ``quarantine``); then
+  ``check_output`` with the facts block and, for a reply, the in-scope contact as cited
+  extracts (``output_pi``, the guard rule's name in the trace). A failure withholds the
+  text.
 - ``propose``: the digest of the composed text, the ``erp.record_reply_prepared`` action
   bound to it and a new ``draft_id``.
 - The approval tail (:func:`~alverno_lab.agents.ops.approval.add_approval_nodes`) with
@@ -68,8 +77,8 @@ from alverno_lab.agents.ops.approval import (
     ToolCaller,
     add_approval_nodes,
 )
-from alverno_lab.agents.ops.rendering import FORM_STATUS, find_status_forms
-from alverno_lab.agents.ops.runtime import OpsGraph
+from alverno_lab.agents.ops.rendering import FORM_STATUS, MONTHS_FR, find_status_forms
+from alverno_lab.agents.ops.runtime import ModelUnavailableError, OpsGraph
 from alverno_lab.agents.ops.scrub import scrub_entry
 from alverno_lab.agents.ops.state import OpsState, ProposedAction, text_sha256
 from alverno_lab.agents.quality.graph import find_ungrounded_numbers
@@ -85,6 +94,7 @@ from alverno_lab.agents.service.route import find_order_ids, route_service
 from alverno_lab.connectors.erp import ErpConnector
 from alverno_lab.connectors.types import RECORD_REPLY_TOOL, ContactView, OrderView
 from alverno_lab.privacy.guard import check_output
+from alverno_lab.privacy.lexicon import normalize
 from alverno_lab.privacy.ops_policy import SERVICE_MAILBOX
 from alverno_lab.privacy.quarantine import scrub_tool_text
 from alverno_lab.privacy.scope import ScopeError, ScopeIndex, check_scope
@@ -99,7 +109,9 @@ __all__ = [
     "build_service_graph",
     "compose_text",
     "contact_extract",
+    "find_unsupported_terms",
     "make_check_edit",
+    "quarantine_stop",
     "salutation_for",
     "service_answer",
     "verify_body",
@@ -128,6 +140,49 @@ _CONNECTOR_ERRORS: frozenset[str] = frozenset({"connector_error", "connector_una
 # Quarantine flags that withhold an edit: an order, an action request or a secret.
 _EDIT_STOP_FLAGS: frozenset[str] = frozenset({"injection", "action_request", "credential"})
 _BRACES_RE = re.compile(r"\{[^{}\n]*\}")
+_WORD_RE = re.compile(r"[a-z]+")
+# A link or an e-mail address: the body never needs one (the signature is filled by code).
+_LINK_RE = re.compile(
+    r"(?i)(?:https?://|www\.)\S+"
+    r"|[^\s@]+@[^\s@]+\.[a-z]{2,}"
+    r"|\b[a-z0-9-]+\.(?:com|ca|net|org|info|io|fr|biz)\b"
+)
+# Closed lists of words the facts must hold before a body may use them, matched on
+# ``normalize``d words (case and accents folded; a hyphen splits « dix-sept »). « un » and
+# « une » are articles and are left out; « neuf » (also « new ») is kept, so a body using
+# it in that sense is withheld: that false positive is accepted.
+_NUMBER_WORDS: frozenset[str] = frozenset(
+    {
+        "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze",
+        "douze", "treize", "quatorze", "quinze", "seize", "vingt", "vingts", "trente",
+        "quarante", "cinquante", "soixante", "septante", "huitante", "octante", "nonante",
+        "cent", "cents", "mille", "million", "millions", "milliard", "milliards",
+        "douzaine", "douzaines", "centaine", "centaines", "millier", "milliers",
+    }
+)  # fmt: skip
+_DATE_WORDS: frozenset[str] = frozenset(
+    {
+        *(normalize(month) for month in MONTHS_FR),
+        "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+        "aujourd", "demain", "hier",
+    }
+)  # fmt: skip
+# Word prefixes of a commercial commitment (a discount, a credit, a refund, a free item,
+# a compensation, a guarantee): only a person may promise one.
+_COMMITMENT_PREFIXES: tuple[str, ...] = (
+    "rabais", "credit", "rembours", "escompt", "gratuit", "frais", "dedommag", "indemn",
+    "compens", "ristourne", "garanti",
+)  # fmt: skip
+# English function words; French has none of them as a word of its own.
+_ENGLISH_WORDS: frozenset[str] = frozenset(
+    {
+        "the", "your", "you", "we", "our", "will", "is", "are", "and", "with", "this",
+        "that", "for", "has", "have", "been", "be", "of", "to", "it", "please", "thank",
+        "thanks", "would", "should", "from", "by",
+    }
+)  # fmt: skip
+# Two distinct English function words make a body « not French » (one may be a name).
+_ENGLISH_MIN = 2
 
 
 # --------------------------------------------------------------------------- helpers
@@ -203,6 +258,39 @@ def service_answer(order: OrderView, erp: ErpConnector) -> str:
     return "\n".join([lead, *facts.lines()[1:]])
 
 
+def find_unsupported_terms(body: str, block: str) -> list[str]:
+    """The closed-list kinds of terms in ``body`` that the facts ``block`` does not hold.
+
+    Each kind is a code, never a value: ``number_word`` (a quantity written in words),
+    ``date_word`` (a month, a weekday, « aujourd'hui », « demain » or « hier »), ``link``
+    (a URL, a domain or an e-mail address), ``commitment`` (a discount, a credit, a
+    refund, a free item, a compensation or a guarantee) and ``foreign`` (at least two
+    distinct English function words: the reply is written in French). A term the block
+    holds (a label, the note) is grounded and allowed. ``find_ungrounded_numbers`` only
+    reads digits; these checks close the same gap for words.
+    """
+    allowed = set(_WORD_RE.findall(normalize(block)))
+    used = set(_WORD_RE.findall(normalize(body))) - allowed
+    found: list[str] = []
+    if used & _NUMBER_WORDS:
+        found.append("number_word")
+    if used & _DATE_WORDS:
+        found.append("date_word")
+    if any(match.group(0) not in block for match in _LINK_RE.finditer(body)):
+        found.append("link")
+    if any(word.startswith(_COMMITMENT_PREFIXES) for word in used):
+        found.append("commitment")
+    if len(used & _ENGLISH_WORDS) >= _ENGLISH_MIN:
+        found.append("foreign")
+    return found
+
+
+def quarantine_stop(text: str, ctx: PrivacyContext) -> bool:
+    """Whether the quarantine rules flag ``text``: an injection, an action request or a
+    credential (the same rules for a model draft in ``guard`` and an edit in ``reguard``)."""
+    return bool(set(scrub_tool_text(text, ctx).flags) & _EDIT_STOP_FLAGS)
+
+
 def verify_body(
     body: str, citations: list[str], order: OrderView, block: str, fetched: frozenset[str]
 ) -> bool:
@@ -222,7 +310,9 @@ def verify_body(
     rest = body
     for placeholder in PLACEHOLDERS:
         rest = rest.replace(placeholder, "")
-    return "{" not in rest and "}" not in rest
+    if "{" in rest or "}" in rest:
+        return False
+    return not find_unsupported_terms(rest, block)
 
 
 def _contact(erp: ErpConnector, order: OrderView) -> ContactView | None:
@@ -258,7 +348,7 @@ def make_check_edit(
             return EditCheck(ok=False, reason="invalid_args")
         if not _in_scope(edited, order.account_id, scope_index):
             return EditCheck(ok=False, reason="cross_account")
-        if set(scrub_tool_text(edited, ctx).flags) & _EDIT_STOP_FLAGS:
+        if quarantine_stop(edited, ctx):
             return EditCheck(ok=False, reason="output_pi")
         extracts = [order_facts(order, erp).block]
         contact = _contact(erp, order)
@@ -397,11 +487,18 @@ def build_service_graph(
         # envelope, which logs it as connector_unavailable (as on the order_status path).
         facts = order_facts(order, erp)
         drafted: object = None
+        unavailable = False
         try:
             drafted = drafter.draft(facts)
+        except ModelUnavailableError:
+            unavailable = True
         # Never raise or chain: a drafter's error may describe the facts.
         except Exception:
             drafted = None
+        if unavailable:
+            # The model could not be reached: like a connector failure, it escapes to the
+            # envelope (logged error/connector_unavailable), raised here without a chain.
+            raise ModelUnavailableError("draft:model_unavailable")
         if not isinstance(drafted, DraftBody):
             return _stop("draft", "error", None, ok=False, error="draft_failed")
         citations = [str(cited) for cited in drafted.cited_ids]
@@ -444,6 +541,9 @@ def build_service_graph(
             return _stop("guard", "withheld", "cross_account", ok=False)
         extracts = [order_facts(order, erp).block]
         if state.get("flow") == "customer_reply":
+            # The model's text meets the quarantine rules an operator's edit meets.
+            if quarantine_stop(text, ctx):
+                return _stop("guard", "withheld", "output_pi", ok=False, rule="quarantine")
             contact = _contact(erp, order)
             if contact is None:
                 return _stop("guard", "withheld", "cross_account", ok=False)
@@ -456,7 +556,8 @@ def build_service_graph(
             ctx=ctx,
         )
         if not verdict.ok:
-            return _stop("guard", "withheld", "output_pi", ok=False)
+            # The rule's name (a code, never a value) is kept for the evaluation's counts.
+            return _stop("guard", "withheld", "output_pi", ok=False, rule=verdict.rule)
         update: OpsState = {"trace": _trace("guard", {"ok": True})}
         if state.get("flow") != "customer_reply":
             update["outcome"] = "answered"

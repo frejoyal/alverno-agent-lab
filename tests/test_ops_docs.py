@@ -20,8 +20,9 @@ ADR_0015 = DOCS_DIR / "adr" / "0015-ops-evaluation-protocol.md"
 MODULE3_ADRS = tuple(
     path
     for path in sorted((DOCS_DIR / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"))
-    if 12 <= int(path.name[:4]) <= 15
+    if 12 <= int(path.name[:4]) <= 16
 )
+ADR_0016 = DOCS_DIR / "adr" / "0016-ops-gate-calibration.md"
 OPS_DOCS = (OPS_EFVP, OPS_REGISTER, *MODULE3_ADRS)
 
 FENCE = re.compile(r"^(```|~~~)")
@@ -246,7 +247,8 @@ def adr_preconditions() -> dict[str, dict[str, int]]:
 def test_module3_documents_exist() -> None:
     for path in (OPS_EFVP, OPS_REGISTER):
         assert path.is_file(), f"missing {path.relative_to(REPO_ROOT)}"
-    assert [p.name[:4] for p in MODULE3_ADRS] == ["0012", "0013", "0014", "0015"]
+    # ADR 0016 (calibration of the full-fake profiles) joined on 2026-11-02, step I7.
+    assert [p.name[:4] for p in MODULE3_ADRS] == ["0012", "0013", "0014", "0015", "0016"]
 
 
 def test_ops_efvp_headings_match_template_in_order() -> None:
@@ -318,9 +320,11 @@ def test_link_anchors_resolve(path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", OPS_DOCS, ids=lambda p: p.name)
-def test_adr_0016_is_not_linked(path: Path) -> None:
+def test_links_to_adr_0016_point_to_the_written_adr(path: Path) -> None:
+    # Before step I7 no document could link ADR 0016; now every link names the real file.
     linked = [target for target in LINK.findall("\n".join(body_lines(path))) if "0016" in target]
-    assert not linked, f"{path.name} links ADR 0016, which is not written yet: {linked}"
+    wrong = [t for t in linked if (path.parent / t.split("#", 1)[0]).resolve() != ADR_0016]
+    assert not wrong, f"{path.name} links another ADR 0016 file: {wrong}"
 
 
 def test_annex_c_safety_counts_match_adr_0015() -> None:

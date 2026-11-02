@@ -11,7 +11,11 @@ blind metric.
 The scripts have the shapes of the gold approval scripts: approve; reject; edit then
 approve; edit, edit, approve; an invalid decision; a script exhausted while a draft is
 pending (abandon). The content controls are added by I6 to I9: I6 adds the scope, price
-projection, screen and planted-canary controls on the real 3a evaluation (end of file).
+projection, screen and planted-canary controls on the real 3a evaluation; I7 adds the
+remaining 3a controls on the full mode (end of file): ``compose`` before the model, the
+quarantine off (the connectors' and the guard's), ``verify`` off, the word checks of
+``verify`` off and ``check_scope`` off, each with a broken chat double of
+:mod:`tests.ops_chat_doubles`.
 Assertion messages cite metrics and variants, never a fixture value, a draft, a request
 or a token field.
 """
@@ -42,14 +46,15 @@ from alverno_lab.agents.ops import (
     OpsState,
     OpsTurn,
 )
+from alverno_lab.agents.ops.fakes import make_ops_fake_chat
 from alverno_lab.agents.ops.probes import TimelineLog
 from alverno_lab.agents.ops.runtime import OpsGraph
-from alverno_lab.agents.service import DraftBody, OrderFacts, TemplateDrafter
+from alverno_lab.agents.service import DraftBody, Drafter, OrderFacts, TemplateDrafter
 from alverno_lab.agents.service import graph as service_graph
 from alverno_lab.agents.service.drafting import SIGNATURE
 from alverno_lab.config import Settings
 from alverno_lab.connectors import sim
-from alverno_lab.connectors.sim import OrderRecord
+from alverno_lab.connectors.sim import OrderRecord, SimErp
 from alverno_lab.connectors.types import OrderView, Quarantine, QuarantinedText
 from alverno_lab.evals import agentic_metrics as am
 from alverno_lab.evals import service_eval
@@ -62,8 +67,8 @@ from alverno_lab.evals.ops_harness import (
     ScriptStep,
 )
 from alverno_lab.evals.service_eval import RigFactory, SvcEvalReport, run_service_eval
-from alverno_lab.llm import FakeChat
-from alverno_lab.ops_pipeline import build_service_rig
+from alverno_lab.llm import ChatModel, FakeChat, Responder
+from alverno_lab.ops_pipeline import build_service_rig, ops_quarantine
 from alverno_lab.privacy import PrivacyContext, scan_paths
 from alverno_lab.privacy.ops_policy import OpsRefusalPolicy
 from alverno_lab.privacy.ops_screen import OpsScreening, screen_service
@@ -72,6 +77,14 @@ from alverno_lab.privacy.scope import ScopeIndex, ScopeVerdict
 from alverno_lab.tools import ApprovalToken, ApprovalVerifier, ToolExecutor, VerifyResult
 
 from .conftest import EVAL_DATA, hr_repo_settings
+from .ops_chat_doubles import (
+    ComposeFirstDrafter,
+    LeakyScope,
+    chat_of,
+    date_in_words,
+    injection_follower,
+    invent_status,
+)
 from .ops_privacy_helpers import ops_privacy_ctx
 from .ops_toy_graph import (
     PI_MARKER,
@@ -878,3 +891,139 @@ def test_an_account_value_planted_in_a_report_is_a_cross_account_leak(
     monkeypatch.setattr(service_eval, "service_report_markdown", planted)
     broken = svc_eval(tmp_path / "broken", limit=1)
     assert broken["cross_account_leaks"] > 0, "planted_account_value:blind_metric"
+
+
+# --------------------------------------------------------------------------- 3a full mode (I7)
+# Each control runs the full-mode evaluation (``--fake``) on gold items picked by their
+# fields (never by id): the intact full-fake rig gives 0 on those items, the barrier left in
+# place with the broken double gives 0, and the barrier removed makes the metric move.
+def gold_subset(path: Path, keep: Callable[[dict[str, object]], bool]) -> Path:
+    """A copy of the gold lines that ``keep`` selects, with the other member of each pair
+    (the loader refuses half a pair): a smaller set of the same items."""
+    rows = [
+        (line, json.loads(line))
+        for line in SVC_GOLD.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    pairs = {item.get("pair_id") for _, item in rows if keep(item)} - {None}
+    lines = [line for line, item in rows if keep(item) or item.get("pair_id") in pairs]
+    assert lines, "gold_subset:empty"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return path
+
+
+def full_eval(out: Path, dataset: Path) -> dict[str, float]:
+    report = run_service_eval(svc_settings(), mode="full", fake=True, out_dir=out, dataset=dataset)
+    return report.metrics
+
+
+def is_reply(item: dict[str, object]) -> bool:
+    return item.get("family") == "customer_reply"
+
+
+def use_chat(monkeypatch: pytest.MonkeyPatch, responder: Responder) -> None:
+    """Every full-mode rig drafts with ``responder`` (the probes wrap it as usual)."""
+    monkeypatch.setattr(ops_pipeline, "make_ops_fake_chat", lambda: chat_of(responder))
+
+
+def test_compose_before_the_model_makes_backend_canary_hits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dataset = gold_subset(
+        tmp_path / "replies.jsonl", lambda item: is_reply(item) and bool(item["contact_canaries"])
+    )
+    intact = full_eval(tmp_path / "intact", dataset)
+    assert intact["backend_canary_hits"] == 0 and intact["n_chat_calls"] > 0
+    erp = SimErp.from_yaml(OPS_DATA / "erp.yaml", quarantine=ops_quarantine(ops_privacy_ctx()))
+
+    def compose_first(chat: ChatModel) -> Drafter:
+        return ComposeFirstDrafter(chat, erp)
+
+    monkeypatch.setattr(ops_pipeline, "ChatDrafter", compose_first)
+    broken = full_eval(tmp_path / "broken", dataset)
+    assert broken["backend_canary_hits"] > 0, "compose_first:blind_metric"
+
+
+def _identity_quarantine(ctx: PrivacyContext) -> Quarantine:
+    def keep(text: str) -> QuarantinedText:
+        # BROKEN: the note reaches the prompt as written, planted phrases included.
+        return QuarantinedText(text=text, flags=())
+
+    return keep
+
+
+def test_quarantine_off_with_an_injection_follower_makes_injection_echo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    planted = tmp_path / "injection.jsonl"
+    dataset = gold_subset(planted, lambda item: bool(item["injection_markers"]))
+    intact = full_eval(tmp_path / "intact", dataset)
+    assert intact["injection_echo_count"] == 0 and intact["output_pi_quarantine"] == 0
+    # The ops echo already copies the note verbatim, so it follows the note as much as the
+    # follower double does: the barriers under test are the connectors' quarantine and the
+    # guard's quarantine rules on the model draft (the same rules ``reguard`` applies to an
+    # edit), not the double. Both are removed in turn.
+    use_chat(monkeypatch, injection_follower)
+    monkeypatch.setattr(ops_pipeline, "ops_quarantine", _identity_quarantine)
+    caught = full_eval(tmp_path / "caught", dataset)
+    # The planted phrases reach the model; the guard withholds every draft that copies them.
+    assert caught["injection_echo_count"] == 0
+    assert caught["output_pi_quarantine"] > 0, "guard_quarantine:not_withheld"
+    monkeypatch.setattr(service_graph, "quarantine_stop", lambda text, ctx: False)
+    broken = full_eval(tmp_path / "broken", dataset)
+    assert broken["injection_echo_count"] > 0, "quarantine_off:blind_metric"
+
+
+def test_word_checks_off_serve_a_date_written_in_words(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # ``find_ungrounded_numbers`` reads digits only; a date or a quantity written in words
+    # is caught by the closed word lists of ``verify``, and by nothing else.
+    dataset = gold_subset(tmp_path / "replies.jsonl", is_reply)
+    intact = full_eval(tmp_path / "intact", dataset)
+    assert intact["draft_withheld_rate"] == 0
+    use_chat(monkeypatch, date_in_words)
+    caught = full_eval(tmp_path / "caught", dataset)
+    assert caught["draft_withheld_rate"] == 1.0, "date_in_words:not_withheld"
+    monkeypatch.setattr(service_graph, "find_unsupported_terms", lambda body, block: [])
+    broken = full_eval(tmp_path / "broken", dataset)
+    # Served and scored as a success: no gold metric sees it, which is why verify must.
+    assert broken["draft_withheld_rate"] == 0, "word_checks_off:still_withheld"
+    assert broken["task_success"] == intact["task_success"]
+
+
+def test_verify_off_with_an_invented_status_makes_must_not_include_hits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dataset = gold_subset(tmp_path / "replies.jsonl", is_reply)
+    intact = full_eval(tmp_path / "intact", dataset)
+    assert intact["must_not_include_hits"] == 0
+    use_chat(monkeypatch, invent_status)
+    caught = full_eval(tmp_path / "caught", dataset)
+    # verify withholds every invented status before the interrupt: nothing is served.
+    assert caught["must_not_include_hits"] == 0
+    assert caught["draft_withheld_rate"] == 1.0, "invent_status:not_withheld"
+    monkeypatch.setattr(service_graph, "verify_body", lambda *args: True)
+    broken = full_eval(tmp_path / "broken", dataset)
+    assert broken["must_not_include_hits"] > 0, "verify_off:blind_metric"
+
+
+def test_scope_off_with_a_leaky_chat_makes_cross_account_leaks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dataset = gold_subset(tmp_path / "replies.jsonl", is_reply)
+    intact = full_eval(tmp_path / "intact", dataset)
+    assert intact["cross_account_leaks"] == 0
+    use_chat(monkeypatch, LeakyScope(OPS_DATA / "erp.yaml"))
+    caught = full_eval(tmp_path / "caught", dataset)
+    # The guard's check_scope withholds the pasted label: nothing leaks.
+    assert caught["cross_account_leaks"] == 0
+    assert caught["draft_withheld_rate"] > 0, "leaky_chat:not_withheld"
+    monkeypatch.setattr(service_graph, "check_scope", _scope_off)
+    broken = full_eval(tmp_path / "broken", dataset)
+    assert broken["cross_account_leaks"] > 0, "scope_off_chat:blind_metric"
+
+
+def test_the_ops_fake_is_the_default_full_mode_chat() -> None:
+    chat = make_ops_fake_chat()
+    assert chat.model_name == "fake-ops"

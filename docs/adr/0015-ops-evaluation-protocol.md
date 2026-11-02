@@ -297,6 +297,7 @@ Comme dans l'ADR 0010, l'historique git ne suffit pas à prouver l'ordre dans le
 | Fichier | Contenu | SHA-256 | Date |
 |---|---|---|---|
 | `evals/thresholds.yaml` | `ops_thresholds_sha256` : plage des profils `svc-tools-fake` à `maint-full-ollama` (lignes 207 à 527 à cette date), bornes préenregistrées avant toute exécution du module 3 | `f1562ac4e6ff4c75649e57b9d71b6eeb1817f6d1583757cff207560ce4bd570c` | 2026-11-01 |
+| `evals/thresholds.yaml` | `ops_thresholds_sha256` après la calibration des bornes de service de `svc-full-fake` par l'[ADR 0016](0016-ops-gate-calibration.md) (lignes 207 à 531 à cette date) ; aucune autre borne ne change | `417cadd54e23ecc1a696e23d75b012f8397f1e47849d7d18d034169d67ad15ea` | 2026-11-02 |
 | `data/eval/ops/erp.yaml` | ERP simulé : 8 comptes, 14 contacts, 40 commandes | `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` | 2026-11-01 |
 | `data/eval/ops/gmao.yaml` | GMAO simulée : 10 équipements, 16 codes de défaillance, 120 bons de travail | `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` | 2026-11-01 |
 | `data/eval/ops/vocabulary.yaml` | vocabulaire d'affaires des deux fixtures | `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50` | 2026-11-01 |

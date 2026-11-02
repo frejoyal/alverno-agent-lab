@@ -9,7 +9,7 @@
 - ``check_ops_local`` copies R14: no remote host, no cloud model, a loggable name.
 - ``build_service_rig`` wires the real parts: the quarantine adapter, the probes sharing
   one timeline, the round limit of the settings in both the envelope and the graph, and
-  the full mode refused until I7.
+  (I7) the full mode on a counted, probed chat model.
 
 Assertion messages cite rules and fields, never a value of the fixtures.
 """
@@ -237,11 +237,12 @@ def test_a_given_timeline_must_be_the_log_one(tmp_path: Path) -> None:
     assert rig.timeline is log.timeline
 
 
-def test_the_full_mode_is_not_wired_yet(tmp_path: Path) -> None:
+def test_the_full_mode_is_wired_and_an_unknown_mode_is_refused(tmp_path: Path) -> None:
+    # I7: the full mode drafts with a counted, probed model (tests/test_service_full.py).
     log = TimelineLog(tmp_path / "access", prefix="service")
-    with pytest.raises(OpsRuntimeError) as caught:
-        build_service_rig(ops_settings(), mode="full", fake=True, log=log, channel="eval")
-    assert str(caught.value) == "pipeline:full_mode_in_i7"
+    rig = build_service_rig(ops_settings(), mode="full", fake=True, log=log, channel="eval")
+    assert rig.chat is not None and rig.chat.model_name == "fake-ops"
+    assert rig.chat.attempts == 0
     with pytest.raises(OpsRuntimeError, match="pipeline:mode"):
         build_service_rig(
             ops_settings(),

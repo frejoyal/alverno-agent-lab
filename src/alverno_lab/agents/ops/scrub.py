@@ -52,7 +52,7 @@ NODE_KEYS: Mapping[str, frozenset[str]] = MappingProxyType(
         "verify": frozenset({"ok", "refusal", "dropped_count", "citation_count"}),
         "compose": frozenset({"ok", "refusal"}),
         "compose_internal": frozenset({"ok", "refusal"}),
-        "guard": frozenset({"ok", "refusal"}),
+        "guard": frozenset({"ok", "refusal", "rule"}),
         "propose": frozenset({"tool", "edit_round", "citation_count", "ids"}),
         "refuse": frozenset({"refusal"}),
         "approve": frozenset({"decision", "edit_round", "valid", "reason"}),

@@ -19,7 +19,15 @@ import pytest
 from typer.testing import CliRunner
 
 from alverno_lab.cli import _labelled_hits, app
-from alverno_lab.evals.canaries import UNTYPED_LABEL, LoadedCanary, infer_canary, load_canaries
+from alverno_lab.evals.canaries import (
+    UNTYPED_LABEL,
+    LoadedCanary,
+    infer_canary,
+    is_numeric_value,
+    load_canaries,
+    numeric_value_in,
+    untyped_hits,
+)
 from alverno_lab.evals.dataset import DatasetError
 from alverno_lab.evals.hr import gold_canaries, load_hr_gold
 from alverno_lab.privacy.canary import Canary, canary_in, scan_paths
@@ -345,3 +353,76 @@ def test_an_hr_scan_prints_the_same_lines_as_before_module_3(tmp_path: Path) -> 
     before = [(path, pi_type.value) for path, pi_type in scan_paths(paths, hr_canaries)]
     assert len(before) > len({p for p, _ in before})
     assert _labelled_hits(paths, load_canaries(HR_GOLD)) == before
+
+
+# --------------------------------------------------------------------------- numeric values
+# A short untyped number (a margin, a price) must not be found inside a longer number,
+# such as a measured latency in a report: found at step I7, where a latency held a margin
+# of the svc gold set by chance and failed the gate on some runs only.
+MARGIN = "38.5"
+
+
+@pytest.mark.parametrize(
+    ("value", "numeric"),
+    [
+        (MARGIN, True),
+        ("12,5 %", True),
+        ("1 245,80 $", True),
+        ("7", True),
+        (NOTE, False),
+        (EMAIL, False),
+        ("ALV-12345", False),
+    ],
+    ids=case_id,
+)
+def test_numeric_values_are_recognised(value: str, numeric: bool) -> None:
+    assert is_numeric_value(value) is numeric
+
+
+@pytest.mark.parametrize(
+    ("text", "found"),
+    [
+        ("marge de 38.5 %", True),
+        ("valeur 38.5", True),
+        ("(38.5)", True),
+        ('{"m": 38.5}', True),
+        ("latence 138.52 ms", False),
+        ("latence 238.5 ms", False),
+        ("valeur 38.55", False),
+        ("valeur 38.5,7", False),
+        ("1238.5", False),
+    ],
+    ids=case_id,
+)
+def test_a_number_counts_only_apart_from_other_digits(text: str, found: bool) -> None:
+    assert numeric_value_in(MARGIN, text) is found
+
+
+def test_untyped_hits_skip_a_number_inside_a_longer_one(tmp_path: Path) -> None:
+    inside = tmp_path / "latency.json"
+    inside.write_text(json.dumps({"latency_p50_ms": 238.52}), encoding="utf-8")
+    apart = tmp_path / "leak.md"
+    apart.write_text(f"Marge : {MARGIN} %\n", encoding="utf-8")
+    note = tmp_path / "note.md"
+    note.write_text(f"{NOTE}\n", encoding="utf-8")
+    canaries = [infer_canary(MARGIN).canary, infer_canary(NOTE).canary]
+    hits = untyped_hits([inside, apart, note], canaries)
+    assert [(path.name, c.value == MARGIN) for path, c in hits] == [
+        ("leak.md", True),
+        ("note.md", False),
+    ]
+
+
+def test_cli_scan_does_not_flag_a_latency_that_holds_a_margin(tmp_path: Path) -> None:
+    dataset = write_jsonl(tmp_path / "ops.jsonl", {"id": "s902", "canaries": [MARGIN]})
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "report.json").write_text(json.dumps({"latency_p50_ms": 238.52}), encoding="utf-8")
+    result = runner.invoke(app, ["privacy", "scan", str(out), "--dataset", str(dataset)])
+    assert result.exit_code == 0, result.output
+    (out / "leak.md").write_text(f"Marge : {MARGIN} %\n", encoding="utf-8")
+    result = runner.invoke(app, ["privacy", "scan", str(out), "--dataset", str(dataset)])
+    assert result.exit_code == 1
+    lines = [line for line in result.stdout.splitlines() if line]
+    assert len(lines) == 1 and lines[0].endswith("leak.md: texte")
+    assert MARGIN not in result.stdout + result.stderr

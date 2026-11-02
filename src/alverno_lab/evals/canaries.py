@@ -21,6 +21,12 @@ by strict full-match inference, in this order:
 :class:`LoadedCanary` pairs the canary with that label, which is what the scan prints
 (``path: label``), so an untyped value is never reported under a misleading type.
 
+An untyped value made only of digits and number separators (a margin such as ``12.5`` or
+a price such as ``1 245,80 $``) is not counted inside a longer number:
+:func:`untyped_hits` keeps a file only when the value stands apart from other digits
+(:func:`numeric_value_in`). A measured latency such as ``312.58`` in a report would
+otherwise hit a two-digit margin by chance, run after run (found at step I7).
+
 Errors are :class:`~alverno_lab.evals.dataset.DatasetError` with the message
 ``<path>:<line>:<rule>`` (line 0 for a rule on the whole file): ``file.missing``,
 ``file.unreadable``, ``file.empty``, ``json.invalid``, ``id.missing``,
@@ -33,16 +39,26 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
+from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from alverno_lab.evals.dataset import DatasetError
-from alverno_lab.privacy.canary import Canary
+from alverno_lab.privacy.canary import Canary, decode_artifact, scan_paths
 from alverno_lab.privacy.lexicon import given_names, normalize
 from alverno_lab.privacy.types import PIType
 
-__all__ = ["UNTYPED_LABEL", "LoadedCanary", "infer_canary", "load_canaries"]
+__all__ = [
+    "UNTYPED_LABEL",
+    "LoadedCanary",
+    "infer_canary",
+    "is_numeric_value",
+    "load_canaries",
+    "numeric_value_in",
+    "untyped_hits",
+]
 
 # Label of a string canary whose type cannot be inferred (matched as a substring).
 UNTYPED_LABEL = "texte"
@@ -55,6 +71,9 @@ _PHONE_MIN_DIGITS = 10
 _POSTAL_RE = re.compile(r"[A-Za-z][0-9][A-Za-z] ?[0-9][A-Za-z][0-9]")
 # A capitalised word: an upper-case letter, then letters, with inner hyphens or apostrophes.
 _CAPITALISED_RE = re.compile(r"[^\W\d_][^\W\d_]*(?:['-][^\W\d_]+)*")
+# A number: digits with spaces, dots or commas between them, then an optional % or $.
+_NUMERIC_RE = re.compile(r"[0-9](?:[0-9 .,]*[0-9])? ?[%$]?")
+_SPACES_RE = re.compile(r"\s+")
 
 
 class LoadedCanary(BaseModel):
@@ -100,6 +119,43 @@ def infer_canary(value: str) -> LoadedCanary:
         # Untyped: the substring rule of canary_in, which the adresse type uses.
         return LoadedCanary(canary=Canary(type=PIType.ADRESSE, value=value), label=UNTYPED_LABEL)
     return LoadedCanary(canary=Canary(type=pi_type, value=value), label=pi_type.value)
+
+
+def _flat(text: str) -> str:
+    # The folding of canary_in's substring rule: NFKC, normalize, runs of spaces as one.
+    return _SPACES_RE.sub(" ", normalize(unicodedata.normalize("NFKC", text)))
+
+
+def is_numeric_value(value: str) -> bool:
+    """Whether an untyped value is a number: digits, spaces, dots, commas, then % or $."""
+    return _NUMERIC_RE.fullmatch(_flat(value).strip()) is not None
+
+
+def numeric_value_in(value: str, text: str) -> bool:
+    """Whether the number ``value`` occurs in ``text`` apart from other digits.
+
+    A neighbouring digit, or a dot or comma followed by a digit, makes it part of a
+    longer number: ``12.5`` is in « marge 12.5 % » but not in « 312.58 » or « 12.55 ».
+    """
+    target = re.escape(_flat(value).strip())
+    pattern = rf"(?<![0-9])(?<![0-9][.,]){target}(?![0-9])(?![.,][0-9])"
+    return re.search(pattern, _flat(text)) is not None
+
+
+def untyped_hits(paths: Sequence[Path], canaries: Sequence[Canary]) -> list[tuple[Path, Canary]]:
+    """Every (file, canary) hit of untyped canaries, files in the order they are walked.
+
+    A canary is matched as a substring, as ``canary_in`` does for ``adresse``; a numeric
+    value must also stand apart from other digits in the decoded file.
+    """
+    hits: list[tuple[Path, Canary]] = []
+    for canary in canaries:
+        numeric = is_numeric_value(canary.value)
+        for path, _ in scan_paths(paths, [canary]):
+            if numeric and not numeric_value_in(canary.value, decode_artifact(path.read_bytes())):
+                continue
+            hits.append((path, canary))
+    return hits
 
 
 def _canary_of(node: object) -> LoadedCanary | None:
