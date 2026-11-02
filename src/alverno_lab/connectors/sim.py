@@ -11,7 +11,9 @@
   Their values leave this module only through a projection, with one exception:
   :func:`fixture_strings`, a module function (not a method of the connector objects
   that the executor and the graphs hold) that the gold-set loaders alone may call (a
-  structural test checks this).
+  structural test checks this). :func:`account_scope_values` is a second such module
+  function: it gives the values that identify each account, for the scope index of
+  ``privacy/scope.py`` (the I6 scope wiring; in I4 only tests read it).
 - :func:`project_order`, :func:`project_contact` and :func:`project_work_order` are pure.
   They copy only the ADR 0012 view fields and pass every projected free text through
   the caller's quarantine; a safety remark is dropped before quarantine.
@@ -23,6 +25,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Literal
@@ -74,6 +77,7 @@ from alverno_lab.connectors.types import (
 __all__ = [
     "SimErp",
     "SimGmao",
+    "account_scope_values",
     "fixture_strings",
     "project_contact",
     "project_order",
@@ -673,3 +677,66 @@ def fixture_strings(connector: SimErp | SimGmao) -> frozenset[str]:
     structural test allows no other caller in ``src/``.
     """
     return frozenset(_strings(connector._fixture.model_dump()))
+
+
+# A trailing qualifier of a fixture label (« (fictive) »): the label is also indexed
+# without it, as a request or a draft would write it.
+_LABEL_QUALIFIER_RE = re.compile(r"\s*\([^()]*\)\s*$")
+# Leading function words of a label tail (« Charpentes du Versant Gris » -> « Versant
+# Gris »), and hyphenated proper-noun compounds (« Rive-Clair »).
+_TAIL_LEAD_RE = re.compile(r"^(?:(?:du|de|des|la|le|les)\s+|l'|d')+", re.IGNORECASE)
+_COMPOUND_RE = re.compile(r"[^\W\d_]+(?:-[^\W\d_]+)+")
+
+
+def _label_short_forms(label: str) -> set[str]:
+    """How a label is written for short: its distinctive tail and its compounds.
+
+    The tail is the label without its qualifier, its first (generic) word and the
+    function words after it; it is kept when it has a hyphen or two words or more, so a
+    lone common word never becomes a value. Every hyphenated compound is kept too. A
+    value shared with another account never flags (``privacy.scope``).
+    """
+    core = _LABEL_QUALIFIER_RE.sub("", label)
+    forms = set(_COMPOUND_RE.findall(core))
+    _, _, rest = core.partition(" ")
+    tail = _TAIL_LEAD_RE.sub("", rest).strip()
+    if "-" in tail or " " in tail:
+        forms.add(tail)
+    return forms
+
+
+def account_scope_values(erp: SimErp) -> dict[str, frozenset[str]]:
+    """Per account id, the values that identify the account (``privacy.scope`` index).
+
+    The account id, its label (also without a trailing qualifier such as « (fictive) »,
+    and in its short forms: the distinctive tail and the hyphenated compounds), its
+    e-mail domain, every contact's surname, « given_name surname », business e-mail
+    and contact ref, and the id and tracking ref of every order. Phones and home
+    addresses are not needed: they are never projected. Like :func:`fixture_strings`, a
+    module function, not a method of the connector objects; only the scope wiring reads
+    it (a structural test checks this).
+    """
+    fixture = erp._fixture
+    values: dict[str, set[str]] = {}
+    for account in fixture.accounts:
+        values[account.account_id] = {
+            account.account_id,
+            account.label,
+            _LABEL_QUALIFIER_RE.sub("", account.label),
+            *_label_short_forms(account.label),
+            account.domain,
+        }
+    for contact in fixture.contacts:
+        values[contact.account_id].update(
+            {
+                contact.surname,
+                f"{contact.given_name} {contact.surname}",
+                contact.business_email,
+                contact.contact_ref,
+            }
+        )
+    for order in fixture.orders:
+        values[order.account_id].add(order.order_id)
+        if order.tracking_ref is not None:
+            values[order.account_id].add(order.tracking_ref)
+    return {account_id: frozenset(found) for account_id, found in values.items()}

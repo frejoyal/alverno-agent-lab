@@ -10,6 +10,14 @@ most, chosen at design, to be confirmed by the RPRP); older files are deleted on
 append and by ``alverno access purge``. Logging fails closed: any write or validation
 error becomes an :class:`AccessLogError`, whose message names a path or a field, never a
 value.
+
+Module 3 (ADR 0014) reuses the same class with a file prefix and a record type:
+``AccessLog(dir, prefix="service", record_type=OpsAccessLogRecord)`` writes
+``service-YYYY-MM-DD.jsonl`` (``maint`` likewise). ``AccessLog(dir)`` keeps the HR prefix,
+record model and behaviour. Each instance reads, writes and purges only the files of its
+own prefix, and refuses a record whose ``module`` is not its prefix. The class is generic
+over its record type, ``AccessLogRecord`` by default, and the constructor overloads tie
+each prefix to its record type for mypy; an incompatible pair fails at construction.
 """
 
 from __future__ import annotations
@@ -19,14 +27,26 @@ import re
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Generic, Literal, cast, get_args, overload
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from alverno_lab.privacy.types import Kind, PIType, RefusalCode, Subject
 
+if TYPE_CHECKING:
+    # The default of a type variable (PEP 696) is in ``typing`` from Python 3.13 only;
+    # mypy reads it from the stubs, the runtime never imports typing_extensions.
+    from typing_extensions import TypeVar
+
+    from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
+else:
+    from typing import TypeVar
+
 MAX_RETENTION_DAYS = 90
-_DAY_FILE_RE = re.compile(r"^hr-(\d{4}-\d{2}-\d{2})\.jsonl$")
+# File prefix of each module: hr (ADR 0008), service and maint (ADR 0014).
+AccessLogPrefix = Literal["hr", "service", "maint"]
+ACCESS_LOG_PREFIXES: tuple[AccessLogPrefix, ...] = get_args(AccessLogPrefix)
+_DAY_FILE_RE = re.compile(r"^(hr|service|maint)-(\d{4}-\d{2}-\d{2})\.jsonl$")
 # Fields the log fills itself.
 _LOG_FIELDS = frozenset({"event_id", "ts"})
 # Highest pi_count a record accepts. Callers pass ``min(len(spans), PI_COUNT_CAP)``, so
@@ -78,9 +98,33 @@ class AccessLogRecord(BaseModel):
         return dt.date.fromisoformat(self.ts[:10])
 
 
-def _fields_summary(exc: ValidationError) -> str:
-    """Field locations and error types only: pydantic messages would echo input values."""
-    return "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['type']}" for e in exc.errors())
+if TYPE_CHECKING:
+    R = TypeVar("R", AccessLogRecord, OpsAccessLogRecord, default=AccessLogRecord)
+else:
+    R = TypeVar("R")
+
+
+def _record_type_of(prefix: str) -> type[BaseModel] | None:
+    """The record model of a file prefix, or None for an unknown prefix."""
+    # Imported here: ``ops_access_log`` imports the constants of this module.
+    from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
+
+    types: dict[str, type[BaseModel]] = {
+        "hr": AccessLogRecord,
+        "service": OpsAccessLogRecord,
+        "maint": OpsAccessLogRecord,
+    }
+    return types.get(prefix)
+
+
+def _fields_summary(exc: ValidationError, *, no_loc: str = "") -> str:
+    """Field locations and error types only: pydantic messages would echo input values.
+
+    An error without a location (a cross-field rule, a line that is not a JSON object)
+    is shown as ``no_loc``: empty for the HR log, as before module 3, and ``<record>``
+    for the ops logs, whose cross-field rules name themselves in the error type.
+    """
+    return "; ".join(f"{'.'.join(map(str, e['loc'])) or no_loc}: {e['type']}" for e in exc.errors())
 
 
 def _as_utc(moment: dt.datetime) -> dt.datetime:
@@ -95,47 +139,102 @@ def hour_stamp(moment: dt.datetime) -> str:
     return _as_utc(moment).strftime("%Y-%m-%dT%H:00Z")
 
 
-class AccessLog:
-    """Append-only day files under ``directory``, purged past the retention period."""
+# Generic[R], not PEP 695 parameters: the default of R needs Python 3.13 syntax.
+class AccessLog(Generic[R]):  # noqa: UP046
+    """Append-only day files under ``directory``, purged past the retention period.
+
+    ``prefix`` names the files (``<prefix>-YYYY-MM-DD.jsonl``) and ``record_type`` their
+    model: ``hr`` with :class:`AccessLogRecord` (the default), ``service`` or ``maint``
+    with :class:`~alverno_lab.privacy.ops_access_log.OpsAccessLogRecord`.
+    """
+
+    @overload
+    def __init__(
+        self: AccessLog[AccessLogRecord],
+        directory: Path,
+        *,
+        prefix: Literal["hr"] = ...,
+        record_type: type[AccessLogRecord] = ...,
+        retention_days: int = ...,
+        clock: Callable[[], dt.datetime] = ...,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self: AccessLog[OpsAccessLogRecord],
+        directory: Path,
+        *,
+        prefix: Literal["service", "maint"],
+        record_type: type[OpsAccessLogRecord],
+        retention_days: int = ...,
+        clock: Callable[[], dt.datetime] = ...,
+    ) -> None: ...
 
     def __init__(
         self,
         directory: Path,
         *,
+        prefix: AccessLogPrefix = "hr",
+        record_type: type[AccessLogRecord] | type[OpsAccessLogRecord] = AccessLogRecord,
         retention_days: int = MAX_RETENTION_DAYS,
         clock: Callable[[], dt.datetime] = utc_now,
     ) -> None:
         if not 1 <= retention_days <= MAX_RETENTION_DAYS:
             raise AccessLogError(f"access log retention must be 1 to {MAX_RETENTION_DAYS} days")
+        expected = _record_type_of(prefix)
+        if expected is None or record_type is not expected:
+            raise AccessLogError("access log prefix and record type do not match")
         self.directory = directory
+        self.prefix: AccessLogPrefix = prefix
+        self.record_type: type[R] = cast("type[R]", record_type)
         self.retention_days = retention_days
         self._clock = clock
+        # HR error texts stay byte-identical to module 2 (see ``_fields_summary``).
+        self._no_loc = "" if prefix == "hr" else "<record>"
 
     def path_for(self, day: dt.date) -> Path:
         """Day file of ``day`` (UTC)."""
-        return self.directory / f"hr-{day.isoformat()}.jsonl"
+        return self.directory / f"{self.prefix}-{day.isoformat()}.jsonl"
 
-    def record(self, **fields: object) -> AccessLogRecord:
-        """A validated record; ``event_id`` (random) and ``ts`` (this hour) are filled in."""
+    def _own(self, rec: R) -> R:
+        """``rec`` when its module is this log's prefix; an :class:`AccessLogError` if not."""
+        if rec.module != self.prefix:
+            raise AccessLogError("access log record module does not match the file prefix")
+        return rec
+
+    def record(self, **fields: object) -> R:
+        """A validated record; ``event_id`` (random) and ``ts`` (this hour) are filled in.
+
+        ``module`` defaults to the prefix; a record of another module is refused.
+        """
         if _LOG_FIELDS & fields.keys():
             raise AccessLogError("event_id and ts are set by the access log")
-        values = {**fields, "event_id": uuid.uuid4().hex, "ts": hour_stamp(self._clock())}
+        values = {
+            "module": self.prefix,
+            **fields,
+            "event_id": uuid.uuid4().hex,
+            "ts": hour_stamp(self._clock()),
+        }
         try:
-            return AccessLogRecord.model_validate(values)
+            rec = self.record_type.model_validate(values)
         except ValidationError as exc:
             # No chaining: the ValidationError text would show the rejected values.
-            raise AccessLogError(f"invalid access log record ({_fields_summary(exc)})") from None
+            summary = _fields_summary(exc, no_loc=self._no_loc)
+            raise AccessLogError(f"invalid access log record ({summary})") from None
+        return self._own(rec)
 
-    def append(self, rec: AccessLogRecord) -> None:
+    def append(self, rec: R) -> None:
         """Purge expired files, then write ``rec`` to its day file.
 
         The purge runs first: when it fails, nothing is written, so no record says
         « answered » for a request that is then served ``audit_unavailable``.
         """
         try:
-            checked = AccessLogRecord.model_validate(rec.model_dump())
+            checked = self.record_type.model_validate(rec.model_dump())
         except ValidationError as exc:
-            raise AccessLogError(f"invalid access log record ({_fields_summary(exc)})") from None
+            summary = _fields_summary(exc, no_loc=self._no_loc)
+            raise AccessLogError(f"invalid access log record ({summary})") from None
+        self._own(checked)
         self.purge()
         path = self.path_for(checked.day)
         try:
@@ -158,10 +257,11 @@ class AccessLog:
             raise AccessLogError(f"access log not readable: {self.directory}") from exc
         for path in entries:
             match = _DAY_FILE_RE.match(path.name)
-            if match is None or not path.is_file():
+            # Only this instance's prefix: another module's files keep their own retention.
+            if match is None or match.group(1) != self.prefix or not path.is_file():
                 continue
             try:
-                day = dt.date.fromisoformat(match.group(1))
+                day = dt.date.fromisoformat(match.group(2))
             except ValueError:
                 continue
             if day < cutoff:
@@ -182,7 +282,7 @@ class AccessLog:
                 raise AccessLogError(f"access log file not removable: {path}") from exc
         return paths
 
-    def read(self, day: dt.date) -> list[AccessLogRecord]:
+    def read(self, day: dt.date) -> list[R]:
         """Records of one UTC day; an absent file means no request that day."""
         path = self.path_for(day)
         try:
@@ -191,14 +291,18 @@ class AccessLog:
             return []
         except OSError as exc:
             raise AccessLogError(f"access log not readable: {path}") from exc
-        records: list[AccessLogRecord] = []
+        records: list[R] = []
         for lineno, line in enumerate(lines, start=1):
             if not line.strip():
                 continue
             try:
-                records.append(AccessLogRecord.model_validate_json(line))
+                rec = self.record_type.model_validate_json(line)
             except ValidationError as exc:
+                summary = _fields_summary(exc, no_loc=self._no_loc)
                 raise AccessLogError(
-                    f"{path}:{lineno}: invalid access log record ({_fields_summary(exc)})"
+                    f"{path}:{lineno}: invalid access log record ({summary})"
                 ) from None
+            if rec.module != self.prefix:
+                raise AccessLogError(f"{path}:{lineno}: access log record of another module")
+            records.append(rec)
         return records

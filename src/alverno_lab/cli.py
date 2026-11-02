@@ -24,6 +24,7 @@ from alverno_lab.agents.quality.graph import (
 )
 from alverno_lab.config import RemoteOllamaError, Settings
 from alverno_lab.corpus import CorpusError
+from alverno_lab.evals.canaries import UNTYPED_LABEL, LoadedCanary, load_canaries
 from alverno_lab.evals.dataset import DatasetError, load_dataset
 from alverno_lab.evals.hr import (
     HrBenchRow,
@@ -55,6 +56,7 @@ from alverno_lab.index import IndexStoreError
 from alverno_lab.ollama import OllamaError
 from alverno_lab.pipeline import Backend, build_agent, build_index, build_retriever
 from alverno_lab.privacy import AccessLog, AccessLogError, PrivacyConfigError, scan_paths
+from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 from alverno_lab.retrieval import HybridRetriever, RerankerUnavailableError
 
 # Tracebacks never show local variables: they could hold a question or a detected value
@@ -73,7 +75,7 @@ privacy_app = typer.Typer(
 )
 app.add_typer(privacy_app, name="privacy")
 access_app = typer.Typer(
-    help="HR access log (Law 25): retention purge.",
+    help="Access logs (Law 25): retention purge of the HR, service and maintenance files.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_show_locals=False,
@@ -917,16 +919,19 @@ def privacy_scan(
         list[Path] | None,
         typer.Option(
             "--dataset",
-            help="HR set whose canaries are searched for; repeat it to combine sets "
-            "(default: ALVERNO_HR_EVAL_PATH).",
+            help="Set whose canaries are searched for: jeu de référence ou réservé (RH, "
+            "service ou entretien); repeat it to combine sets (default: ALVERNO_HR_EVAL_PATH).",
         ),
     ] = None,
 ) -> None:
-    """Search files for the canaries of one or more HR sets; exit 1 on any hit.
+    """Search files for the canaries of one or more sets (HR, service, maintenance); exit 1
+    on any hit.
 
-    Each hit is printed as ``path: type``; the value itself is never printed. A path that
-    is or contains the repository's ``data/`` folder or ``.env`` is refused (exit 2)
-    before anything is read; ``.env`` files elsewhere are skipped.
+    Canaries are read by ``load_canaries`` (only the ``id`` and ``canaries`` keys). Each
+    hit is printed as ``path: label``, the label being the canary type or ``texte`` for an
+    untyped value; the value itself is never printed. A path that is or contains the
+    repository's ``data/`` folder or ``.env`` is refused (exit 2) before anything is read;
+    ``.env`` files elsewhere are skipped.
     """
     refusal = _scan_refusal(paths)
     if refusal is not None:
@@ -939,9 +944,7 @@ def privacy_scan(
     settings = _settings()
     sources = list(dict.fromkeys(dataset or [settings.hr_eval_path]))
     canaries = list(
-        dict.fromkeys(
-            c for source in sources for c in gold_canaries(_guard(partial(load_hr_gold, source)))
-        )
+        dict.fromkeys(c for source in sources for c in _guard(partial(load_canaries, source)))
     )
     if not canaries:
         # A scan with nothing to look for would pass vacuously (fail closed instead).
@@ -949,9 +952,9 @@ def privacy_scan(
             "Error: the dataset has no canary to search for.", fg=typer.colors.RED, err=True
         )
         raise typer.Exit(code=2)
-    hits = scan_paths(paths, canaries)
-    for path, pi_type in hits:
-        typer.echo(f"{_shown_path(path)}: {pi_type.value}")
+    hits = _labelled_hits(paths, canaries)
+    for path, label in hits:
+        typer.echo(f"{_shown_path(path)}: {label}")
     if hits:
         typer.secho(
             f"Error: {len(hits)} canary hit(s); do not publish these files.",
@@ -962,27 +965,55 @@ def privacy_scan(
     typer.echo(f"No canary found ({len(canaries)} canaries).")
 
 
+def _labelled_hits(
+    paths: Sequence[Path], canaries: Sequence[LoadedCanary]
+) -> list[tuple[Path, str]]:
+    """Every (file, label) hit: typed canaries first, then untyped values.
+
+    Typed canaries are scanned together, exactly as before module 3: an HR set gives the
+    same lines, in the same order (files as walked, types sorted within a file), and the
+    same count. Untyped values, carried as ``adresse`` canaries, are scanned apart and
+    reported as ``texte`` after them, never under the ``adresse`` type.
+    """
+    typed = [c.canary for c in canaries if c.label != UNTYPED_LABEL]
+    untyped = [c.canary for c in canaries if c.label == UNTYPED_LABEL]
+    hits = [(path, pi_type.value) for path, pi_type in scan_paths(paths, typed)]
+    hits.extend((path, UNTYPED_LABEL) for path, _ in scan_paths(paths, untyped))
+    return hits
+
+
 @access_app.command("purge")
 def access_purge(
     dry_run: Annotated[
         bool, typer.Option("--dry-run", help="List the expired day files without deleting.")
     ] = False,
 ) -> None:
-    """Delete HR access log day files older than the retention period (90 days at most)."""
+    """Delete access log day files older than the retention period (90 days at most).
+
+    Three logs share the folder, each purged by its own instance: HR (``hr-``), customer
+    service (``service-``) and maintenance (``maint-``), with the same retention. The HR
+    line keeps its format; the other prefixes add one line each.
+    """
     settings = _settings()
-    log = _guard(
+    directory, days = settings.access_log_dir, settings.access_log_retention_days
+    hr_log = _guard(lambda: AccessLog(directory, retention_days=days))
+    service_log = _guard(
         lambda: AccessLog(
-            settings.access_log_dir, retention_days=settings.access_log_retention_days
+            directory, prefix="service", record_type=OpsAccessLogRecord, retention_days=days
         )
     )
-    paths = _guard(lambda: log.purge(dry_run=dry_run))
-    verb = "Would remove" if dry_run else "Removed"
-    for path in paths:
-        typer.echo(f"{verb} {_shown_path(path)}")
-    typer.echo(
-        f"{verb} {len(paths)} day file(s) older than {settings.access_log_retention_days} "
-        f"days in {_shown_path(settings.access_log_dir)}."
+    maint_log = _guard(
+        lambda: AccessLog(
+            directory, prefix="maint", record_type=OpsAccessLogRecord, retention_days=days
+        )
     )
+    verb = "Would remove" if dry_run else "Removed"
+    shown = _shown_path(directory)
+    for log, kind in ((hr_log, ""), (service_log, "service "), (maint_log, "maint ")):
+        paths = _guard(partial(log.purge, dry_run=dry_run))
+        for path in paths:
+            typer.echo(f"{verb} {_shown_path(path)}")
+        typer.echo(f"{verb} {len(paths)} {kind}day file(s) older than {days} days in {shown}.")
 
 
 if __name__ == "__main__":  # pragma: no cover
