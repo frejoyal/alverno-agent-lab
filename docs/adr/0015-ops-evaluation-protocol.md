@@ -296,8 +296,14 @@ Comme dans l'ADR 0010, l'historique git ne suffit pas à prouver l'ordre dans le
 
 | Fichier | Contenu | SHA-256 | Date |
 |---|---|---|---|
+| `evals/thresholds.yaml` | `ops_thresholds_sha256` : plage des profils `svc-tools-fake` à `maint-full-ollama` (lignes 207 à 527 à cette date), bornes préenregistrées avant toute exécution du module 3 | `f1562ac4e6ff4c75649e57b9d71b6eeb1817f6d1583757cff207560ce4bd570c` | 2026-11-01 |
+| `data/eval/ops/erp.yaml` | ERP simulé : 8 comptes, 14 contacts, 40 commandes | `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` | 2026-11-01 |
+| `data/eval/ops/gmao.yaml` | GMAO simulée : 10 équipements, 16 codes de défaillance, 120 bons de travail | `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` | 2026-11-01 |
+| `data/eval/ops/vocabulary.yaml` | vocabulaire d'affaires des deux fixtures | `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50` | 2026-11-01 |
+| `data/eval/svc_gold.jsonl` | jeu de référence 3a, 48 items | `7ff8a91cb46e2daff303279746eecb46a0a2e68c38f95fe98e3d05a953aefafb` | 2026-11-01 |
+| `data/eval/maint_gold.jsonl` | jeu de référence 3b, 40 items | `0994759afec97a7d5d6a803aaada07d4e52cb076796993774728a8061d982c34` | 2026-11-01 |
 
-Aucune ligne avant l'incrément I2. L'incrément I2 y inscrira : la plage `svc-tools-fake:` à `maint-full-ollama` de `evals/thresholds.yaml`, les trois fixtures de `data/eval/ops/`, `data/eval/svc_gold.jsonl`, `data/eval/maint_gold.jsonl`, `data/eval/svc_holdout.jsonl` et `data/eval/maint_holdout.jsonl` (avec les comptes par famille des deux jeux réservés). L'ADR 0016 (à venir) y ajoutera une ligne après la calibration des profils `*-full-fake`.
+Aucune ligne avant l'incrément I2. Les jeux réservés y sont inscrits par la session qui les écrit, avant toute ligne de code `src/` du module 3. L'incrément I2 y inscrira : la plage `svc-tools-fake:` à `maint-full-ollama` de `evals/thresholds.yaml`, les trois fixtures de `data/eval/ops/`, `data/eval/svc_gold.jsonl`, `data/eval/maint_gold.jsonl`, `data/eval/svc_holdout.jsonl` et `data/eval/maint_holdout.jsonl` (avec les comptes par famille des deux jeux réservés). L'ADR 0016 (à venir) y ajoutera une ligne après la calibration des profils `*-full-fake`.
 
 ## Solutions écartées
 
