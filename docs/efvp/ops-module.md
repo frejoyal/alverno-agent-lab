@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.1 |
 | Date | 2026-11-02 |
-| Statut | version 1.0 approuvée le 2026-11-01 ; version 1.1 à approuver |
+| Statut | version 1.0 approuvée le 2026-11-01 ; version 1.1 approuvée le 2026-11-03 |
 | Moment | version 1.0 rédigée avant l'implémentation, quand aucun code `src/` du module 3 n'existait ; version 1.1 rédigée après les mesures du 2026-11-02 (portes, bancs d'essai, jeux réservés, non-régression) |
 | Gabarit | [template.md](template.md) |
 | Sous-modules | 3a, service à la clientèle (`alverno service`) ; 3b, entretien (`alverno maint`) |
@@ -40,7 +40,7 @@ Les données de l'ERP et de la GMAO viennent de connecteurs **simulés**, à par
 
 **Résultats mesurés (2026-11-02).** `gemma4:e4b` passe les portes `svc-full-ollama` et `maint-full-ollama` sur chacune de ses 3 répétitions, avec les 22 comptes de sécurité à 0 ; les deux autres modèles gardent aussi ces comptes à 0. Les jeux réservés, mesurés une seule fois, montrent l'écart hors échantillon : aucun faux blocage ni aucune fuite, mais une demande de suivi 3a prise pour une demande de brouillon (sans effet) et **2 pièges 3b sur 6 non refusés** (qui est intervenu, à qui la faute), traités comme des diagnostics de la machine sans nommer personne. La non-régression des modules 1 et 2 a d'abord échoué au point 4 (citations changées sur 2 ou 3 questions), à cause du cache d'invite d'Ollama ; après la correction et de nouvelles références fixées avant la mesure, elle est identique sur tous les champs : **le critère de sortie est atteint le 2026-11-03**. Détails à la section 5.
 
-**Avis et approbation.** Les onze recommandations de conception du plan ont été approuvées par le responsable du dépôt le 2026-11-01 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-01 par le responsable du dépôt dans le rôle du RPRP. Contenu de la version 1.0 et approbation de la haute direction : **confirmés le 2026-11-01** (section 7). Version 1.1 : avis du RPRP sur les résultats et approbation de la haute direction **en attente**.
+**Avis et approbation.** Les onze recommandations de conception du plan ont été approuvées par le responsable du dépôt le 2026-11-01 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-01 par le responsable du dépôt dans le rôle du RPRP. Contenu de la version 1.0 et approbation de la haute direction : **confirmés le 2026-11-01** (section 7). Version 1.1 : avis du RPRP sur les résultats et approbation de la haute direction **confirmés le 2026-11-03** par le responsable du dépôt dans ces deux rôles (section 7).
 
 **Limites de l'évaluation.** Les mesures portent sur des données fictives et des connecteurs simulés, sur le poste du labo ; le jeu réservé de chaque sous-module ne compte que 12 ou 16 demandes, et les bornes de la règle de trois restent larges (section 5). La portée de l'art. 1, al. 5, le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre](../ops-legal-sources.md#points-incertains)). Les noms fictifs de comptes et de transporteurs n'ont pas encore été comparés à un registre des entreprises (section 6).
 
@@ -412,7 +412,7 @@ Si une borne échoue, on corrige le système, jamais la borne, et le résultat n
 | Réussir les portes sur Ollama et mesurer les jeux réservés | Responsable du dépôt | Étapes I8 (3a) et I10 (3b) ; mesuré le 2026-11-02 et le 2026-11-03 | Critère de sortie, points 2, 4 et 6 : atteints (point 4 le 2026-11-03, après la correction du cache d'invite) |
 | Inscrire les règles du module dans la politique de gouvernance | RPRP | Avant la mise en service | Politique mise à jour et datée |
 | Vérifier que `OLLAMA_DEBUG` est désactivé | Soutien informatique | Avant la mise en service, puis à chaque revue | Réglage vérifié et noté |
-| Publier la version 1.1 | Responsable du dépôt et RPRP | Après l'étape I10 ; résultats recopiés le 2026-11-02, avis et approbation en attente | Résultats recopiés ; avis confirmé ; approbation |
+| Publier la version 1.1 | Responsable du dépôt et RPRP | Après l'étape I10 ; résultats recopiés le 2026-11-02 ; avis confirmé et version approuvée le 2026-11-03 | Résultats recopiés ; avis confirmé ; approbation |
 
 Risques résiduels : R13, R14 et R16 sont acceptés pour le labo par la présidente le 2026-11-01 ; R5, R8 et R10 sont revus à la version 1.1, avec les mesures (section 5) ; R15 relève de la gouvernance.
 
@@ -446,6 +446,8 @@ Risques résiduels : R13, R14 et R16 sont acceptés pour le labo par la préside
 5. la version 1.1, avec les résultats mesurés, est soumise au RPRP avant la mise en service ;
 6. si une borne de sécurité échoue, on corrige le système, jamais la borne, et le résultat négatif est publié tel quel.
 
+**Version 1.1** : soumise au RPRP avec les résultats mesurés (condition 5) ; avis **favorable, sous les mêmes conditions**, confirmé le 2026-11-03 par le responsable du dépôt dans le rôle du RPRP. Les conditions 2 et 3 restent ouvertes jusqu'à la mise en service.
+
 ### Confirmations du responsable du dépôt
 
 - **Décisions de conception 1 à 11** (section 1) : approuvées par le responsable du dépôt le 2026-11-01.
@@ -467,15 +469,15 @@ Par conception, le module n'utilise aucun renseignement de niveau 5 : les notes 
 | Contenu de la version 1.0 | Confirmé par le responsable du dépôt le 2026-11-01 |
 | Risques acceptés R13, R14 et R16 | Acceptés par la présidente le 2026-11-01 |
 | Approbation de la version 1.0 | Approuvée |
-| Avis du RPRP sur la version 1.1 | En attente |
-| Approbation de la version 1.1 | En attente |
+| Avis du RPRP sur la version 1.1 | Favorable, sous les mêmes conditions ; confirmé le 2026-11-03 |
+| Approbation de la version 1.1 | Approuvée, avec les résultats mesurés de la section 5 |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | 2026-11-01 |
+| Date | 2026-11-01 (version 1.0) ; 2026-11-03 (version 1.1) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-01 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-01 |
-| 1.1 | 2026-11-02 | Après les mesures : portes simulées, bancs d'essai 3a et 3b sur Ollama, jeux réservés mesurés une seule fois, non-régression des modules 1 et 2 (point 4 du critère de sortie échoué) ; risques R5, R7, R8 et R10 revus ; ADR 0016 et rapports joints (annexe D) ; le 2026-11-03, correction du cache d'invite d'Ollama, nouvelles références et non-régression réussie (critère de sortie atteint) ; statut « à approuver » |
+| 1.1 | 2026-11-02 | Après les mesures : portes simulées, bancs d'essai 3a et 3b sur Ollama, jeux réservés mesurés une seule fois, non-régression des modules 1 et 2 (point 4 du critère de sortie échoué) ; risques R5, R7, R8 et R10 revus ; ADR 0016 et rapports joints (annexe D) ; le 2026-11-03, correction du cache d'invite d'Ollama, nouvelles références et non-régression réussie (critère de sortie atteint) ; avis du RPRP confirmé et version approuvée le 2026-11-03 |
 
 ## Annexes
 
