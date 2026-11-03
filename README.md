@@ -225,13 +225,77 @@ Mesures prises le 2026-11-01 sur 64 questions par modèle (36 répondables, 28 p
 
 **Jeu réservé (hors échantillon)** : 20 questions jamais consultées pendant l'écriture des règles, mesurées une seule fois après le gel des règles (mode recherche, `--fake` : le filtre est déterministe et passe avant tout appel au moteur ; rapport `reports/hr-holdout/`). Le filtre y refuse 8 pièges de confidentialité sur 10, contre 20 sur 20 sur le jeu de référence : tous les pièges qui visent une personne nommée, un rôle ou un petit groupe, une personne désignée par un trait unique ou un agrégat, mais aucun des 2 pièges « propre dossier ». Il bloque aussi à tort 1 question répondable sur 10 (0 sur 36 sur le jeu de référence), une question de politique qui contenait un renseignement personnel. C'est l'écart à attendre sur des formulations nouvelles, estimé sur un petit jeu ; il est publié tel quel et ne sert jamais à régler les règles ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md)). Une question « propre dossier » qui passe le filtre ne révèle rien du dossier : l'assistant n'a accès à aucun dossier d'employé et ne peut servir que le texte général des politiques. Aucun témoin n'a été trouvé dans les fichiers du rapport.
 
+### Service à la clientèle (module 3a)
+
+Le tableau ci-dessous est généré par `alverno service bench --readme README.md` ; ne pas le modifier à la main.
+
+<!-- RESULTS-SVC:FR -->
+
+| Modèle | k | porte | faits clés | fidélité du statut | tâches réussies | brouillons retenus | comptes de sécurité non nuls | erreurs | p50 | p95 | jetons |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 0,994 | 1,000 | 0,962 | 0,000 | 0 sur 22 | 0,000 | 0,3 s | 12,2 s | 10 919 |
+| `ministral-3:8b` | 1 | ❌ | 0,800 | 0,909 | 0,654 | 0,250 | 0 sur 22 | 0,000 | 0,3 s | 8,1 s | 10 230 |
+| `llama3.2:3b` | 1 | ❌ | 0,807 | 0,870 | 0,654 | 0,188 | 0 sur 22 | 0,000 | 0,3 s | 8,5 s | 9 954 |
+
+Mesures prises le 2026-11-02 sur 48 demandes par répétition (26 répondables, 22 pièges ; 8 paires ; 14 items avec témoins). Porte : profil `svc-full-ollama` de `evals/thresholds.yaml`, sur chaque répétition : chaque compte de sécurité à 0, chaque taux de contrôle à 1,0 et chaque précondition respectée ; les bornes de service s'appliquent à la médiane des k répétitions (ADR 0015). Répétitions : `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Version d'Ollama : 0.24.0.
+
+Légende : une marque de porte par répétition ; faits clés, fidélité du statut, tâches réussies et brouillons retenus à la médiane quand k > 1 ; comptes de sécurité non nuls : combien des 22 comptes à tolérance zéro de l'ADR 0015 dépassent 0 sur au moins une répétition ; erreurs : `error_rate` la plus haute des répétitions ; p50 et p95 : latence par demande, médiane des répétitions ; jetons : invite et réponse, médiane par répétition.
+
+Règle de trois (ADR 0010), pire répétition de chaque modèle : pièges déterministes non refusés, 0 sur 19 (borne supérieure de 3/19 = 0,158 à 95 %) ; items dont un texte servi contient un témoin, 0 sur 14 (borne supérieure de 3/14 = 0,214 à 95 %). L'affirmation « aucune fuite » ne couvre que les formats détectés (ADR 0006) et les valeurs des fixtures.
+
+- Jeu `data/eval/svc_gold.jsonl` : `7ff8a91cb46e2daff303279746eecb46a0a2e68c38f95fe98e3d05a953aefafb`
+- Fixtures : `erp.yaml` `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` · `gmao.yaml` `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` · `vocabulary.yaml` `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50`
+- Bornes : `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `ops_thresholds_sha256` `417cadd54e23ecc1a696e23d75b012f8397f1e47849d7d18d034169d67ad15ea`
+- Registre des outils et `FLOW_PLANS` : `178cf09673b65f0d04699467f2da967727543d047439d22e6f22ff76429c8cb2`
+
+Généré par `alverno service bench` ; ne pas modifier à la main.
+
+<!-- /RESULTS-SVC:FR -->
+
+**Lecture** : `gemma4:e4b`, le modèle par défaut, passe la porte sur ses trois répétitions ; `ministral-3:8b` et `llama3.2:3b` l'échouent sur le taux de tâches réussies (0,654 contre une borne de 0,75) et `ministral-3:8b` aussi sur les brouillons retenus (0,250 contre 0,19). Les trois modèles gardent les 22 comptes de sécurité à 0 : le code choisit les outils, le destinataire et les arguments, et toute écriture attend une approbation humaine. Le p50 de 0,3 s vient des demandes qui n'appellent aucun modèle (refus, suivi de commande) ; le p95 est celui des brouillons. Rapport complet : `reports/bench-svc-ollama-20261102-124609/`. Le balayage final des témoins avait d'abord mis ce dossier à l'écart : une marge du jeu de référence égalait par hasard un compte écrit dans un rapport JSON. La règle du balayage a été corrigée (un témoin numérique n'est plus cherché dans les nombres JSON), puis le balayage seul a été refait, sans relancer aucun modèle ; `rescan-20261102.json` consigne l'avant et l'après ([ADR 0016](docs/adr/0016-ops-gate-calibration.md)).
+
+**Jeu réservé (hors échantillon)** : 16 demandes jamais consultées pendant l'écriture des règles, mesurées une seule fois après le passage de la porte, en mode outils (`--fake`) puis en mode complet avec `gemma4:e4b` (une exécution, informative ; rapports `reports/svc-holdout/`). Dans les deux modes : aucun faux blocage, les 8 pièges déterministes refusés avec leur code, aucun témoin ni valeur d'un autre compte dans un texte servi, aucune écriture sans approbation. Une demande de suivi de commande sur 12 routées est prise pour une demande de brouillon (`route_accuracy` 0,917) : le brouillon est retenu à l'approbation puis abandonné, sans aucun effet, mais l'action préparée compte dans `injected_action_count` (1). Faits clés : 1,0 en mode outils, 0,964 avec `gemma4:e4b` ; tâches réussies : 0,857 (6 sur 7) dans les deux modes. C'est l'erreur de paraphrase que le routage déterministe devait révéler ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md)) ; elle est publiée telle quelle et ne sert pas à régler les règles.
+
+### Entretien (module 3b)
+
+Le tableau ci-dessous est généré par `alverno maint bench --readme README.md` ; ne pas le modifier à la main.
+
+<!-- RESULTS-MAINT:FR -->
+
+| Modèle | k | porte | diagnostic hit@1 | diagnostic hit@3 | pièges de fréquence hit@1 | citations valides | comptes de sécurité non nuls | erreurs | p50 | p95 | jetons |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 1,000 | 1,000 | 1,000 | 1,000 | 0 sur 22 | 0,000 | 11,1 s | 14,3 s | 23 084 |
+| `ministral-3:8b` | 1 | ✅ | 0,938 | 1,000 | 1,000 | 1,000 | 0 sur 22 | 0,000 | 7,7 s | 10,4 s | 23 510 |
+| `llama3.2:3b` | 1 | ❌ | 0,562 | 0,750 | 0,500 | 1,000 | 0 sur 22 | 0,000 | 6,7 s | 8,2 s | 23 596 |
+
+Mesures prises le 2026-11-02 sur 40 demandes par répétition (22 répondables, 18 pièges ; 6 paires ; 4 pièges de fréquence ; 12 items avec témoins). Porte : profil `maint-full-ollama` de `evals/thresholds.yaml`, sur chaque répétition : chaque compte de sécurité à 0, chaque taux de contrôle à 1,0 et chaque précondition respectée ; les bornes de service s'appliquent à la médiane des k répétitions (ADR 0015). Répétitions : `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Version d'Ollama : 0.24.0.
+
+Légende : une marque de porte par répétition ; diagnostic hit@1 et hit@3 (code attendu au premier rang, ou parmi les 3 premiers, après `verify`), pièges de fréquence hit@1 et citations valides à la médiane quand k > 1 ; comptes de sécurité non nuls : combien des 22 comptes à tolérance zéro de l'ADR 0015 dépassent 0 sur au moins une répétition ; erreurs : `error_rate` la plus haute des répétitions ; p50 et p95 : latence par demande, médiane des répétitions ; jetons : invite et réponse, médiane par répétition.
+
+Référence sans borne, calculée sur le jeu sans aucun modèle : le classement BM25 de l'historique (`rank_failure_codes`) donne hit@1 0,750 et hit@3 1,000 ; les pièges de fréquence sont conçus pour le faire échouer.
+
+Règle de trois (ADR 0010), pire répétition de chaque modèle : pièges déterministes non refusés, 0 sur 18 (borne supérieure de 3/18 = 0,167 à 95 %) ; items dont un texte servi contient un témoin, 0 sur 12 (borne supérieure de 3/12 = 0,250 à 95 %). L'affirmation « aucune fuite » ne couvre que les formats détectés (ADR 0006) et les valeurs des fixtures.
+
+- Jeu `data/eval/maint_gold.jsonl` : `0994759afec97a7d5d6a803aaada07d4e52cb076796993774728a8061d982c34`
+- Fixtures : `erp.yaml` `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` · `gmao.yaml` `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` · `vocabulary.yaml` `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50`
+- Bornes : `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `ops_thresholds_sha256` `38a8da90c633311e929551c65ce9ca704fc15249fa36d3b5ef335e17366f0ffe`
+- Registre des outils et `FLOW_PLANS` : `178cf09673b65f0d04699467f2da967727543d047439d22e6f22ff76429c8cb2`
+
+Généré par `alverno maint bench` ; ne pas modifier à la main.
+
+<!-- /RESULTS-MAINT:FR -->
+
+**Lecture** : `gemma4:e4b`, le modèle par défaut, passe la porte sur ses trois répétitions avec le bon code de défaillance au premier rang pour les 16 diagnostics (médiane 1,000), y compris les 4 pièges de fréquence que le classement BM25 seul manque par construction. `ministral-3:8b` passe aussi, sur une répétition. `llama3.2:3b` échoue : le bon code au premier rang 0,562 contre une borne de 0,60, et dans les trois premiers 0,750 contre 0,80. Les trois modèles gardent les 22 comptes de sécurité à 0 et ne citent que des bons de travail lus : le code choisit les lectures de la GMAO, les champs des techniciens n'en sortent pas, et la demande de travail attend une approbation humaine. Rapport complet : `reports/bench-maint-ollama-20261102-212645/`.
+
+**Jeu réservé (hors échantillon)** : 12 demandes jamais consultées pendant l'écriture des règles, mesurées une seule fois après le passage de la porte, en mode outils (`--fake`) puis en mode complet avec `gemma4:e4b` (une exécution, informative ; rapports `reports/maint-holdout/`). Dans les deux modes : aucun faux blocage, routage et arguments exacts, citations toutes valides, aucune écriture sans approbation, aucun technicien nommé et aucun témoin dans un texte servi. Diagnostic au premier rang : 1 sur 3 en mode outils (BM25), 3 sur 3 avec `gemma4:e4b`, qui réussit aussi les 2 pièges de fréquence. **Deux pièges sur six ne sont pas refusés**, dans les deux modes : une demande qui cherche quel technicien est intervenu et une autre qui cherche à qui revient la faute. Le filtrage ne reconnaît pas ces formulations et les traite comme des diagnostics : la réponse ne parle que de la machine, parce que la GMAO ne livre aucun champ de technicien et que les remarques ne sont jamais servies, mais les trois lectures de la GMAO de chaque demande comptent dans `injected_action_count` (6). C'est l'erreur de paraphrase que le filtrage déterministe devait révéler ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md)) ; elle est publiée telle quelle et ne sert pas à régler les règles.
+
 ### Limites connues
 
 - **Calibration sur le jeu de référence** : les seuils et le réglage de BM25 ont été choisis sur les 50 questions qui servent aussi à les mesurer. Un jeu de validation séparé est prévu pour vérifier qu'ils généralisent.
 - **Pièges « information absente »** : en recherche seule, leur similarité cosinus chevauche celle des vraies questions. La barrière n'en refuse qu'une partie ([ADR 0004](docs/adr/0004-calibrate-ollama-gate.md)) ; avec `gemma4:e4b` et `ministral-3:8b`, le LLM et la vérification des citations refusent le reste, mais `llama3.2:3b` en laisse passer deux.
 - **Comparaisons implicites entre documents** : q027 compare une spécification client à « l'instruction générale » sans la nommer ; l'instruction IT-210 n'est pas récupérée et un fait clé manque au contexte.
 - **Filtrage par expressions régulières** : une défense de première ligne seulement. Une injection reformulée peut passer le filtre ; le prompt système et la vérification des citations restent les vraies protections.
-- **Une seule exécution par modèle** (température 0) : d'un banc à l'autre, les sorties varient légèrement avec le placement des modèles en mémoire (faits clés de `gemma4:e4b` : 0,962, puis 0,948 ; [ADR 0005](docs/adr/0005-bound-embedding-context.md)). La variance n'est pas encore mesurée sur plusieurs exécutions.
+- **Une seule exécution par modèle** (température 0) : d'un banc à l'autre, les sorties varient légèrement avec le placement des modèles en mémoire (faits clés de `gemma4:e4b` : 0,962, puis 0,948 ; [ADR 0005](docs/adr/0005-bound-embedding-context.md)). La variance n'est pas encore mesurée sur plusieurs exécutions. La cause a été trouvée lors de la non-régression du module 3 : Ollama réutilise le début de l'invite précédente, et la réponse dépendait de la requête qui précède. Depuis le 2026-11-03, une requête fixe précède chaque appel, et deux exécutions dans des ordres inverses donnent des réponses identiques ; les bancs publiés plus haut sont antérieurs à cette correction ([ADR 0016](docs/adr/0016-ops-gate-calibration.md)).
 - **Reranker non mesuré** : le *cross-encoder* optionnel n'a pas encore été passé au banc d'essai.
 
 ### Loi 25 et protection des renseignements personnels
@@ -239,7 +303,7 @@ Mesures prises le 2026-11-01 sur 64 questions par modèle (36 répondables, 28 p
 - Le corpus ne contient **aucun renseignement personnel**. Les questions RH visant une personne font partie des pièges et doivent être refusées.
 - Le labo utilise une échelle de sensibilité de 1 à 5 ; le module Qualité est classé **2/5** (information interne, non personnelle), tout comme le corpus RH, qui ne nomme que des rôles.
 - Par défaut, aucune question ni aucun document ne quitte le poste : l'inférence est locale (**local-first**) ; l'adresse Ollama est limitée à `localhost` et les modèles infonuagiques d'Ollama sont refusés, sauf option explicite `ALVERNO_ALLOW_REMOTE_OLLAMA=true` ; le traçage LangSmith de LangGraph reste désactivé, quelles que soient les variables d'environnement. Dans cette configuration, le module n'effectue aucune communication à l'extérieur du Québec au sens de l'art. 17, même si une question contient un renseignement personnel de façon incidente (elle est traitée en mémoire et n'est jamais écrite dans les traces). L'art. 17 ne s'appliquera à un module, RH compris, que s'il communique des renseignements personnels à l'extérieur du Québec ou en confie le traitement à un fournisseur situé hors Québec (modèle hébergé, service infonuagique).
-- Les questions posées à l'assistant RH peuvent contenir des renseignements personnels : son évaluation des facteurs relatifs à la vie privée (EFVP, art. 3.3) a été rédigée avant l'implémentation ([docs/efvp/hr-module.md](docs/efvp/hr-module.md)). Les modules futurs qui en toucheront (service client) exigeront la même démarche, menée dès le début du projet, en consultant le responsable de la protection des renseignements personnels, et documentée avant l'implémentation.
+- Les questions posées à l'assistant RH peuvent contenir des renseignements personnels : son évaluation des facteurs relatifs à la vie privée (EFVP, art. 3.3) a été rédigée avant l'implémentation ([docs/efvp/hr-module.md](docs/efvp/hr-module.md)). Le module 3 (service client et entretien) a suivi la même démarche : son EFVP a été rédigée et approuvée avant l'implémentation, puis complétée par les résultats mesurés (version 1.1, [docs/efvp/ops-module.md](docs/efvp/ops-module.md)).
 
 Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 
@@ -249,7 +313,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 |---|---|---|
 | 1 | Agent Qualité : RAG hybride avec évaluations et porte de livraison | livré |
 | 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
-| 3 | Service client et maintenance : agents multi-étapes en LangGraph | prévu |
+| 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
 | 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | prévu |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
@@ -499,13 +563,77 @@ Measured on 2026-11-01 over 64 questions per model (36 answerable, 28 traps, of 
 
 **Holdout set (out of sample)**: 20 questions never looked at while the rules were written, measured once after the rules were frozen (retrieval mode, `--fake`: the screen is deterministic and runs before any backend call; report `reports/hr-holdout/`). The screen refuses 8 of its 10 privacy traps, against 20 of 20 on the gold set: every trap about a named person, a role or small group, a person singled out by a trait or an aggregate, but neither of the 2 "own record" traps. It also wrongly blocks 1 of 10 answerable questions (0 of 36 on the gold set), a policy question that contained personal information. This is the gap to expect on new wordings, estimated on a small set; it is published as is and never used to tune the rules ([ADR 0010](docs/adr/0010-hr-evaluation-protocol.md), in French). An "own record" question that passes the screen reveals nothing from the record: the assistant has no access to any employee record and can serve only general policy text. No canary was found in the report files.
 
+### Customer service (module 3a)
+
+The table below is generated by `alverno service bench --readme README.md`; do not hand-edit it.
+
+<!-- RESULTS-SVC:EN -->
+
+| Model | k | gate | key facts | status fidelity | task success | drafts withheld | non-zero safety counts | errors | p50 | p95 | tokens |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 0.994 | 1.000 | 0.962 | 0.000 | 0 of 22 | 0.000 | 0.3 s | 12.2 s | 10,919 |
+| `ministral-3:8b` | 1 | ❌ | 0.800 | 0.909 | 0.654 | 0.250 | 0 of 22 | 0.000 | 0.3 s | 8.1 s | 10,230 |
+| `llama3.2:3b` | 1 | ❌ | 0.807 | 0.870 | 0.654 | 0.188 | 0 of 22 | 0.000 | 0.3 s | 8.5 s | 9,954 |
+
+Measured on 2026-11-02 over 48 requests per repetition (26 answerable, 22 traps; 8 pairs; 14 items with canaries). Gate: profile `svc-full-ollama` of `evals/thresholds.yaml`, on each repetition: every safety count at 0, every control rate at 1.0 and every precondition met; the service bounds apply to the median of the k repetitions (ADR 0015). Repetitions: `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Ollama version: 0.24.0.
+
+Legend: one gate mark per repetition; key facts, status fidelity, task success and drafts withheld are medians when k > 1; non-zero safety counts: how many of the 22 zero-tolerance counts of ADR 0015 are above 0 on at least one repetition; errors: the highest `error_rate` of the repetitions; p50 and p95: latency per request, median of the repetitions; tokens: prompt and completion, median per repetition.
+
+Rule of three (ADR 0010), worst repetition of each model: deterministic traps not refused, 0 of 19 (95% upper bound 3/19 = 0.158); items with a canary in a served text, 0 of 14 (95% upper bound 3/14 = 0.214). The no-leak claim covers only the detected formats (ADR 0006) and the fixture values.
+
+- Dataset `data/eval/svc_gold.jsonl`: `7ff8a91cb46e2daff303279746eecb46a0a2e68c38f95fe98e3d05a953aefafb`
+- Fixtures: `erp.yaml` `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` · `gmao.yaml` `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` · `vocabulary.yaml` `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50`
+- Bounds: `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `ops_thresholds_sha256` `417cadd54e23ecc1a696e23d75b012f8397f1e47849d7d18d034169d67ad15ea`
+- Tool registry and `FLOW_PLANS`: `178cf09673b65f0d04699467f2da967727543d047439d22e6f22ff76429c8cb2`
+
+Generated by `alverno service bench`; do not hand-edit.
+
+<!-- /RESULTS-SVC:EN -->
+
+**Reading the table**: `gemma4:e4b`, the default model, passes the gate on its three repetitions; `ministral-3:8b` and `llama3.2:3b` fail it on task success (0.654 against a bound of 0.75), and `ministral-3:8b` also on withheld drafts (0.250 against 0.19). All three models keep the 22 safety counts at 0: code chooses the tools, the recipient and the arguments, and every write waits for a human approval. The 0.3 s p50 comes from the requests that call no model (refusals, order status); the p95 is that of the drafts. Full report: `reports/bench-svc-ollama-20261102-124609/`. The final canary scan had first set this folder aside: a margin of the gold set happened to equal a count written in a JSON report. The scan rule was fixed (a numeric canary is no longer looked for in JSON numbers), then the scan alone was redone, without re-running any model; `rescan-20261102.json` records the before and after ([ADR 0016](docs/adr/0016-ops-gate-calibration.md), in French).
+
+**Holdout set (out of sample)**: 16 requests never looked at while the rules were written, measured once after the gate passed, in tools mode (`--fake`) and then in full mode with `gemma4:e4b` (one run, informational; reports `reports/svc-holdout/`). In both modes: no false block, the 8 deterministic traps refused with their code, no canary and no other account's value in a served text, no write without approval. One order-status request out of 12 routed is taken for a draft request (`route_accuracy` 0.917): the draft is held for approval and then abandoned, with no effect at all, but the proposed action counts in `injected_action_count` (1). Key facts: 1.0 in tools mode, 0.964 with `gemma4:e4b`; task success: 0.857 (6 of 7) in both modes. This is the paraphrase error that deterministic routing was expected to show ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md), in French); it is published as is and never used to tune the rules.
+
+### Maintenance (module 3b)
+
+The table below is generated by `alverno maint bench --readme README.md`; do not hand-edit it.
+
+<!-- RESULTS-MAINT:EN -->
+
+| Model | k | gate | diagnosis hit@1 | diagnosis hit@3 | frequency traps hit@1 | valid citations | non-zero safety counts | errors | p50 | p95 | tokens |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 1.000 | 1.000 | 1.000 | 1.000 | 0 of 22 | 0.000 | 11.1 s | 14.3 s | 23,084 |
+| `ministral-3:8b` | 1 | ✅ | 0.938 | 1.000 | 1.000 | 1.000 | 0 of 22 | 0.000 | 7.7 s | 10.4 s | 23,510 |
+| `llama3.2:3b` | 1 | ❌ | 0.562 | 0.750 | 0.500 | 1.000 | 0 of 22 | 0.000 | 6.7 s | 8.2 s | 23,596 |
+
+Measured on 2026-11-02 over 40 requests per repetition (22 answerable, 18 traps; 6 pairs; 4 frequency traps; 12 items with canaries). Gate: profile `maint-full-ollama` of `evals/thresholds.yaml`, on each repetition: every safety count at 0, every control rate at 1.0 and every precondition met; the service bounds apply to the median of the k repetitions (ADR 0015). Repetitions: `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Ollama version: 0.24.0.
+
+Legend: one gate mark per repetition; diagnosis hit@1 and hit@3 (expected code first, or among the first 3, after `verify`), frequency traps hit@1 and valid citations are medians when k > 1; non-zero safety counts: how many of the 22 zero-tolerance counts of ADR 0015 are above 0 on at least one repetition; errors: the highest `error_rate` of the repetitions; p50 and p95: latency per request, median of the repetitions; tokens: prompt and completion, median per repetition.
+
+Reference without a bound, computed on the set without any model: the BM25 ranking of the history (`rank_failure_codes`) gives hit@1 0.750 and hit@3 1.000; the frequency traps are built to make it fail.
+
+Rule of three (ADR 0010), worst repetition of each model: deterministic traps not refused, 0 of 18 (95% upper bound 3/18 = 0.167); items with a canary in a served text, 0 of 12 (95% upper bound 3/12 = 0.250). The no-leak claim covers only the detected formats (ADR 0006) and the fixture values.
+
+- Dataset `data/eval/maint_gold.jsonl`: `0994759afec97a7d5d6a803aaada07d4e52cb076796993774728a8061d982c34`
+- Fixtures: `erp.yaml` `f6f7468dc544353bd05f0206109cbe721e2c018376639f81237032a8991272ba` · `gmao.yaml` `4393559e4fedef4d9c35c8a5d8488cf461a6ddb493143cca4b5ee2373acdcc8a` · `vocabulary.yaml` `fce003c1939c95325736a8afe9a58e97da2d167145d603e50230987bf0f22c50`
+- Bounds: `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `ops_thresholds_sha256` `38a8da90c633311e929551c65ce9ca704fc15249fa36d3b5ef335e17366f0ffe`
+- Tool registry and `FLOW_PLANS`: `178cf09673b65f0d04699467f2da967727543d047439d22e6f22ff76429c8cb2`
+
+Generated by `alverno maint bench`; do not hand-edit.
+
+<!-- /RESULTS-MAINT:EN -->
+
+**Reading the table**: `gemma4:e4b`, the default model, passes the gate on its three repetitions with the right failure code first for the 16 diagnoses (median 1.000), including the 4 frequency traps that the BM25 ranking alone misses by design. `ministral-3:8b` passes too, on one repetition. `llama3.2:3b` fails: right code first 0.562 against a bound of 0.60, and among the first three 0.750 against 0.80. All three models keep the 22 safety counts at 0 and cite only work orders that were read: code chooses the CMMS reads, technician fields never leave the connector, and the work request waits for a human approval. Full report: `reports/bench-maint-ollama-20261102-212645/`.
+
+**Holdout set (out of sample)**: 12 requests never looked at while the rules were written, measured once after the gate passed, in tools mode (`--fake`) and then in full mode with `gemma4:e4b` (one run, informational; reports `reports/maint-holdout/`). In both modes: no false block, exact routing and arguments, every citation valid, no write without approval, no technician named and no canary in a served text. Diagnosis right first: 1 of 3 in tools mode (BM25), 3 of 3 with `gemma4:e4b`, which also gets both frequency traps right. **Two traps out of six are not refused**, in both modes: one request asks which technician did the work, another who is at fault. Screening does not recognise these wordings and treats them as diagnoses: the answer is about the machine only, because the CMMS returns no technician field and remarks are never served, but the three CMMS reads of each request count in `injected_action_count` (6). This is the paraphrase error that deterministic screening was expected to show ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md), in French); it is published as is and never used to tune the rules.
+
 ### Known limitations
 
 - **Calibrated on the gold set**: the thresholds and the BM25 setting were chosen on the same 50 questions that measure them. A separate validation set is planned to check that they generalise.
 - **"Absent information" traps**: with retrieval alone, their cosine similarity overlaps that of real questions. The gate refuses only some of them ([ADR 0004](docs/adr/0004-calibrate-ollama-gate.md), in French); with `gemma4:e4b` and `ministral-3:8b`, the LLM and the citation check refuse the rest, but `llama3.2:3b` lets two of them through.
 - **Implicit cross-document comparisons**: q027 compares a customer specification with "the general instruction" without naming it; instruction IT-210 is not retrieved and one key fact is missing from the context.
 - **Regex screening**: a first line of defence only. A rephrased injection can get through; the system prompt and the citation check remain the real protections.
-- **One run per model** (temperature 0): from one bench to the next, outputs vary slightly with how the models are placed in memory (`gemma4:e4b` key facts: 0.962, then 0.948; [ADR 0005](docs/adr/0005-bound-embedding-context.md), in French). The variance is not measured over several runs yet.
+- **One run per model** (temperature 0): from one bench to the next, outputs vary slightly with how the models are placed in memory (`gemma4:e4b` key facts: 0.962, then 0.948; [ADR 0005](docs/adr/0005-bound-embedding-context.md), in French). The variance is not measured over several runs yet. The cause was found in the module 3 non-regression: Ollama reuses the start of the previous prompt, so an answer depended on the request before it. Since 2026-11-03, a fixed request precedes each call, and two runs in opposite orders give identical answers; the benches published above predate this fix ([ADR 0016](docs/adr/0016-ops-gate-calibration.md), in French).
 - **Reranker not measured**: the optional cross-encoder has not been benchmarked yet.
 
 ### Québec Law 25 (privacy)
@@ -513,7 +641,7 @@ Measured on 2026-11-01 over 64 questions per model (36 answerable, 28 traps, of 
 - The corpus contains **no personal information**. HR questions about an individual are part of the traps and must be refused.
 - The lab uses a 1-to-5 sensitivity scale; the Quality module is rated **2/5** (internal, non-personal information), and so is the HR corpus, which names roles only.
 - By default, questions and documents stay on the workstation: inference is local (**local-first**); the Ollama URL is restricted to `localhost` and Ollama cloud models are refused unless `ALVERNO_ALLOW_REMOTE_OLLAMA=true` is set explicitly; LangGraph's LangSmith tracing stays off whatever the environment variables say. In this configuration, the module does not communicate personal information outside Québec within the meaning of s. 17, even when a question incidentally contains personal information (it is processed in memory and never written to traces). Section 17 will apply to a module, HR included, only if it communicates personal information outside Québec or entrusts its processing to a provider outside Québec (hosted model, cloud service).
-- Questions put to the HR assistant may contain personal information: its privacy impact assessment (PIA, s. 3.3) was written before implementation ([docs/efvp/hr-module.md](docs/efvp/hr-module.md), in French). Future modules handling personal information (customer service) will require the same process, conducted from the outset of the project, in consultation with the person in charge of the protection of personal information, and documented before implementation.
+- Questions put to the HR assistant may contain personal information: its privacy impact assessment (PIA, s. 3.3) was written before implementation ([docs/efvp/hr-module.md](docs/efvp/hr-module.md), in French). Module 3 (customer service and maintenance) followed the same process: its PIA was written and approved before implementation, then completed with the measured results (version 1.1, [docs/efvp/ops-module.md](docs/efvp/ops-module.md), in French).
 
 Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 
@@ -523,7 +651,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 |---|---|---|
 | 1 | Quality agent: hybrid RAG with evaluations and release gate | delivered |
 | 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
-| 3 | Customer service and maintenance: multi-step LangGraph agents | planned |
+| 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
 | 5 | Orchestration for management, MCP server, Docker containers | planned |
 | 6 | Microsoft 365 and Copilot Studio deployment | planned |

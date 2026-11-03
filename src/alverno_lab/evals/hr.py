@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import json
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
@@ -32,7 +31,7 @@ from alverno_lab.evals.dataset import DatasetError
 from alverno_lab.evals.metrics import context_recall, hit_at_k, key_fact_recall, reciprocal_rank
 from alverno_lab.evals.pii_bench import file_sha256
 from alverno_lab.evals.runner import EvalMode, ItemResult, aggregate
-from alverno_lab.evals.thresholds import ThresholdError, load_profiles
+from alverno_lab.evals.thresholds import ThresholdError, block_sha256, load_profiles
 from alverno_lab.llm import ChatModel, LLMStats
 from alverno_lab.ollama import OllamaError, OllamaModelNotFoundError, OllamaUnavailableError
 from alverno_lab.pipeline import Backend
@@ -206,28 +205,10 @@ def thresholds_sha256(path: Path) -> str:
 
     SHA-256 of the UTF-8 text, line endings normalised to LF, from the start of the line
     ``hr-retrieval-fake:`` to the end of the last indented line of the
-    ``privacy-detector`` block, final newline included. Raises :class:`ThresholdError`
-    when the file is unreadable or either line is missing.
+    ``privacy-detector`` block, final newline included (:func:`block_sha256`). Raises
+    :class:`ThresholdError` when the file is unreadable or either line is missing.
     """
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError:
-        raise ThresholdError(f"thresholds file not readable: {path}") from None
-    rows = raw.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    try:
-        start = next(i for i, row in enumerate(rows) if row.startswith(FIRST_HR_PROFILE))
-        # Searched from ``start``: a privacy-detector block placed before the HR profiles
-        # is a reordered file, not a valid range.
-        last = next(i for i in range(start, len(rows)) if rows[i].startswith(LAST_HR_PROFILE))
-    except StopIteration:
-        raise ThresholdError(
-            f"{path}: HR profiles not found in order (ADR 0010 hash range)"
-        ) from None
-    end = last + 1
-    while end < len(rows) and rows[end].startswith((" ", "\t")):
-        end += 1
-    text = "\n".join(rows[start:end]) + "\n"
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return block_sha256(path, FIRST_HR_PROFILE, LAST_HR_PROFILE)
 
 
 # --------------------------------------------------------------------------- probes

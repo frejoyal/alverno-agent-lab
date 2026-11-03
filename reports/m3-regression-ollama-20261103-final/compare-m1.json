@@ -1,0 +1,14 @@
+{
+  "reference": "C:/Users/BLADE/AppData/Local/Temp/claude/E--FredApprendre/73c95b71-1e4a-4c16-ac25-deb6646774ec/scratchpad/m3/m2ref/out-ref/eval-full-ollama.json",
+  "new": "reports/m3-regression-ollama-20261103-final/eval-full-ollama.json",
+  "n_items": 50,
+  "n_reference_items": 50,
+  "fields": [
+    "refused",
+    "refusal_reason",
+    "citations"
+  ],
+  "n_differences": 0,
+  "differences": [],
+  "errored_items": []
+}

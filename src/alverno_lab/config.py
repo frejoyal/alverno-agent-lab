@@ -11,6 +11,7 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 RerankerChoice = Literal["auto", "cross-encoder", "none"]
+Module = Literal["quality", "hr", "service", "maint"]
 
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
@@ -95,6 +96,19 @@ class Settings(BaseSettings):
     access_log_dir: Path = Path("logs/access")
     access_log_retention_days: int = Field(default=90, ge=1, le=90)
 
+    # Module 3 (customer service 3a, maintenance 3b): fictional fixtures of the simulated
+    # ERP and GMAO, their business vocabulary and the gold sets (docs/adr/0012).
+    ops_erp_path: Path = Path("data/eval/ops/erp.yaml")
+    ops_gmao_path: Path = Path("data/eval/ops/gmao.yaml")
+    ops_vocabulary_path: Path = Path("data/eval/ops/vocabulary.yaml")
+    svc_eval_path: Path = Path("data/eval/svc_gold.jsonl")
+    maint_eval_path: Path = Path("data/eval/maint_gold.jsonl")
+    # Edit rounds of a draft (at most 2, docs/adr/0013); work orders read per diagnosis
+    # (8, at most 12) over the last 548 days (docs/adr/0012).
+    ops_max_edit_rounds: int = Field(default=2, ge=1, le=2)
+    ops_max_work_orders: int = Field(default=8, ge=1, le=12)
+    ops_history_days: int = Field(default=548, ge=1)
+
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:
         host = (urlsplit(self.ollama_url).hostname or "").lower()
@@ -113,9 +127,10 @@ class Settings(BaseSettings):
         )
         return self
 
-    def for_module(self, module: Literal["quality", "hr"]) -> Settings:
+    def for_module(self, module: Module) -> Settings:
         """Settings of one module: ``hr`` swaps in the HR corpus, gold set, index and
-        no-match thresholds; ``quality`` returns an unchanged copy.
+        no-match thresholds; ``service`` and ``maint`` swap in their gold set
+        (``svc_eval_path``, ``maint_eval_path``); ``quality`` returns an unchanged copy.
 
         ``hr`` also turns the reranker off: its gate threshold (``no_match_threshold``)
         was calibrated for Quality only, and the HR module has no reranker calibration
@@ -124,8 +139,12 @@ class Settings(BaseSettings):
         """
         if module == "quality":
             return self.model_copy()
+        if module == "service":
+            return self.model_copy(update={"eval_path": self.svc_eval_path})
+        if module == "maint":
+            return self.model_copy(update={"eval_path": self.maint_eval_path})
         if module != "hr":
-            raise ValueError(f"unknown module {module!r} (quality or hr)")
+            raise ValueError(f"unknown module {module!r} (quality, hr, service or maint)")
         return self.model_copy(
             update={
                 "corpus_dir": self.hr_corpus_dir,

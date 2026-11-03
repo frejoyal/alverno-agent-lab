@@ -38,6 +38,12 @@ from .conftest import EVAL_DATA, REPO_ROOT, case_id
 SCOPE = [REPO_ROOT / p for p in ("data", "docs", "tests", "README.md", "AGENTS.md")]
 TEXT_SUFFIXES = frozenset({".md", ".py", ".json", ".jsonl", ".yaml", ".yml", ".txt", ".toml"})
 PRIVACY_SRC = REPO_ROOT / "src" / "alverno_lab" / "privacy"
+# One-shot holdouts (ADR 0010, ADR 0015): never read by any test that looks at their
+# text. The module 3 names are listed before the files exist (increment I1).
+HOLDOUTS = frozenset({"hr_holdout.jsonl", "svc_holdout.jsonl", "maint_holdout.jsonl"})
+# Keys whose values are free text a screen or a guard reads: HR questions, the module 3
+# operator requests and the edited text of an approval script, at any nesting depth.
+QUESTION_KEYS = ("question", "text", "request", "edited_text")
 BENCH = REPO_ROOT / "reports" / "bench-ollama-20261031-125148"
 # Capitalised terms the detectors read as a name but that are not people. Each entry is
 # justified here, so the rule stays strict:
@@ -224,6 +230,9 @@ def test_privacy_package_depends_on_nothing_above_it() -> None:
         "alverno_lab.evals",
         "alverno_lab.pipeline",
         "alverno_lab.hr_pipeline",
+        "alverno_lab.ops_pipeline",
+        "alverno_lab.connectors",
+        "alverno_lab.tools",
     )
     sources = sorted(PRIVACY_SRC.glob("*.py"))
     assert sources
@@ -427,18 +436,30 @@ def test_ci_uploads_reports_without_access_logs() -> None:
     steps = workflow["jobs"]["test"]["steps"]
     upload = next(s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact"))
     paths = upload["with"]["path"].split()
-    assert paths == ["reports/ci/", "!reports/ci/access/"]
+    # Module 3 (ADR 0015, step I10, with the maintainer's consent): access logs are left
+    # out at any depth, and one scan covers the three gold sets (HR, service, maintenance).
+    assert paths == ["reports/ci/", "!reports/ci/**/access/"]
     # Nothing is uploaded unless the canary scan of the same folder passed.
     assert "steps.canary_scan.outcome == 'success'" in upload["if"]
     scan = next(s for s in steps if s.get("id") == "canary_scan")
-    assert scan["run"] == "uv run alverno privacy scan reports/ci"
+    assert scan["run"].split() == [
+        *("uv", "run", "alverno", "privacy", "scan", "reports/ci"),
+        *("--dataset", "data/eval/hr_gold.jsonl"),
+        *("--dataset", "data/eval/svc_gold.jsonl"),
+        *("--dataset", "data/eval/maint_gold.jsonl"),
+    ]
+    # A single scan step: no second scan the upload could skip waiting for.
+    assert [s.get("id") for s in steps if "privacy scan" in str(s.get("run", ""))] == [
+        "canary_scan"
+    ]
 
 
 def _fake_repo(root: Path) -> Path:
     """A repository layout with a placeholder holdout (never the real one) and a .env."""
     (root / "data" / "eval").mkdir(parents=True)
     (root / "data" / "hr").mkdir()
-    (root / "data" / "eval" / "hr_holdout.jsonl").write_text("{}\n", encoding="utf-8")
+    for name in sorted(HOLDOUTS):
+        (root / "data" / "eval" / name).write_text("{}\n", encoding="utf-8")
     (root / ".env").write_text("ALVERNO_LOG_LEVEL=INFO\n", encoding="utf-8")
     (root / "reports" / "ci").mkdir(parents=True)
     (root / "reports" / "ci" / "ok.md").write_text("Rien.\n", encoding="utf-8")
@@ -447,7 +468,14 @@ def _fake_repo(root: Path) -> Path:
 
 @pytest.mark.parametrize(
     "target",
-    [".", "data", "data/eval", "data/eval/hr_holdout.jsonl", "data/hr", ".env"],
+    [
+        ".",
+        "data",
+        "data/eval",
+        *(f"data/eval/{name}" for name in sorted(HOLDOUTS)),
+        "data/hr",
+        ".env",
+    ],
 )
 def test_cli_scan_refuses_data_and_env_before_reading(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, target: str
@@ -489,20 +517,48 @@ def test_cli_scan_accepts_a_report_folder_of_the_repository(
     assert "No canary found" in result.output
 
 
+def _free_texts(value: object) -> list[str]:
+    """Every string under a :data:`QUESTION_KEYS` key of a JSON value, at any depth."""
+    found: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in QUESTION_KEYS and isinstance(child, str):
+                found.append(child)
+            else:
+                found.extend(_free_texts(child))
+    elif isinstance(value, list):
+        for child in value:
+            found.extend(_free_texts(child))
+    return found
+
+
+def test_free_texts_reads_nested_request_and_edit_keys() -> None:
+    item = {
+        "id": "s001",
+        "request": "Où en est la commande CMD-2026-0401 ?",
+        "approval_script": [{"decision": "edit", "edited_text": "Bonjour,"}],
+        "expected": {"reason": None},
+    }
+    assert _free_texts(item) == ["Où en est la commande CMD-2026-0401 ?", "Bonjour,"]
+
+
+def test_every_holdout_file_is_listed() -> None:
+    # A holdout missing from HOLDOUTS would be read by the question-mode test.
+    on_disk = {path.name for path in EVAL_DATA.glob("*holdout*")}
+    assert on_disk <= HOLDOUTS, sorted(on_disk - HOLDOUTS)
+
+
 def test_eval_questions_are_synthetic_in_question_mode(privacy_ctx: PrivacyContext) -> None:
     # The document scan skips N3 and N4; questions are what the screen reads, so a lone
     # real surname (« Tremblay a signé ») must be caught too. The holdout stays unseen.
     violations: list[str] = []
     checked = 0
     for path in sorted(EVAL_DATA.glob("*.jsonl")):
-        if path.name == "hr_holdout.jsonl":
+        if path.name in HOLDOUTS:
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
             item = json.loads(line)
-            for key in ("question", "text"):
-                text = item.get(key)
-                if not isinstance(text, str):
-                    continue
+            for text in _free_texts(item):
                 for span in detect_pi(text, privacy_ctx, mode="question"):
                     checked += 1
                     if not is_synthetic(span, text[span.start : span.end], path):

@@ -47,7 +47,7 @@ Before declaring a change done, run: `ruff check`, `ruff format --check`, `mypy 
 - `logs/` — local access log of the HR assistant; ignored by git.
 - `tests/` — offline tests only.
 - `reports/` — generated reports; do not hand-edit.
-- `docs/` — company profile, architecture, Law 25, roadmap, ADRs, `efvp/` (template and HR assessment), `hr-legal-sources.md` (the only source of legal statements in the HR corpus).
+- `docs/` — company profile, architecture, Law 25, roadmap, ADRs, `efvp/` (template, HR and module 3 assessments), `hr-legal-sources.md` (the only source of legal statements in the HR corpus), `ops-legal-sources.md` (legal register for module 3).
 
 ## Conventions
 
@@ -84,13 +84,13 @@ Before declaring a change done, run: `ruff check`, `ruff format --check`, `mypy 
 - The HR corpus stays at 2/5 and only in `data/hr/corpus/`, never in `data/corpus/` (Quality item q050 is a trap because no HR text exists there).
 - The HR access log lives in `logs/access/`, keeps 90 days at most, is meant for the privacy officer and IT under its authority (limit: the person using the workstation can read that workstation's lines; see the EFVP), never contains question text, digests or lengths, and cannot be turned off.
 - Privacy bounds never move. Never open `data/eval/hr_holdout.jsonl` while writing or tuning rules; it is measured once and never enters CI.
-- **Fictional only**: no real customer, no real Québec company brand. Domains use `alverno.example`.
+- **Fictional only**: no real customer, no real Québec company brand. Domains use `alverno.example`; the fictional customer accounts of module 3 use `clientNN.example`.
 - Every corpus document declares `sensitivity` (lab scale 1 to 5, see `docs/loi25.md`). The Quality module stays at 2/5. A document above 2 does not belong in the Quality corpus.
 - HR questions about an individual must be refused by the Quality agent; they are evaluation traps.
 - Local-first is a requirement, not a preference: any feature that would send corpus content or questions outside the workstation (and potentially outside Québec) needs an ADR and an update to `docs/loi25.md` (s. 17 assessment) before it is merged, and must be off by default.
 - **No hosted tracing**: `QualityAgent.ask` runs the graph under `langsmith.tracing_context(enabled=False)`, so `LANGSMITH_TRACING=true` or `LANGCHAIN_TRACING_V2=true` in the environment sends nothing to LangSmith; a LangChain v1 variable (`LANGCHAIN_TRACING`, `LANGCHAIN_HANDLER`) raises `LegacyTracingError` instead (CLI exit code 2). Keep it; tests enforce it.
 - **No cloud model by accident**: Ollama cloud models (names ending in `:cloud` or `-cloud`) run on Ollama's hosted service even through the local URL; `Settings.check_model_is_local` refuses them without `ALVERNO_ALLOW_REMOTE_OLLAMA=true`.
-- Modules that will process personal information (HR, customer service) need a privacy impact assessment (EFVP, s. 3.3) documented before implementation (template: `docs/efvp/template.md`; HR: `docs/efvp/hr-module.md`). Re-assess before any link to an HRIS, authentication, hosted model or change of corpus scope.
+- Modules that will process personal information (HR, customer service, maintenance) need a privacy impact assessment (EFVP, s. 3.3) documented before implementation (template: `docs/efvp/template.md`; HR: `docs/efvp/hr-module.md`; customer service and maintenance: `docs/efvp/ops-module.md`). Re-assess before any link to an HRIS, a real ERP or CMMS connector, authentication, hosted model or change of corpus scope.
 
 ## Git
 

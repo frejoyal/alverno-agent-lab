@@ -44,7 +44,12 @@ from alverno_lab.evals.hr import (
     thresholds_sha256,
     unmet_preconditions,
 )
-from alverno_lab.evals.thresholds import ThresholdError, check_thresholds
+from alverno_lab.evals.thresholds import (
+    ThresholdError,
+    block_sha256,
+    check_thresholds,
+    ops_thresholds_sha256,
+)
 from alverno_lab.llm import FakeChat
 from alverno_lab.ollama import OllamaTimeoutError, OllamaUnavailableError
 from alverno_lab.pipeline import Backend
@@ -299,6 +304,32 @@ def test_thresholds_sha256_refuses_a_reordered_file(tmp_path: Path) -> None:
     )
     with pytest.raises(ThresholdError, match="in order"):
         thresholds_sha256(path)
+
+
+def test_block_sha256_hashes_any_range_in_order(tmp_path: Path) -> None:
+    ops = "svc-tools-fake:\n  min:\n    a: 1\n\nmaint-full-ollama:\n  max:\n    b: 0\n"
+    text = f"privacy-detector:\n  min:\n    c: 1\n\n# module 3\n{ops}"
+    path = tmp_path / "t.yaml"
+    path.write_text(text, encoding="utf-8", newline="\r\n")
+    expected = hashlib.sha256(ops.encode("utf-8")).hexdigest()
+    assert ops_thresholds_sha256(path) == expected
+    assert block_sha256(path, "svc-tools-fake:", "maint-full-ollama:") == expected
+    with pytest.raises(ThresholdError, match="in order"):
+        block_sha256(path, "maint-full-ollama:", "svc-tools-fake:")
+
+
+def test_ops_hash_is_independent_of_the_hr_range() -> None:
+    """ADR 0015: the module 3 block has its own hash; the HR range ends before it.
+
+    The ops hash is the last ledger row of 2026-11-02 (ADR 0016 calibrated both *-full-fake);
+    the HR hash never moved.
+    """
+    assert thresholds_sha256(THRESHOLDS) == (
+        "243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a"
+    )
+    assert ops_thresholds_sha256(THRESHOLDS) == (
+        "38a8da90c633311e929551c65ce9ca704fc15249fa36d3b5ef335e17366f0ffe"
+    )
 
 
 def test_privacy_trap_count_label_names_errors_too() -> None:

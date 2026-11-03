@@ -1,0 +1,27 @@
+{
+  "reference": "reports/m1-check-ollama-20261101/eval-full-ollama.json",
+  "new": "reports/m3-regression-ollama-20261102/eval-full-ollama.json",
+  "n_items": 50,
+  "n_reference_items": 50,
+  "fields": [
+    "refused",
+    "refusal_reason",
+    "citations"
+  ],
+  "n_differences": 1,
+  "differences": [
+    {
+      "id": "q003",
+      "field": "citations",
+      "reference": [
+        "QP-007#02",
+        "IT-301#02"
+      ],
+      "new": [
+        "QP-007#02",
+        "SPEC-VRN-01#02"
+      ]
+    }
+  ],
+  "errored_items": []
+}

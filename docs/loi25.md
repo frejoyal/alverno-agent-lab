@@ -88,7 +88,7 @@ La loi exige une EFVP pour tout projet d'acquisition, de développement ou de re
 
 - **Module Qualité** : aucun renseignement personnel dans le corpus. Les questions libres peuvent en contenir de façon incidente : elles ne sont pas conservées (les traces n'en gardent qu'une empreinte courte et la longueur). Les demandes visant une personne que reconnaissent les motifs de filtrage des questions (salaire ou matricule d'une personne, « son nom », dossier médical, congé de maladie, titre de civilité suivi d'un nom, etc. ; motifs en français seulement) sont refusées ; ce filtrage par expressions régulières reste une défense de première ligne. Le labo documente ce constat (ce fichier, le champ `sensitivity`, les pièges d'évaluation). Dans une entreprise réelle, ce constat serait consigné dans une analyse préliminaire validée par le responsable de la protection des renseignements personnels, et revalidé à chaque changement de périmètre.
 - **Module RH (jalon 2)** : renseignements personnels prévisibles dans les questions. L'EFVP a été rédigée **avant** l'implémentation, révisée après (version 1.0.1), puis complétée des résultats mesurés (version 1.1) : [docs/efvp/hr-module.md](efvp/hr-module.md). Gabarit réutilisable : [docs/efvp/template.md](efvp/template.md).
-- **Service client (jalon 3)** : renseignements personnels prévisibles ; une EFVP sera rédigée **avant** l'implémentation, à partir du gabarit.
+- **Service client et entretien (jalon 3)** : renseignements personnels prévisibles ; l'EFVP version 1.0 a été rédigée **avant** l'implémentation, à partir du gabarit, et approuvée le 2026-11-01 : [docs/efvp/ops-module.md](efvp/ops-module.md).
 
 ## Autres obligations à garder en tête pour les modules futurs
 

@@ -16,7 +16,8 @@ jobs:
   test:
     name: Lint, types, tests and eval gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The module 3 suite reached 86 % of its tests in 15 minutes on the hosted runner.
+    timeout-minutes: 40
     env:
       UV_PYTHON: "3.13"
     steps:
@@ -59,19 +60,37 @@ jobs:
       - name: HR full eval (fake) + gate
         run: uv run alverno hr eval --mode full --fake --out reports/ci
 
-      # Nothing is uploaded unless the scan finds no canary of the HR gold set.
+      - name: Customer service eval (tools, fake) + gate
+        run: uv run alverno service eval --mode tools --fake --out reports/ci
+
+      - name: Customer service eval (full, fake) + gate
+        run: uv run alverno service eval --mode full --fake --out reports/ci
+
+      - name: Maintenance eval (tools, fake) + gate
+        run: uv run alverno maint eval --mode tools --fake --out reports/ci
+
+      - name: Maintenance eval (full, fake) + gate
+        run: uv run alverno maint eval --mode full --fake --out reports/ci
+
+      # Nothing is uploaded unless the scan finds no canary of the HR, customer service and
+      # maintenance gold sets (ADR 0015). Holdouts never enter CI.
       - name: Canary scan before upload
         id: canary_scan
         if: always()
-        run: uv run alverno privacy scan reports/ci
+        run: >-
+          uv run alverno privacy scan reports/ci
+          --dataset data/eval/hr_gold.jsonl
+          --dataset data/eval/svc_gold.jsonl
+          --dataset data/eval/maint_gold.jsonl
 
       - name: Upload eval reports
         if: always() && steps.canary_scan.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: eval-reports
-          # The eval access logs stay out of the artifact (EFVP: reports without them).
+          # The eval access logs stay out of the artifact (EFVP: reports without them), at
+          # any depth under reports/ci (ADR 0015: reports/ci/**/access/).
           path: |
             reports/ci/
-            !reports/ci/access/
+            !reports/ci/**/access/
           if-no-files-found: ignore

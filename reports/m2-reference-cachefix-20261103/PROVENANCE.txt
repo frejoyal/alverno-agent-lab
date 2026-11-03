@@ -1,0 +1,6 @@
+Code: commit 5a83943 (module 2 closing merge) with only src/alverno_lab/llm.py taken from commit 01d66ea (ADR 0015, decision of 2026-11-03).
+Worktree state against 5a83943:
+ src/alverno_lab/llm.py | 33 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 32 insertions(+), 1 deletion(-)
+llm.py sha256: 66bdb683e382dea4d3ae6f5183ab159e82019b6d79628410f4fdde4032946a79
+llm.py at 01d66ea sha256: 66bdb683e382dea4d3ae6f5183ab159e82019b6d79628410f4fdde4032946a79
