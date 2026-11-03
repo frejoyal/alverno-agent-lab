@@ -1,6 +1,6 @@
 # ADR 0016 — Module 3 : calibrer les bornes de service des profils `*-full-fake`
 
-- **Statut** : accepté (partie 1 : 3a, moteurs simulés, 2026-11-02 ; résultats 3a sur Ollama et jeu réservé, 2026-11-02 ; partie 2 : 3b, moteurs simulés, 2026-11-02 ; résultats 3b sur Ollama et jeu réservé, 2026-11-02)
+- **Statut** : accepté (partie 1 : 3a, moteurs simulés, 2026-11-02 ; résultats 3a sur Ollama et jeu réservé, 2026-11-02 ; partie 2 : 3b, moteurs simulés, 2026-11-02 ; résultats 3b sur Ollama et jeu réservé, 2026-11-02 ; correction du cache d'invite et non-régression, 2026-11-03)
 - **Date** : 2026-11-02
 
 ## Contexte
@@ -204,6 +204,18 @@ Les métriques des portes sont les mêmes dans les deux exécutions : module 1, 
 **Reproductibilité.** Deux exécutions complètes de `full-ollama` et de `hr-full-ollama`, l'une dans l'ordre module 2 puis module 1, l'autre dans l'ordre inverse, sont identiques sur **tous les champs** des 114 items, réponses comprises (`reports/m3-regression-ollama-20261103/reversed-order/comparison.txt`).
 
 **Nouvelle exécution de la non-régression** (`reports/m3-regression-ollama-20261103/`) : les deux portes passent (module 1 : faits clés 0,948 ; module 2 : faits clés 0,833, tous les pièges de confidentialité refusés, aucune fuite), et aucun refus ni motif ne change sur les 114 items. Les citations diffèrent encore des rapports de référence sur 3 items : q003 et q034 (module 1), h028 (module 2). Ces rapports de référence ont été produits le 2026-11-01, **avant** la correction, dans un état du cache qu'on ne peut pas reproduire ; une exécution reproductible ne peut donc pas garantir de les retrouver. La règle ne change pas : **le point 4 échoue encore**, et le module 3 n'est pas déclaré livré. Pour sortir de cette impasse sans déplacer la règle après coup, une décision écrite du responsable du dépôt est nécessaire, par exemple : accepter l'écart publié comme risque résiduel, ou fixer, dans un ADR et avant toute nouvelle mesure, de nouveaux rapports de référence produits avec la correction.
+
+### Nouvelles références : le point 4 est atteint (2026-11-03)
+
+Le responsable du dépôt a choisi de nouvelles références. La décision est inscrite dans l'[ADR 0015](0015-ops-evaluation-protocol.md) (« Nouvelles références », commit `1ee2495`) **avant** la mesure : le code de clôture du module 2 (`5a83943`), avec seulement le `llm.py` de `01d66ea`, produit les références ; le code du module 3 est ensuite comparé avec la règle inchangée.
+
+- **Références** (`reports/m2-reference-cachefix-20261103/`, provenance et empreinte de `llm.py` dans `PROVENANCE.txt`) : les portes `full-ollama` et `hr-full-ollama` passent.
+- **Code du module 3** (`reports/m3-regression-ollama-20261103-final/`, commit `1ee2495`) : les deux portes passent (module 1 : faits clés 0,948, aucune fausse réponse ni aucun refus de trop ; module 2 : faits clés 0,833, tous les pièges de confidentialité refusés, aucune fuite).
+- **Comparaison** : 0 écart de refus, de motif ou de citations sur les 114 items ; les rapports sont identiques sur **tous les champs**, réponses comprises, hors latence (`compare-m1.json`, `compare-m2.json`, `comparison-all-fields.txt`).
+
+Incident de procédure : la première tentative des références a échoué faute d'index dans l'arbre de travail du module 2, alors que l'exécution du code du module 3 avait déjà eu lieu. Cette exécution a été mise de côté, hors dépôt ; les index ont été construits, puis les références et le code du module 3 ont été exécutés dans l'ordre prévu. L'exécution mise de côté est identique, sur tous les champs, à celle qui est publiée.
+
+**Le point 4 du critère de sortie est atteint.** Avec les points 1, 2, 3, 5 et 6, le critère de sortie du module 3 est atteint le 2026-11-03.
 
 ## Solutions écartées
 

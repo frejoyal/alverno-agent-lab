@@ -313,7 +313,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 |---|---|---|
 | 1 | Agent Qualité : RAG hybride avec évaluations et porte de livraison | livré |
 | 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
-| 3 | Service client et maintenance : agents multi-étapes en LangGraph | construit ; critère de sortie atteint sauf la non-régression item par item des modules 1 et 2 |
+| 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
 | 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | prévu |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
@@ -651,7 +651,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 |---|---|---|
 | 1 | Quality agent: hybrid RAG with evaluations and release gate | delivered |
 | 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
-| 3 | Customer service and maintenance: multi-step LangGraph agents | built; exit criterion met except the item-by-item non-regression of modules 1 and 2 |
+| 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
 | 5 | Orchestration for management, MCP server, Docker containers | planned |
 | 6 | Microsoft 365 and Copilot Studio deployment | planned |
