@@ -19,12 +19,20 @@ REPO_ROOT = Path(__file__).parent.parent
 
 @pytest.fixture(autouse=True)
 def _isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Ignore any developer ``.env`` and ``ALVERNO_*`` variables."""
+    """Ignore any developer ``.env`` and ``ALVERNO_*`` variables, and plain CLI output.
+
+    typer forces a colour terminal at import when ``GITHUB_ACTIONS``, ``FORCE_COLOR`` or
+    ``PY_COLORS`` is set, so usage errors in CI split ``--repeats`` into styled spans;
+    tests assert on plain text whatever the shell.
+    """
     import os
+
+    import typer.rich_utils
 
     for key in list(os.environ):
         if key.startswith("ALVERNO_"):
             monkeypatch.delenv(key)
+    monkeypatch.setattr(typer.rich_utils, "FORCE_TERMINAL", False)
     monkeypatch.chdir(tmp_path)
 
 

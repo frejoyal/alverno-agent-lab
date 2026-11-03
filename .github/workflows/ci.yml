@@ -16,7 +16,8 @@ jobs:
   test:
     name: Lint, types, tests and eval gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The module 3 suite reached 86 % of its tests in 15 minutes on the hosted runner.
+    timeout-minutes: 40
     env:
       UV_PYTHON: "3.13"
     steps:
