@@ -41,7 +41,9 @@ def test_ollama_chat_payload_and_stats() -> None:
     chat = OllamaChat("qwen-test", transport=httpx.MockTransport(handler))
     out = chat.complete_json("sys", "user", Out)
     assert out == Out(answer="ok", confidence=0.5)
-    payload = seen[0]
+    # The reset request first, then the call itself (see the reset test below).
+    assert len(seen) == 2
+    payload = seen[1]
     assert payload["stream"] is False
     assert payload["think"] is False
     assert payload["format"] == Out.model_json_schema()
@@ -62,9 +64,10 @@ def test_ollama_chat_retries_then_fails_on_invalid_json() -> None:
     chat = OllamaChat("m", transport=httpx.MockTransport(handler), max_retries=1)
     with pytest.raises(LLMOutputError):
         chat.complete_json("s", "u", Out)
-    assert len(seen) == 2
+    # Each attempt is preceded by the reset request.
+    assert len(seen) == 4
     # Regression: the retry resent an identical payload; it now shows the error.
-    retry = seen[1]["messages"]
+    retry = seen[3]["messages"]
     assert isinstance(retry, list) and len(retry) == 4
     assert retry[2] == {"role": "assistant", "content": "not json"}
     assert "JSON valide" in retry[3]["content"]
@@ -84,11 +87,54 @@ def test_ollama_chat_retry_names_the_invalid_field() -> None:
     chat = OllamaChat("m", transport=httpx.MockTransport(handler), max_retries=1)
     with pytest.raises(LLMOutputError, match="confidence: Input should be a valid number"):
         chat.complete_json("s", "u", Out)
-    retry = seen[1]["messages"]
+    retry = seen[3]["messages"]
     assert isinstance(retry, list)
     assert "confidence: Input should be a valid number" in retry[3]["content"]
     # The invalid value itself is not repeated.
     assert "haute" not in retry[3]["content"]
+
+
+def test_ollama_chat_resets_the_prompt_cache_before_each_call() -> None:
+    # Regression (ADR 0016, non-régression): Ollama reused the cached prompt prefix of
+    # the previous request, so at temperature 0 the same request could cite another
+    # chunk depending on what ran before. A fixed request now precedes each call.
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        body = {"message": {"content": '{"answer": "ok", "confidence": 1}'}}
+        return httpx.Response(200, json={**body, "prompt_eval_count": 3, "eval_count": 1})
+
+    chat = OllamaChat("m", transport=httpx.MockTransport(handler), keep_alive="5m", num_ctx=4096)
+    chat.complete_json("s1", "u1", Out)
+    chat.complete_json("s2", "u2", Out)
+    resets, calls = seen[0::2], seen[1::2]
+    assert [c["messages"][0]["content"] for c in calls] == ["s1", "s2"]  # type: ignore[index]
+    for reset in resets:
+        assert reset == {
+            "model": "m",
+            "messages": [{"role": "user", "content": "."}],
+            "stream": False,
+            "think": False,
+            "keep_alive": "5m",
+            "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 1},
+        }
+    # Only the real calls count in the statistics.
+    assert (chat.stats.calls, chat.stats.prompt_tokens) == (2, 6)
+
+
+def test_ollama_chat_reset_can_be_turned_off() -> None:
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(
+            200, json={"message": {"content": '{"answer": "a", "confidence": 1}'}}
+        )
+
+    chat = OllamaChat("m", transport=httpx.MockTransport(handler), reset_prompt_cache=False)
+    chat.complete_json("s", "u", Out)
+    assert len(seen) == 1 and "format" in seen[0]
 
 
 def test_ollama_chat_strips_code_fences() -> None:

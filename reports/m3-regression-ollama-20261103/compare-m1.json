@@ -1,0 +1,40 @@
+{
+  "reference": "reports/m1-check-ollama-20261101/eval-full-ollama.json",
+  "new": "reports/m3-regression-ollama-20261103/eval-full-ollama.json",
+  "n_items": 50,
+  "n_reference_items": 50,
+  "fields": [
+    "refused",
+    "refusal_reason",
+    "citations"
+  ],
+  "n_differences": 2,
+  "differences": [
+    {
+      "id": "q003",
+      "field": "citations",
+      "reference": [
+        "QP-007#02",
+        "IT-301#02"
+      ],
+      "new": [
+        "QP-007#02",
+        "SPEC-VRN-01#02"
+      ]
+    },
+    {
+      "id": "q034",
+      "field": "citations",
+      "reference": [
+        "QP-006#01",
+        "QP-006#09",
+        "QP-006-V2#01"
+      ],
+      "new": [
+        "QP-006#01",
+        "QP-006-V2#01"
+      ]
+    }
+  ],
+  "errored_items": []
+}

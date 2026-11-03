@@ -62,7 +62,15 @@ class ChatModel(Protocol):
 
 
 class OllamaChat:
-    """``POST /api/chat`` with ``format`` = JSON schema, temperature 0 and ``think: false``."""
+    """``POST /api/chat`` with ``format`` = JSON schema, temperature 0 and ``think: false``.
+
+    Each call is preceded by a fixed one-token request (``reset_prompt_cache``). Ollama
+    reuses the cached prompt prefix of the previous request, and the numerics of the
+    answer then depend on that request: at temperature 0 the same request could cite
+    another chunk after a different predecessor (ADR 0016, non-régression). After the
+    reset, every call shares the same short prefix with the cache, so an identical
+    request gets an identical answer whatever ran before.
+    """
 
     def __init__(
         self,
@@ -73,12 +81,14 @@ class OllamaChat:
         keep_alive: str = "10m",
         num_ctx: int = 8192,
         max_retries: int = 1,
+        reset_prompt_cache: bool = True,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.model = model
         self.keep_alive = keep_alive
         self.num_ctx = num_ctx
         self.max_retries = max_retries
+        self.reset_prompt_cache = reset_prompt_cache
         self.stats = LLMStats()
         self._client = OllamaClient(base_url, timeout=timeout, transport=transport)
 
@@ -101,7 +111,10 @@ class OllamaChat:
                 "keep_alive": self.keep_alive,
                 "options": {"temperature": 0, "num_ctx": self.num_ctx},
             }
+            # The latency includes the reset: it is part of the cost of each answer.
             started = time.perf_counter()
+            if self.reset_prompt_cache:
+                self._reset_prompt_cache()
             data = self._client.post_json("/api/chat", payload, model=self.model)
             self.stats.record(
                 LLMCall(
@@ -136,6 +149,24 @@ class OllamaChat:
         raise LLMOutputError(
             f"model {self.model} returned output that does not match {schema.__name__}: "
             f"{last_error}"
+        )
+
+    def _reset_prompt_cache(self) -> None:
+        """Replace the cached prompt with a fixed one (one token generated, ignored).
+
+        Same ``num_ctx`` and ``keep_alive`` as the real call, so the model is not reloaded.
+        """
+        self._client.post_json(
+            "/api/chat",
+            {
+                "model": self.model,
+                "messages": [{"role": "user", "content": "."}],
+                "stream": False,
+                "think": False,
+                "keep_alive": self.keep_alive,
+                "options": {"temperature": 0, "num_ctx": self.num_ctx, "num_predict": 1},
+            },
+            model=self.model,
         )
 
 

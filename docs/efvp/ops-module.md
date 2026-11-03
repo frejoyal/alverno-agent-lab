@@ -372,7 +372,7 @@ Règle de trois, pire répétition de chaque modèle : 0 piège déterministe no
 
 Diagnostic 3b au premier rang : 1 sur 3 en mode outils (BM25), 3 sur 3 avec `gemma4:e4b`. Ces résultats ne servent pas à régler les règles, et un jeu réservé n'est jamais remesuré.
 
-**Non-régression des modules 1 et 2** (`reports/m3-regression-ollama-20261102/`, puis une seconde exécution dans `reports/m3-regression-ollama-20261102-r2/` pour mesurer la variabilité) : les portes `full-ollama` et `hr-full-ollama` réussissent dans les deux exécutions, et aucun refus ni aucun motif ne change sur les 114 questions. Les citations changent sur 3 questions (première exécution) et 2 questions (seconde), avec les mêmes documents récupérés et des invites de même taille ; le code qui mène au modèle n'a pas changé depuis le module 2. Selon la règle préenregistrée, **le point 4 du critère de sortie échoue** (section 6).
+**Non-régression des modules 1 et 2** (`reports/m3-regression-ollama-20261102/`, puis une seconde exécution dans `reports/m3-regression-ollama-20261102-r2/` pour mesurer la variabilité) : les portes `full-ollama` et `hr-full-ollama` réussissent dans les deux exécutions, et aucun refus ni aucun motif ne change sur les 114 questions. Les citations changent sur 3 questions (première exécution) et 2 questions (seconde), avec les mêmes documents récupérés et des invites de même taille ; le code qui mène au modèle n'a pas changé depuis le module 2. Selon la règle préenregistrée, **le point 4 du critère de sortie échoue** (section 6). Cause trouvée le 2026-11-03 : Ollama réutilise le début de l'invite précédente, ce qui rend la réponse dépendante de la requête qui précède. Correction : une requête fixe d'un jeton avant chaque appel. Deux exécutions dans des ordres inverses sont alors identiques sur tous les champs ; la nouvelle non-régression (`reports/m3-regression-ollama-20261103/`) passe les portes sans changer aucun refus ni motif, mais 3 citations (q003, q034, h028) diffèrent encore des références produites avant la correction : le point 4 échoue encore.
 
 **Revue des risques résiduels annoncée à la version 1.0.**
 
@@ -396,7 +396,7 @@ Le module 3 est déclaré « livré » quand le critère de sortie ci-dessous es
 
 Si une borne échoue, on corrige le système, jamais la borne, et le résultat négatif est publié.
 
-**État au 2026-11-02 (version 1.1).** Points 1, 2, 3, 5 et 6 atteints. **Point 4 échoué** : les portes de non-régression réussissent et aucun refus ni motif ne change, mais les citations changent sur 2 ou 3 questions des modules 1 et 2 (section 5). Le module 3 n'est donc pas déclaré livré ; une correction du système (graine fixe des appels au modèle), puis une nouvelle exécution de la non-régression, reste à faire.
+**État au 2026-11-02 (version 1.1).** Points 1, 2, 3, 5 et 6 atteints. **Point 4 échoué** : les portes de non-régression réussissent et aucun refus ni motif ne change, mais les citations changent sur 2 ou 3 questions des modules 1 et 2 (section 5). Le module 3 n'est donc pas déclaré livré. Le 2026-11-03, la cause a été corrigée (cache d'invite d'Ollama, section 5) et la non-régression relancée : les réponses sont maintenant reproductibles, mais 3 citations diffèrent encore des rapports de référence produits avant la correction. Le point 4 échoue encore ; une décision écrite du responsable du dépôt est attendue ([ADR 0016](../adr/0016-ops-gate-calibration.md)).
 
 | Action | Responsable (rôle) | Échéance | Critère |
 |---|---|---|---|
@@ -475,7 +475,7 @@ Par conception, le module n'utilise aucun renseignement de niveau 5 : les notes 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-01 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-01 |
-| 1.1 | 2026-11-02 | Après les mesures : portes simulées, bancs d'essai 3a et 3b sur Ollama, jeux réservés mesurés une seule fois, non-régression des modules 1 et 2 (point 4 du critère de sortie échoué) ; risques R5, R7, R8 et R10 revus ; ADR 0016 et rapports joints (annexe D) ; statut « à approuver » |
+| 1.1 | 2026-11-02 | Après les mesures : portes simulées, bancs d'essai 3a et 3b sur Ollama, jeux réservés mesurés une seule fois, non-régression des modules 1 et 2 (point 4 du critère de sortie échoué) ; risques R5, R7, R8 et R10 revus ; ADR 0016 et rapports joints (annexe D) ; le 2026-11-03, correction du cache d'invite d'Ollama et nouvelle non-régression (point 4 toujours échoué) ; statut « à approuver » |
 
 ## Annexes
 
@@ -556,6 +556,6 @@ Les preuves ont été produites aux étapes I3 à I10 : tests et contrôles nég
 - Cadre : [loi25.md](../loi25.md) (échelle de sensibilité), [gabarit](template.md), [EFVP du module RH](hr-module.md) (acte de délégation de la fonction de RPRP, annexe D), [guide de la CAI](https://www.cai.gouv.qc.ca/uploads/pdfs/CAI_GU_EFVP.pdf).
 - Profil fictif : [company.md](../company.md), [organigramme fictif](../../data/hr/org_roles.yaml) (effectif du service d'entretien), [RH-014](../../data/hr/corpus/RH-014.md) (droits et plaintes).
 - Données fictives versées à l'étape I2 : `data/eval/ops/erp.yaml`, `data/eval/ops/gmao.yaml`, `data/eval/ops/vocabulary.yaml`, `data/eval/svc_gold.jsonl`, `data/eval/maint_gold.jsonl`, `data/eval/svc_holdout.jsonl`, `data/eval/maint_holdout.jsonl`.
-- Rapports (version 1.1) : `reports/bench-svc-ollama-20261102-124609/` et `reports/bench-maint-ollama-20261102-212645/` (bancs d'essai), `reports/svc-holdout/` et `reports/maint-holdout/` (jeux réservés), `reports/m3-regression-ollama-20261102/` et `reports/m3-regression-ollama-20261102-r2/` (non-régression des modules 1 et 2, avec le comparateur).
+- Rapports (version 1.1) : `reports/bench-svc-ollama-20261102-124609/` et `reports/bench-maint-ollama-20261102-212645/` (bancs d'essai), `reports/svc-holdout/` et `reports/maint-holdout/` (jeux réservés), `reports/m3-regression-ollama-20261102/`, `reports/m3-regression-ollama-20261102-r2/` et `reports/m3-regression-ollama-20261103/` (non-régression des modules 1 et 2, avant et après la correction du cache d'invite, avec les comparateurs).
 
 *Document fictif à des fins de démonstration ; ne constitue pas un avis juridique.*
