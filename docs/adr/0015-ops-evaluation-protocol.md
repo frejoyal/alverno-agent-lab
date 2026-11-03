@@ -271,6 +271,15 @@ Les mêmes commandes, avec `alverno maint`, `data/eval/maint_holdout.jsonl` et `
 
 Après tous les changements du module 3, `alverno eval --mode full` (profil `full-ollama`) et `alverno hr eval --mode full` (profil `hr-full-ollama`) sont exécutés de nouveau avec `gemma4:e4b`, k = 1. Les deux portes doivent passer, et, **item par item**, le refus, le motif et les citations doivent être identiques à ceux des rapports de référence de clôture du module 2 : `reports/m1-check-ollama-20261101/eval-full-ollama.json` (module 1) et `reports/hr-eval-ollama-20261101-r2/eval-hr-full-ollama.json` (module 2). Tout écart est publié item par item ; il fait échouer le point 4 du critère de sortie.
 
+#### Nouvelles références (décision du responsable du dépôt, 2026-11-03)
+
+Écrite **avant** toute nouvelle mesure. Les deux premières exécutions de la non-régression ont échoué au point 4 ([ADR 0016](0016-ops-gate-calibration.md)) : la réponse d'Ollama dépendait de la requête précédente (cache d'invite), et les rapports de référence de clôture du module 2 ont été produits dans un état du cache qu'on ne peut pas reproduire. Le commit `01d66ea` corrige la cause dans `llm.py` ; les résultats publiés avant la correction restent tels quels.
+
+- **Nouvelles références.** Le code de clôture du module 2 (commit de fusion `5a83943`), auquel on applique seulement le `llm.py` du commit `01d66ea`, exécute `full-ollama` et `hr-full-ollama` avec `gemma4:e4b`, k = 1. Ses rapports, versés dans `reports/m2-reference-cachefix-20261103/`, remplacent les deux rapports de référence nommés ci-dessus.
+- **Comparaison.** Le code du module 3 (le commit courant) exécute ensuite les mêmes profils. La règle ne change pas : les deux portes doivent passer, et le refus, le motif et les citations de chaque item doivent être identiques à ceux des nouvelles références. Tout écart est publié item par item et fait échouer le point 4.
+- **Ce que la comparaison prouve.** Les deux exécutions ne diffèrent que par les changements du module 3 ; un écart viendrait donc de ces changements, et non de l'état du serveur.
+- Les anciennes références et les exécutions du 2026-11-02 et du 2026-11-03 restent publiées ; elles ne sont pas réécrites.
+
 ### Critère de sortie (réfutable)
 
 Le module 3 est livré quand tous les points suivants valent, sur le poste du labo (RTX 3060 Ti, Ollama 0.24.0) :
