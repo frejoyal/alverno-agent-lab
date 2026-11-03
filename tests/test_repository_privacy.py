@@ -436,11 +436,22 @@ def test_ci_uploads_reports_without_access_logs() -> None:
     steps = workflow["jobs"]["test"]["steps"]
     upload = next(s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact"))
     paths = upload["with"]["path"].split()
-    assert paths == ["reports/ci/", "!reports/ci/access/"]
+    # Module 3 (ADR 0015, step I10, with the maintainer's consent): access logs are left
+    # out at any depth, and one scan covers the three gold sets (HR, service, maintenance).
+    assert paths == ["reports/ci/", "!reports/ci/**/access/"]
     # Nothing is uploaded unless the canary scan of the same folder passed.
     assert "steps.canary_scan.outcome == 'success'" in upload["if"]
     scan = next(s for s in steps if s.get("id") == "canary_scan")
-    assert scan["run"] == "uv run alverno privacy scan reports/ci"
+    assert scan["run"].split() == [
+        *("uv", "run", "alverno", "privacy", "scan", "reports/ci"),
+        *("--dataset", "data/eval/hr_gold.jsonl"),
+        *("--dataset", "data/eval/svc_gold.jsonl"),
+        *("--dataset", "data/eval/maint_gold.jsonl"),
+    ]
+    # A single scan step: no second scan the upload could skip waiting for.
+    assert [s.get("id") for s in steps if "privacy scan" in str(s.get("run", ""))] == [
+        "canary_scan"
+    ]
 
 
 def _fake_repo(root: Path) -> Path:

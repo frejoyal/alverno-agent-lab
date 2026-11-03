@@ -45,7 +45,16 @@ from alverno_lab.evals.hr import (
     run_hr_eval,
     unmet_preconditions,
 )
+from alverno_lab.evals.maint_bench import (
+    MaintBenchRow,
+    maint_bench_blockers,
+    maint_bench_markdown,
+    maint_bench_table,
+    maint_file_canaries,
+    maint_unmet_preconditions,
+)
 from alverno_lab.evals.maint_eval import MaintEvalReport, run_maint_eval, with_maint_medians
+from alverno_lab.evals.ops_bench_common import BenchReport, OpsBenchRow, OpsRunNote
 from alverno_lab.evals.pii_bench import (
     file_sha256,
     load_detector_set,
@@ -55,7 +64,6 @@ from alverno_lab.evals.pii_bench import (
 from alverno_lab.evals.runner import EvalReport, run_eval, write_report
 from alverno_lab.evals.service_bench import (
     SvcBenchRow,
-    SvcRunNote,
     canary_hit_files,
     ollama_server_version,
     svc_bench_blockers,
@@ -87,7 +95,13 @@ from alverno_lab.ops_pipeline import (
     check_ops_local,
 )
 from alverno_lab.pipeline import Backend, build_agent, build_index, build_retriever
-from alverno_lab.privacy import AccessLog, AccessLogError, PrivacyConfigError, scan_paths
+from alverno_lab.privacy import (
+    AccessLog,
+    AccessLogError,
+    Canary,
+    PrivacyConfigError,
+    scan_paths,
+)
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 from alverno_lab.retrieval import HybridRetriever, RerankerUnavailableError
 from alverno_lab.tools.registry import registry_sha256
@@ -1199,6 +1213,179 @@ def _bench_stems(name: str, k: int, taken: set[str]) -> list[str]:
         base += "_"
 
 
+@dataclasses.dataclass(frozen=True)
+class _OpsBench[R: BenchReport, W: OpsBenchRow[BenchReport]]:
+    """What differs between the 3a and the 3b bench; the run itself is shared.
+
+    Every callable looks its function up when called, so a test that replaces
+    ``cli.run_service_eval`` or ``cli.run_maint_eval`` reaches the bench.
+    """
+
+    short: str
+    set_label: str
+    markers: tuple[str, str]
+    eval_path: Callable[[Settings], Path]
+    canaries: Callable[[Settings, Path], list[Canary]]
+    run: Callable[..., R]
+    medians: Callable[[Sequence[R]], list[R]]
+    row: Callable[[str, tuple[R, ...], tuple[bool | None, ...]], W]
+    table: Callable[[Sequence[W], BenchLang, OpsRunNote], str]
+    markdown: Callable[[Sequence[W], str, BenchLang, OpsRunNote], str]
+    blockers: Callable[[Sequence[W]], list[str]]
+    unmet: Callable[[Sequence[W], Path], list[str]]
+
+
+def _run_ops_bench[R: BenchReport, W: OpsBenchRow[BenchReport]](
+    spec: _OpsBench[R, W],
+    settings: Settings,
+    names: list[str],
+    *,
+    fake: bool,
+    limit: int | None,
+    repeats: int,
+    readme: Path | None,
+) -> None:
+    """Run one module 3 bench (ADR 0015 « Banc d'essai »); see ``service bench``."""
+    for name in names:
+        _ops_guard(partial(check_ops_local, settings, model=name, fake=fake))
+    dataset = spec.eval_path(settings)
+    # Read before any run: a broken set or fixture stops the bench before a file exists.
+    canaries = _ops_guard(partial(spec.canaries, settings, dataset))
+    if readme is not None:
+        text = readme.read_text(encoding="utf-8")
+        for marker in spec.markers:
+            _ops_guard(partial(replace_marked_block, text, marker, ""))
+    backend = "fake" if fake else "ollama"
+    version = "fake" if fake else ollama_server_version(settings.ollama_url)
+    stamp = f"{dt.datetime.now():%Y%m%d-%H%M%S}"
+    run_dir = settings.reports_dir / f"bench-{spec.short}-{backend}-{stamp}"
+    gate_file = settings.thresholds_path
+    rows: list[W] = []
+    taken = {"summary", "summary.fr"}
+    for name in names:
+        k = repeats if name == settings.chat_model else 1
+        model_settings = settings.model_copy(update={"chat_model": name})
+        reports: list[R] = []
+        for index, stem in enumerate(_bench_stems(name, k, taken), start=1):
+            typer.echo(
+                f"Benchmarking {name} (repetition {index} of {k}) on the {spec.set_label} set..."
+            )
+            reports.append(
+                _ops_guard(
+                    partial(
+                        spec.run,
+                        model_settings,
+                        mode="full",
+                        fake=fake,
+                        dataset=dataset,
+                        out_dir=run_dir,
+                        limit=limit,
+                        label=name,
+                        stem=stem,
+                    )
+                )
+            )
+        gates = tuple(_gate_passed(r, gate_file) for r in spec.medians(reports))
+        rows.append(spec.row(name, tuple(reports), gates))
+    note = OpsRunNote(
+        dataset=_shown_path(dataset),
+        thresholds=_shown_path(gate_file),
+        profile=f"{spec.short}-full-{backend}",
+        ollama_version=version,
+        registry_sha256=registry_sha256(),
+    )
+    md_path = run_dir / "summary.md"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_lf(md_path, spec.markdown(rows, backend, "en", note))
+    _write_lf(run_dir / "summary.fr.md", spec.markdown(rows, backend, "fr", note))
+    payload = {
+        "note": dataclasses.asdict(note),
+        "models": [
+            {
+                "model": r.model,
+                "k": r.k,
+                "gates": list(r.gates),
+                "gate_passed": r.passed,
+                "tokens": r.tokens(),
+                "reports": [report.model_dump() for report in r.reports],
+            }
+            for r in rows
+        ],
+    }
+    _write_lf(run_dir / "summary.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    # Last check on everything the run wrote, summaries included.
+    hits = canary_hit_files([run_dir], canaries)
+    if hits:
+        # Moved aside so that `git add reports/` cannot publish it (`*.quarantine/` is
+        # git-ignored).
+        quarantine = run_dir.with_name(f"{run_dir.name}.quarantine")
+        run_dir.rename(quarantine)
+        hits = [(quarantine / path.relative_to(run_dir), label) for path, label in hits]
+        run_dir, md_path = quarantine, quarantine / md_path.name
+    for path, label in hits:
+        typer.echo(f"{_shown_path(path)}: {label}")
+    blocked = spec.blockers(rows)
+    unmet = spec.unmet(rows, gate_file)
+    unchecked = not canaries or bool(unmet)
+    if readme is not None and not blocked and not hits and not unchecked:
+        text = readme.read_text(encoding="utf-8")
+        french, english = spec.markers
+        for marker, table in (
+            (french, spec.table(rows, "fr", note)),
+            (english, spec.table(rows, "en", note)),
+        ):
+            # Checked before the run, but the README may have been edited since.
+            text = _ops_guard(partial(replace_marked_block, text, marker, table))
+        _write_lf(readme, text)
+        typer.echo(f"Updated {readme}")
+    typer.echo(md_path.read_text(encoding="utf-8"))
+    typer.echo(f"Reports: {run_dir}")
+    if blocked or hits:
+        untouched = f"; {readme} not updated" if readme is not None else ""
+        why = (
+            f"transport errors or persisted canaries for {', '.join(blocked)}"
+            if blocked
+            else f"{len(hits)} canary hit(s) in the run folder"
+        )
+        moved = f"; reports moved to {_shown_path(run_dir)}" if hits else ""
+        typer.secho(
+            f"Error: {why}: the measurement is invalid{untouched}{moved}.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if readme is not None and unchecked:
+        why = "no canary to check" if not canaries else "gate preconditions not met"
+        for line in unmet:
+            typer.echo(f"  FAIL {line}", err=True)
+        typer.secho(f"Error: {why}: {readme} not updated.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
+def _bench_names(models: str) -> list[str]:
+    names = list(dict.fromkeys(m.strip() for m in models.split(",") if m.strip()))
+    if not names:
+        raise typer.BadParameter("give one or more models", param_hint="--models")
+    return names
+
+
+# Each callable looks its function up at call time (tests replace them on ``cli``).
+_SVC_BENCH: _OpsBench[SvcEvalReport, SvcBenchRow] = _OpsBench(
+    short="svc",
+    set_label="3a",
+    markers=SVC_MARKERS,
+    eval_path=lambda settings: settings.svc_eval_path,
+    canaries=lambda settings, dataset: service_file_canaries(settings, dataset),
+    run=lambda *args, **kwargs: run_service_eval(*args, **kwargs),
+    medians=lambda reports: with_service_medians(reports),
+    row=SvcBenchRow,
+    table=lambda rows, lang, note: svc_bench_table(rows, lang, note=note),
+    markdown=lambda rows, backend, lang, note: svc_bench_markdown(rows, backend, lang, note=note),
+    blockers=lambda rows: svc_bench_blockers(rows),
+    unmet=lambda rows, thresholds: svc_unmet_preconditions(rows, thresholds),
+)
+
+
 @service_app.command("bench")
 def service_bench(
     models: Annotated[str, typer.Option("--models", help="Comma-separated chat models.")],
@@ -1236,121 +1423,12 @@ def service_bench(
     canary; otherwise exit 1 and the README is left as is. A run folder with a canary hit
     is renamed ``<folder>.quarantine`` (git-ignored). Exit 2 on a user error.
     """
-    names = list(dict.fromkeys(m.strip() for m in models.split(",") if m.strip()))
-    if not names:
-        raise typer.BadParameter("give one or more models", param_hint="--models")
+    names = _bench_names(models)
     settings = _settings(svc_eval_path=dataset, reports_dir=out, thresholds_path=thresholds)
     settings = settings.for_module("service")
-    for name in names:
-        _ops_guard(partial(check_ops_local, settings, model=name, fake=fake))
-    # Read before any run: a broken set or fixture stops the bench before a file exists.
-    canaries = _ops_guard(partial(service_file_canaries, settings, settings.svc_eval_path))
-    if readme is not None:
-        text = readme.read_text(encoding="utf-8")
-        for marker in SVC_MARKERS:
-            _ops_guard(partial(replace_marked_block, text, marker, ""))
-    backend = "fake" if fake else "ollama"
-    version = "fake" if fake else ollama_server_version(settings.ollama_url)
-    stamp = f"{dt.datetime.now():%Y%m%d-%H%M%S}"
-    run_dir = settings.reports_dir / f"bench-svc-{backend}-{stamp}"
-    gate_file = settings.thresholds_path
-    rows: list[SvcBenchRow] = []
-    taken = {"summary", "summary.fr"}
-    for name in names:
-        k = repeats if name == settings.chat_model else 1
-        model_settings = settings.model_copy(update={"chat_model": name})
-        reports: list[SvcEvalReport] = []
-        for index, stem in enumerate(_bench_stems(name, k, taken), start=1):
-            typer.echo(f"Benchmarking {name} (repetition {index} of {k}) on the 3a set...")
-            reports.append(
-                _ops_guard(
-                    partial(
-                        run_service_eval,
-                        model_settings,
-                        mode="full",
-                        fake=fake,
-                        dataset=settings.svc_eval_path,
-                        out_dir=run_dir,
-                        limit=limit,
-                        label=name,
-                        stem=stem,
-                    )
-                )
-            )
-        gates = tuple(_gate_passed(r, gate_file) for r in with_service_medians(reports))
-        rows.append(SvcBenchRow(name, tuple(reports), gates))
-    note = SvcRunNote(
-        dataset=_shown_path(settings.svc_eval_path),
-        thresholds=_shown_path(gate_file),
-        profile=f"svc-full-{backend}",
-        ollama_version=version,
-        registry_sha256=registry_sha256(),
+    _run_ops_bench(
+        _SVC_BENCH, settings, names, fake=fake, limit=limit, repeats=repeats, readme=readme
     )
-    md_path = run_dir / "summary.md"
-    run_dir.mkdir(parents=True, exist_ok=True)
-    _write_lf(md_path, svc_bench_markdown(rows, backend, note=note))
-    _write_lf(run_dir / "summary.fr.md", svc_bench_markdown(rows, backend, "fr", note=note))
-    payload = {
-        "note": dataclasses.asdict(note),
-        "models": [
-            {
-                "model": r.model,
-                "k": r.k,
-                "gates": list(r.gates),
-                "gate_passed": r.passed,
-                "tokens": r.tokens(),
-                "reports": [report.model_dump() for report in r.reports],
-            }
-            for r in rows
-        ],
-    }
-    _write_lf(run_dir / "summary.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-    # Last check on everything the run wrote, summaries included.
-    hits = canary_hit_files([run_dir], canaries)
-    if hits:
-        # Moved aside so that `git add reports/` cannot publish it (`*.quarantine/` is
-        # git-ignored).
-        quarantine = run_dir.with_name(f"{run_dir.name}.quarantine")
-        run_dir.rename(quarantine)
-        hits = [(quarantine / path.relative_to(run_dir), label) for path, label in hits]
-        run_dir, md_path = quarantine, quarantine / md_path.name
-    for path, label in hits:
-        typer.echo(f"{_shown_path(path)}: {label}")
-    blocked = svc_bench_blockers(rows)
-    unmet = svc_unmet_preconditions(rows, gate_file)
-    unchecked = not canaries or bool(unmet)
-    if readme is not None and not blocked and not hits and not unchecked:
-        text = readme.read_text(encoding="utf-8")
-        for marker, table in (
-            ("RESULTS-SVC:FR", svc_bench_table(rows, "fr", note=note)),
-            ("RESULTS-SVC:EN", svc_bench_table(rows, "en", note=note)),
-        ):
-            # Checked before the run, but the README may have been edited since.
-            text = _ops_guard(partial(replace_marked_block, text, marker, table))
-        _write_lf(readme, text)
-        typer.echo(f"Updated {readme}")
-    typer.echo(md_path.read_text(encoding="utf-8"))
-    typer.echo(f"Reports: {run_dir}")
-    if blocked or hits:
-        untouched = f"; {readme} not updated" if readme is not None else ""
-        why = (
-            f"transport errors or persisted canaries for {', '.join(blocked)}"
-            if blocked
-            else f"{len(hits)} canary hit(s) in the run folder"
-        )
-        moved = f"; reports moved to {_shown_path(run_dir)}" if hits else ""
-        typer.secho(
-            f"Error: {why}: the measurement is invalid{untouched}{moved}.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    if readme is not None and unchecked:
-        why = "no canary to check" if not canaries else "gate preconditions not met"
-        for line in unmet:
-            typer.echo(f"  FAIL {line}", err=True)
-        typer.secho(f"Error: {why}: {readme} not updated.", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
 
 
 # --------------------------------------------------------------------------- maint (3b)
@@ -1562,6 +1640,69 @@ def maint_eval(
         code = _ops_guard(lambda: _maint_gate(reports, settings.thresholds_path))
         if code:
             raise typer.Exit(code=code)
+
+
+MAINT_MARKERS = ("RESULTS-MAINT:FR", "RESULTS-MAINT:EN")
+# Each callable looks its function up at call time (tests replace them on ``cli``).
+_MAINT_BENCH: _OpsBench[MaintEvalReport, MaintBenchRow] = _OpsBench(
+    short="maint",
+    set_label="3b",
+    markers=MAINT_MARKERS,
+    eval_path=lambda settings: settings.maint_eval_path,
+    canaries=lambda settings, dataset: maint_file_canaries(settings, dataset),
+    run=lambda *args, **kwargs: run_maint_eval(*args, **kwargs),
+    medians=lambda reports: with_maint_medians(reports),
+    row=MaintBenchRow,
+    table=lambda rows, lang, note: maint_bench_table(rows, lang, note=note),
+    markdown=lambda rows, backend, lang, note: maint_bench_markdown(rows, backend, lang, note=note),
+    blockers=lambda rows: maint_bench_blockers(rows),
+    unmet=lambda rows, thresholds: maint_unmet_preconditions(rows, thresholds),
+)
+
+
+@maint_app.command("bench")
+def maint_bench(
+    models: Annotated[str, typer.Option("--models", help="Comma-separated chat models.")],
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Maintenance gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int,
+        typer.Option("--repeats", min=1, max=9, help="Repetitions (k) of the default chat model."),
+    ] = 3,
+    readme: Annotated[
+        Path | None,
+        typer.Option(
+            "--readme",
+            exists=True,
+            dir_okay=False,
+            help="Also update the RESULTS-MAINT:FR and RESULTS-MAINT:EN blocks.",
+        ),
+    ] = None,
+) -> None:
+    """Run the full 3b evaluation for each chat model and write comparison tables.
+
+    The default chat model (ALVERNO_CHAT_MODEL) runs ``--repeats`` times, every other
+    model once (ADR 0015). Each repetition is gated on its own safety counts, control
+    rates and preconditions, and on the median of the service metrics (profile
+    maint-full-ollama, or maint-full-fake with ``--fake``). Writes
+    ``<out>/bench-maint-<backend>-<stamp>/`` with one report per repetition, summary.md,
+    summary.fr.md, summary.json and the access logs under ``access/``. The README is
+    rewritten (RESULTS-MAINT blocks only) when no repetition has error_rate or
+    artifact_canary_hits above 0, every precondition is met and the run folder holds no
+    canary; otherwise exit 1 and the README is left as is. A run folder with a canary hit
+    is renamed ``<folder>.quarantine`` (git-ignored). Exit 2 on a user error.
+    """
+    names = _bench_names(models)
+    settings = _settings(maint_eval_path=dataset, reports_dir=out, thresholds_path=thresholds)
+    settings = settings.for_module("maint")
+    _run_ops_bench(
+        _MAINT_BENCH, settings, names, fake=fake, limit=limit, repeats=repeats, readme=readme
+    )
 
 
 @privacy_app.command("eval")

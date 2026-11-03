@@ -1,0 +1,41 @@
+{
+  "reference": "reports/hr-eval-ollama-20261101-r2/eval-hr-full-ollama.json",
+  "new": "reports/m3-regression-ollama-20261102-r2/eval-hr-full-ollama.json",
+  "n_items": 64,
+  "n_reference_items": 64,
+  "fields": [
+    "refused",
+    "refusal_reason",
+    "citations"
+  ],
+  "n_differences": 2,
+  "differences": [
+    {
+      "id": "h011",
+      "field": "citations",
+      "reference": [
+        "RH-007#05",
+        "RH-007#03",
+        "RH-007#04"
+      ],
+      "new": [
+        "RH-007#05"
+      ]
+    },
+    {
+      "id": "h028",
+      "field": "citations",
+      "reference": [
+        "RH-006#07",
+        "RH-006#04"
+      ],
+      "new": [
+        "RH-006#07",
+        "RH-006#04",
+        "RH-006#06",
+        "RH-006#11"
+      ]
+    }
+  ],
+  "errored_items": []
+}

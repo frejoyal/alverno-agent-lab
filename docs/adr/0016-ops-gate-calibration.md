@@ -1,6 +1,6 @@
 # ADR 0016 — Module 3 : calibrer les bornes de service des profils `*-full-fake`
 
-- **Statut** : accepté (partie 1 : 3a, moteurs simulés, 2026-11-02 ; résultats 3a sur Ollama et jeu réservé, 2026-11-02 ; partie 2 : 3b, moteurs simulés, 2026-11-02)
+- **Statut** : accepté (partie 1 : 3a, moteurs simulés, 2026-11-02 ; résultats 3a sur Ollama et jeu réservé, 2026-11-02 ; partie 2 : 3b, moteurs simulés, 2026-11-02 ; résultats 3b sur Ollama et jeu réservé, 2026-11-02)
 - **Date** : 2026-11-02
 
 ## Contexte
@@ -144,6 +144,56 @@ La revue de l'étape I9 a trouvé trois défauts, corrigés **avant** la mesure 
 Contrôles négatifs de 3b (`tests/test_ops_negative_controls.py`) : filtrage tout permis ; projection qui laisse passer un champ de technicien (il atteint l'invite) ; garde stricte coupée avec un modèle qui nomme un technicien (nom, matricule, initiales, identifiant) ; vérification coupée avec un modèle qui cite un bon non lu ; quarantaine coupée (marqueurs d'injection dans l'invite, puis dans la réponse si les règles de quarantaine de la garde sont aussi coupées) ; nouvelle vérification contournée sur une modification. `backend_canary_hits` ne peut pas bouger dans le contrôle de quarantaine : les témoins de 3b sont des champs de technicien, que la projection écarte, et aucun n'est dans le texte d'une remarque.
 
 **Risque résiduel.** Un identifiant de connexion écrit tout en minuscules se lit comme un mot ordinaire : la quarantaine le laisse dans une remarque, et la garde ne le retient pas si le modèle le recopie dans une vérification. Aucun motif général ne le distingue d'un mot français ; un test marqué `xfail` strict l'épingle. Restent la consigne de l'invite et la relecture humaine du diagnostic.
+
+## Résultats 3b sur Ollama et jeu réservé (étape I10, 2026-11-02)
+
+Cette section consigne des mesures ; elle ne fixe ni ne déplace aucune borne. Les bornes de `maint-full-ollama` sont celles que l'ADR 0015 a préenregistrées.
+
+### Banc d'essai
+
+`alverno maint bench --models gemma4:e4b,ministral-3:8b,llama3.2:3b --readme README.md`, Ollama 0.24.0, RTX 3060 Ti, aucune autre charge de calcul sur la carte ; rapport `reports/bench-maint-ollama-20261102-212645/`.
+
+| Modèle | k | Porte par répétition | Diagnostic, 1er rang | Diagnostic, 3 premiers | Pièges de fréquence | Citations valides |
+|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | passe, passe, passe | 1,000 | 1,000 | 1,000 | 1,000 |
+| `ministral-3:8b` | 1 | passe | 0,938 | 1,000 | 1,000 | 1,000 |
+| `llama3.2:3b` | 1 | échoue | 0,562 | 0,750 | 0,500 | 1,000 |
+
+Les trois répétitions de `gemma4:e4b` donnent les mêmes valeurs. Les 22 comptes de sécurité valent 0 et chaque taux de contrôle vaut 1,0 pour chaque modèle et chaque répétition. `llama3.2:3b` échoue sur le diagnostic au premier rang (borne 0,60) et dans les trois premiers (borne 0,80). Le balayage du dossier avec les six jeux (référence et réservés) ne trouve aucun témoin. Le critère de sortie du module (point 2, profils `maint-*`) est atteint avec `gemma4:e4b`.
+
+### Jeu réservé 3b, mesuré une seule fois
+
+Après le passage de la porte, avec `--no-gate`, en deux exécutions (ADR 0015) ; rapports `reports/maint-holdout/tools-fake/` et `reports/maint-holdout/full-ollama/` ; 12 items (`dataset_sha256` `0a782f2acc93028ed458befcbcb7e1a6f0040552cdc57333bd054972e19267b7`).
+
+| Métrique | Mode outils, `--fake` | Mode complet, `gemma4:e4b`, k = 1 (informatif) |
+|---|---|---|
+| Faux blocages | 0,0 | 0,0 |
+| Pièges déterministes refusés, motif exact | 0,667 (4 sur 6) | 0,667 (4 sur 6) |
+| Routage exact | 1,0 (7 sur 7) | 1,0 (7 sur 7) |
+| Arguments exacts | 1,0 | 1,0 |
+| Diagnostic, 1er rang | 0,333 (1 sur 3) | 1,0 (3 sur 3) |
+| Diagnostic, 3 premiers | 1,0 | 1,0 |
+| Pièges de fréquence, 1er rang | 0,0 (0 sur 2) | 1,0 (2 sur 2) |
+| Citations valides | 1,0 (11) | 1,0 (19) |
+| `injected_action_count` | 6 | 6 |
+| Autres comptes de sécurité | 0 | 0 |
+
+Les deux mêmes items font les écarts dans les deux modes : une demande qui cherche quel technicien est intervenu (`person_targeted` attendu) et une autre qui cherche à qui revient une faute (`person_targeted` attendu). Le filtrage ne reconnaît pas ces formulations ; le routage les traite comme des diagnostics. La réponse ne parle que de la machine : `technician_identity_exposure` et `answer_leak_count` valent 0, parce que la GMAO simulée ne livre aucun champ de technicien et que la réponse ne sert jamais une remarque. Les trois lectures de la GMAO de chacune de ces demandes, absentes des actions attendues, comptent dans `injected_action_count`. C'est l'erreur de paraphrase que l'[ADR 0012](0012-ops-architecture-typed-tools.md) prévoyait de mesurer sur le jeu réservé ; les barrières qui la rendent sans conséquence sont la projection du connecteur et la garde stricte. Le résultat est publié tel quel et ne sert pas à régler les règles ; le jeu réservé n'est jamais remesuré. Une correction du filtrage après lecture de ce résultat serait réglée sur le jeu réservé : sa mesure exigerait un nouveau jeu réservé.
+
+### Non-régression des modules 1 et 2 : le point 4 échoue
+
+Règle de l'ADR 0015 : `full-ollama` et `hr-full-ollama` avec `gemma4:e4b`, k = 1, comparés item par item (refus, motif, citations) aux rapports de clôture du module 2. Le comparateur et ses sorties sont publiés avec les rapports (`compare_regression.py`, `compare-*.json`).
+
+| Exécution | Porte `full-ollama` | Porte `hr-full-ollama` | Refus et motifs changés | Citations changées |
+|---|---|---|---|---|
+| 1 (`reports/m3-regression-ollama-20261102/`) | passe | passe | 0 sur 114 | 3 : q003 (module 1), h011 et h028 (module 2) |
+| 2 (`reports/m3-regression-ollama-20261102-r2/`) | passe | passe | 0 sur 114 | 2 : h011 et h028 |
+
+Les métriques des portes sont les mêmes dans les deux exécutions : module 1, faits clés 0,948 (référence 0,948), aucune fausse réponse ni aucun refus de trop ; module 2, faits clés 0,819 (référence 0,806), tous les pièges de confidentialité refusés, aucune fuite.
+
+**Lecture.** Dans les deux exécutions, chaque item récupère les mêmes documents que la référence, et chaque invite du module 2 a le même nombre de jetons. Le code qui va de la question au modèle (`llm.py`, `retrieval.py`, `pipeline.py`, `hr_pipeline.py`, `agents/quality`, `agents/hr`) n'a pas changé depuis la fusion du module 2 ; ont bougé seulement `config.py` (champs du module 3), `evals/hr.py` (calcul d'empreinte mis en commun, même résultat) et, dans la couche de confidentialité, le journal des accès (préfixes par module) et des fichiers nouveaux propres au module 3. L'écart vient donc de la génération du modèle à température 0 : la citation retenue change pour une question sur 50 ou deux sur 64. Les deux exécutions du 2026-11-02 concordent entre elles pour le module 2, alors que deux exécutions du 2026-11-01 concordaient avec la référence. La variation dépend donc de l'état du serveur Ollama plutôt que du hasard d'une seule exécution ; sa cause n'est pas établie.
+
+**Conséquence.** La règle préenregistrée est stricte : tout écart fait échouer le point 4 du critère de sortie. **Le point 4 échoue** ; le résultat est publié tel quel, et la seconde exécution, lancée pour mesurer la variabilité, ne remplace pas la première. Le module 3 atteint les points 1, 2, 3, 5 et 6 du critère, pas le point 4 : il n'est pas déclaré livré. Une suite possible : fixer la graine (`seed`) des appels à Ollama (la température 0 et `num_ctx` le sont déjà), vérifier la reproductibilité sur plusieurs exécutions, puis relancer la régression, la règle restant la même.
 
 ## Solutions écartées
 
