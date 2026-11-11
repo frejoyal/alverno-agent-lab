@@ -221,6 +221,7 @@ Une ligne n'est jamais effacée ; un changement ajoute une nouvelle ligne datée
 | Fichier | Contenu | SHA-256 | Date |
 |---|---|---|---|
 | `evals/thresholds.yaml` | `dir_thresholds_sha256` : plage des profils `mcp-fake` à `dir-full-ollama` (lignes 540 à 668 à cette date), bornes préenregistrées avant toute exécution du module 5 ; `thresholds_sha256` et `ops_thresholds_sha256` inchangées | `ff5585adb8f247852068f41cfcdca66170fa8fb64586c1e23028ec63aae3c4f1` | 2026-11-10 |
+| `evals/thresholds.yaml` | `dir_thresholds_sha256` après la calibration unique de `dir-tools-fake` et `dir-full-fake` par l'[ADR 0021](0021-direction-gate-calibration.md) (lignes 540 à 676 à cette date) ; aucune autre borne ne change | `1c6ef6c838a05c383673fb08384254b716757833cf49c98b30c143624e4c016e` | 2026-11-11 |
 | `data/eval/dir_gold.jsonl` | jeu de référence 5b, 40 items | `3b6e334028d103b7fa214c8e6a98ad5289c31689964c5731358e7e9a558b81e6` | 2026-11-10 |
 | `data/eval/mcp_gold.jsonl` | pièges de protocole 5a, 16 items | `bbef0a35e4ce5bebd3a8452e1df45efeb2dae53a268d1f3f295aaad75a7e3c5e` | 2026-11-10 |
 | `data/eval/dir_holdout.jsonl` | jeu réservé 5b, à usage unique, 12 items : `quality_policy` 2, `hr_policy` 2, `orders_overview` 2, `maintenance_overview` 2, `consolidated` 1, `person_join` 1, `profiling` 1, `sensitive_out_of_scope` 1 ; 1 paire, 5 items avec témoins | `0e3249d9ac5568973e0594f62a4e057cf2d4339f4758f169048e628c8108ed71` | 2026-11-10 |
@@ -248,3 +249,14 @@ Négatives :
 - La parité est mesurée en `--fake` seulement ; un écart propre au chemin Ollama ne serait pas vu par `mcp-fake`.
 
 Voir aussi l'[EFVP du module 5](../efvp/direction-module.md) et les ADR [0017](0017-mcp-server-read-only.md), [0018](0018-direction-orchestrator.md) et [0019](0019-docker-local-deployment.md).
+
+## Précisions des étapes I5 et I6 (2026-11-11)
+
+Ajoutées avec le code de l'évaluation ; aucune borne ne change.
+
+- **`count_fidelity`** : une section D3 ou D4 est fidèle quand les comptes relus dans son bloc de faits égalent exactement ceux de l'oracle (ni compte manquant, ni compte en trop) et que chaque nombre du paragraphe du modèle figure dans le bloc.
+- **`duration_exposure`** : dans une section de l'entretien, toute durée écrite (un nombre suivi de « min », « minutes », « h » ou « heures ») et les mots « temps d'arrêt » ou « durée ».
+- **`cross_section_claims`** : un identifiant d'équipement ou de bon de travail dans la section des commandes, un identifiant de commande ou de compte dans la section de l'entretien, et l'un ou l'autre dans une section Qualité ou RH.
+- **Réponses servies** : elles sont écrites dans `<out>/answers/<stem>.jsonl` (identifiant et texte, jamais la question), pour que le balayage des artéfacts les lise.
+- **Contrôle « `verify` désactivé »** : le répondeur écrit un nombre faux et relie les commandes à une panne ; `count_fidelity` passe sous 1 et `cross_section_claims` au-dessus de 0. Les valeurs interdites (`must_not_include_hits`) sont couvertes par le contrôle de la projection qui rend le libellé de la personne physique, qui fait aussi échouer `natural_person_label_exposure`.
+- **Calibration** : faite une seule fois le 2026-11-11, dans l'[ADR 0021](0021-direction-gate-calibration.md).

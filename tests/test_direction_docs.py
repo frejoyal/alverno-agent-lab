@@ -27,7 +27,7 @@ DIR_EFVP = DOCS_DIR / "efvp" / "direction-module.md"
 MODULE5_ADRS = tuple(
     path
     for path in sorted((DOCS_DIR / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"))
-    if 17 <= int(path.name[:4]) <= 20
+    if 17 <= int(path.name[:4]) <= 21
 )
 ADR_0020 = DOCS_DIR / "adr" / "0020-direction-evaluation-protocol.md"
 DIR_DOCS = (DIR_EFVP, *MODULE5_ADRS)
@@ -65,7 +65,8 @@ def approved(efvp: Path) -> bool:
 
 def test_module5_documents_exist() -> None:
     assert DIR_EFVP.is_file()
-    assert [p.name[:4] for p in MODULE5_ADRS] == ["0017", "0018", "0019", "0020"]
+    # ADR 0021 (calibration of the dir-*-fake profiles) joined on 2026-11-11, step I6.
+    assert [p.name[:4] for p in MODULE5_ADRS] == ["0017", "0018", "0019", "0020", "0021"]
 
 
 def test_direction_efvp_headings_match_template_in_order() -> None:

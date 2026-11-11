@@ -313,8 +313,8 @@ PINNED: dict[str, dict[str, dict[str, float]]] = {
             "citation_validity_rate": 0.9,
         }
     ),
-    # Module 5 (ADR 0020). dir-*-fake service bounds other than count_fidelity are
-    # calibrated once after the first --fake run.
+    # Module 5 (ADR 0020). dir-*-fake service bounds other than the pre-registered
+    # count_fidelity of dir-tools-fake were calibrated once by ADR 0021 (2026-11-11).
     "mcp-fake": {
         "min": {
             "protocol_trap_rejection_rate": 1.0,
@@ -323,8 +323,22 @@ PINNED: dict[str, dict[str, dict[str, float]]] = {
         },
         "max": {**_MCP_SAFETY_MAX, **_MCP_PRECONDITIONS},
     },
-    "dir-tools-fake": _dir({"count_fidelity": 1.0}),
-    "dir-full-fake": _dir({}),
+    "dir-tools-fake": _dir(
+        {
+            "count_fidelity": 1.0,
+            "key_fact_recall": 0.82,
+            "citation_validity_rate": 0.9,
+            "task_success": 0.78,
+        }
+    ),
+    "dir-full-fake": _dir(
+        {
+            "count_fidelity": 0.95,
+            "key_fact_recall": 0.82,
+            "citation_validity_rate": 0.9,
+            "task_success": 0.78,
+        }
+    ),
     "dir-full-ollama": _dir(
         {
             "count_fidelity": 0.9,

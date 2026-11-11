@@ -102,6 +102,7 @@ from alverno_lab.privacy import (
     PrivacyConfigError,
     scan_paths,
 )
+from alverno_lab.privacy.direction_access_log import DirectionAccessLogRecord
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 from alverno_lab.retrieval import HybridRetriever, RerankerUnavailableError
 from alverno_lab.tools.registry import registry_sha256
@@ -156,6 +157,13 @@ mcp_app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(mcp_app, name="mcp")
+direction_app = typer.Typer(
+    help="Management orchestrator (module 5b): one section per domain, never a fusion.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(direction_app, name="direction")
 
 
 class MarkerError(ValueError):
@@ -1825,8 +1833,9 @@ def access_purge(
 ) -> None:
     """Delete access log day files older than the retention period (90 days at most).
 
-    Three logs share the folder, each purged by its own instance: HR (``hr-``), customer
-    service (``service-``) and maintenance (``maint-``), with the same retention. The HR
+    Four logs share the folder, each purged by its own instance: HR (``hr-``), customer
+    service (``service-``), maintenance (``maint-``) and management (``direction-``), with
+    the same retention. The HR
     line keeps its format; the other prefixes add one line each.
     """
     settings = _settings()
@@ -1844,7 +1853,21 @@ def access_purge(
     )
     verb = "Would remove" if dry_run else "Removed"
     shown = _shown_path(directory)
-    for log, kind in ((hr_log, ""), (service_log, "service "), (maint_log, "maint ")):
+    direction_log = _guard(
+        lambda: AccessLog(
+            directory,
+            prefix="direction",
+            record_type=DirectionAccessLogRecord,
+            retention_days=days,
+        )
+    )
+    logs = (
+        (hr_log, ""),
+        (service_log, "service "),
+        (maint_log, "maint "),
+        (direction_log, "direction "),
+    )
+    for log, kind in logs:
         paths = _guard(partial(log.purge, dry_run=dry_run))
         for path in paths:
             typer.echo(f"{verb} {_shown_path(path)}")
@@ -1905,6 +1928,104 @@ def mcp_eval(
         code = _hr_guard(lambda: _gate(report, settings.thresholds_path))
         if code:
             raise typer.Exit(code=code)
+
+
+# --------------------------------------------------------------------------- module 5b
+def _direction_mode(mode: str) -> Literal["tools", "full"]:
+    value = mode.lower()
+    if value not in ("tools", "full"):
+        raise typer.BadParameter("mode must be tools or full", param_hint="--mode")
+    return "tools" if value == "tools" else "full"
+
+
+@direction_app.command("ask")
+def direction_ask(
+    fake: FakeOpt = False,
+    mode: Annotated[
+        str, typer.Option("--mode", help="tools (facts only) or full (summary by the model).")
+    ] = "tools",
+    model: Annotated[str | None, typer.Option("--model", help="Chat model.")] = None,
+) -> None:
+    """Answer one management question, read on stdin, by sections (ADR 0018).
+
+    The notice (art. 8) is printed on stderr first. Exit 0 when answered or refused, 2 on
+    a user error (index missing, remote Ollama, cloud model, unwritable access log).
+    """
+    from alverno_lab.agents.direction.notice import direction_notice
+    from alverno_lab.direction_pipeline import build_direction_rig
+
+    settings = _settings()
+    rig = _hr_guard(
+        lambda: build_direction_rig(
+            settings, mode=_direction_mode(mode), fake=fake, channel="cli", model=model
+        )
+    )
+    typer.echo(direction_notice(settings.access_log_retention_days), err=True)
+    question = _read_question()
+    result = _hr_guard(lambda: rig.agent.ask(question))
+    typer.echo(result.answer)
+    if result.refused:
+        typer.echo(f"[refused: {result.refusal_reason}]")
+
+
+@direction_app.command("eval")
+def direction_eval(
+    mode: Annotated[str, typer.Option("--mode", help="tools or full.")] = "tools",
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Management gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int, typer.Option("--repeats", min=1, max=9, help="Repetitions (k); one report each.")
+    ] = 1,
+    model: Annotated[str | None, typer.Option("--model", help="Chat model.")] = None,
+) -> None:
+    """Run the management set (profile dir-<mode>-<backend>) and write its reports.
+
+    Writes ``<out>/eval-dir-<mode>-<backend>.{json,md}`` (``-r<i>`` per repetition), the
+    served answers in ``<out>/answers/`` and the access logs in ``<out>/access/``. Tools
+    mode needs ``--fake``. ``--limit`` makes the preconditions fail by design. Exit 1 when
+    the gate fails, 2 on a user error.
+    """
+    from alverno_lab.evals.direction_eval import run_direction_eval
+
+    dir_mode = _direction_mode(mode)
+    if dir_mode == "tools" and not fake:
+        raise typer.BadParameter(
+            "tools mode calls no model for the overviews: add --fake (profile dir-tools-fake)",
+            param_hint="--fake",
+        )
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    path = dataset or settings.dir_eval_path
+    backend = "fake" if fake else "ollama"
+    codes: list[int] = []
+    for index in range(1, repeats + 1):
+        stem = f"eval-dir-{dir_mode}-{backend}" + (f"-r{index}" if repeats > 1 else "")
+        report = _hr_guard(
+            partial(
+                run_direction_eval,
+                settings,
+                mode=dir_mode,
+                fake=fake,
+                dataset=path,
+                out_dir=settings.reports_dir,
+                stem=stem,
+                model=model,
+                limit=limit,
+            )
+        )
+        typer.echo(f"Evaluated {report.n_items} management items ({dir_mode}, {backend}).")
+        for key, value in report.metrics.items():
+            typer.echo(f"  {key:30} {value}")
+        typer.echo(f"Reports: {settings.reports_dir / stem}.json, {settings.reports_dir / stem}.md")
+        if gate:
+            codes.append(_hr_guard(partial(_gate, report, settings.thresholds_path)))
+    if any(codes):
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -449,6 +449,7 @@ def test_ci_uploads_reports_without_access_logs() -> None:
         *("--dataset", "data/eval/hr_gold.jsonl"),
         *("--dataset", "data/eval/svc_gold.jsonl"),
         *("--dataset", "data/eval/maint_gold.jsonl"),
+        *("--dataset", "data/eval/dir_gold.jsonl"),
     ]
     # A single scan step: no second scan the upload could skip waiting for.
     assert [s.get("id") for s in steps if "privacy scan" in str(s.get("run", ""))] == [

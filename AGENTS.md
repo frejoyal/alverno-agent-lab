@@ -34,9 +34,11 @@ uv run alverno hr bench --models gemma4:e4b,ministral-3:8b,llama3.2:3b --readme 
 uv run alverno access purge               # delete access-log files past retention
 uv run alverno mcp serve                  # local MCP server over stdio (read only; module 3 tools only with ALVERNO_MCP_OPS=true)
 uv run alverno mcp eval --fake            # MCP parity, protocol traps and structure (profile mcp-fake)
+uv run alverno direction ask --fake       # management question on stdin; one section per domain (module 5b)
+uv run alverno direction eval --mode tools --fake   # profiles dir-tools-fake, dir-full-fake (--mode full)
 ```
 
-Before declaring a change done, run: `ruff check`, `ruff format --check`, `mypy src`, `pytest --cov=alverno_lab` (fails under 85% coverage, as in CI), `alverno eval --mode retrieval --fake`, `alverno privacy eval`, `alverno hr eval --mode retrieval --fake`, `alverno hr eval --mode full --fake` and `alverno mcp eval --fake`. All must pass. `tests/test_quality_frozen.py` pins module-1 behaviour: regenerate it (`uv run python -m tests.test_quality_frozen --write`) only when that behaviour is meant to change, and say so in the commit message.
+Before declaring a change done, run: `ruff check`, `ruff format --check`, `mypy src`, `pytest --cov=alverno_lab` (fails under 85% coverage, as in CI), `alverno eval --mode retrieval --fake`, `alverno privacy eval`, `alverno hr eval --mode retrieval --fake`, `alverno hr eval --mode full --fake`, `alverno mcp eval --fake` and `alverno direction eval --mode tools --fake` / `--mode full --fake`. All must pass. `tests/test_quality_frozen.py` pins module-1 behaviour: regenerate it (`uv run python -m tests.test_quality_frozen --write`) only when that behaviour is meant to change, and say so in the commit message.
 
 ## Layout
 

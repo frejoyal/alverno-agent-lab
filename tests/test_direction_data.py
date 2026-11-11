@@ -37,7 +37,8 @@ SHA256 = {
 }
 # Filled by the holdout session (step I2); None until then.
 HOLDOUT_SHA256: str | None = "0e3249d9ac5568973e0594f62a4e057cf2d4339f4758f169048e628c8108ed71"
-DIR_THRESHOLDS_SHA256 = "ff5585adb8f247852068f41cfcdca66170fa8fb64586c1e23028ec63aae3c4f1"
+# Range hash after the one-time calibration of ADR 0021 (2026-11-11); ff5585ad... before.
+DIR_THRESHOLDS_SHA256 = "1c6ef6c838a05c383673fb08384254b716757833cf49c98b30c143624e4c016e"
 
 FAMILIES = {
     "quality_policy": 6,

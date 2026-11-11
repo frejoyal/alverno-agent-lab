@@ -97,3 +97,13 @@ Ajoutées après l'acceptation, avant tout code `src/` du module 5, pour fixer c
 - **Schéma d'un item** : `id`, `family`, `question`, `expected_outcome`, `expected_reason`, `expected_purposes` (dans l'ordre fixe des sections), `scope` (`account_id`, `asset_id`, `period` avec `start` et `end`), `pair_id`, `expected_counts` (sous-ensemble des comptes de l'oracle, avec au moins les totaux des fins routées), `must_include`, `must_not_include` et `canaries` (valeurs telles quelles des fixtures).
 - **Questions D1 et D2 de `dir_gold`** : reprises telles quelles des jeux de référence des modules 1 et 2 (`q004`, `q008`, `q010`, `q013`, `q015`, `q016` ; `h005`, `h006`, `h015`, `h023`, `h024`, `h027`), avec leurs faits.
 - Les identifiants de `dir_gold` vont de `d001` à `d041`, sans `d017` (retiré avant la première version du fichier pour tenir les 6 items D3 du plan).
+
+## Précisions de l'étape I5 (2026-11-11)
+
+Ajoutées avec la première version du code ; elles ne changent aucune décision ci-dessus.
+
+- **Bloc de faits.** Les sections D3 et D4 sont d'abord un bloc de faits écrit par le code (`agents/direction/overview.py`) : un compte par ligne, sous la forme « libellé : nombre », puis la liste des commandes en retard ou les nombres de bons par équipement et par code de défaillance. Le mode outils sert le bloc seul. En mode complet, le modèle reçoit ce seul bloc, jamais la question ni un autre domaine, et écrit un paragraphe placé au-dessus du bloc ; `verify` garde une phrase seulement si chacun de ses nombres et de ses identifiants figure dans le bloc.
+- **Sections Qualité et RH.** Elles viennent de `QualityAgent.ask` et de `HrAgent.ask` (canal `cli` ou `eval`), dans les deux modes ; avec `--fake`, ce sont les moteurs simulés de ces modules. Un refus du module devient le refus de sa section, avec son motif ; la section est alors comptée comme non servie.
+- **Refus de la direction.** Le texte servi est un message fixe, le même pour les cinq codes ; il ne répète rien de la question et renvoie au RPRP.
+- **Journal `direction`.** `privacy/direction_access_log.py` : version, identifiant de ligne, heure arrondie, canal, décision, motif d'un refus, fins routées et résultat de chaque section (`served`, `refused` ou `error`), modèle et durée ; aucun autre champ n'est accepté. Le préfixe `direction` rejoint `hr`, `service` et `maint` dans `logs/access/`, et `alverno access purge` le purge aussi.
+- **Commandes.** `alverno direction ask` (question lue sur l'entrée standard, avis de l'art. 8 sur la sortie d'erreur) et `alverno direction eval`.

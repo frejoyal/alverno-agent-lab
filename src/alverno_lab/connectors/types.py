@@ -272,3 +272,38 @@ def canonical_json(model: BaseModel) -> str:
 def args_sha256(model: BaseModel) -> str:
     """SHA-256 (hex) of :func:`canonical_json`."""
     return hashlib.sha256(canonical_json(model).encode("utf-8")).hexdigest()
+
+
+# --------------------------------------------------------------------------- overviews
+# Module 5 (ADR 0018): the management overviews. Closed projections: no contact, price,
+# note, technician field, remark, shift, time or duration ever enters them.
+class LateOrderRow(_View):
+    """One late order: ids, dates and the delay label; the label of a person is withheld."""
+
+    order_id: OrderId
+    account_id: AccountId
+    account_label: str | None
+    promised_date: dt.date
+    revised_date: dt.date
+    delay_label: str
+
+
+class OrdersOverview(_View):
+    """D3: counts by status and the late orders, for every account or one."""
+
+    as_of: dt.date
+    account_id: AccountId | None
+    total: int = Field(ge=0)
+    by_status: tuple[tuple[OrderStatus, int], ...]
+    late: tuple[LateOrderRow, ...]
+
+
+class MaintenanceOverview(_View):
+    """D4: corrective work orders of a period, by equipment and by failure code."""
+
+    asset_id: AssetId | None
+    start: dt.date
+    end: dt.date
+    corrective: int = Field(ge=0)
+    by_asset: tuple[tuple[AssetId, str, int], ...]
+    by_failure: tuple[tuple[str, str, int], ...]

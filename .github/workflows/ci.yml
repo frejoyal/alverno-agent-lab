@@ -75,6 +75,12 @@ jobs:
       - name: MCP server eval (fake) + gate
         run: uv run alverno mcp eval --fake --out reports/ci
 
+      - name: Management orchestrator eval (tools, fake) + gate
+        run: uv run alverno direction eval --mode tools --fake --out reports/ci
+
+      - name: Management orchestrator eval (full, fake) + gate
+        run: uv run alverno direction eval --mode full --fake --out reports/ci
+
       # Nothing is uploaded unless the scan finds no canary of the HR, customer service and
       # maintenance gold sets (ADR 0015). Holdouts never enter CI.
       - name: Canary scan before upload
@@ -84,7 +90,7 @@ jobs:
           uv run alverno privacy scan reports/ci
           --dataset data/eval/hr_gold.jsonl
           --dataset data/eval/svc_gold.jsonl
-          --dataset data/eval/maint_gold.jsonl
+          --dataset data/eval/maint_gold.jsonl --dataset data/eval/dir_gold.jsonl
 
       - name: Upload eval reports
         if: always() && steps.canary_scan.outcome == 'success'

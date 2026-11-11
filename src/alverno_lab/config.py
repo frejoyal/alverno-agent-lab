@@ -113,6 +113,8 @@ class Settings(BaseSettings):
     mcp_ops: bool = False
     mcp_max_input_chars: int = Field(default=500, ge=1, le=2000)
     mcp_eval_path: Path = Path("data/eval/mcp_gold.jsonl")
+    # Module 5b, management orchestrator (docs/adr/0018).
+    dir_eval_path: Path = Path("data/eval/dir_gold.jsonl")
 
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:
