@@ -38,9 +38,11 @@ from .conftest import EVAL_DATA, REPO_ROOT, case_id
 SCOPE = [REPO_ROOT / p for p in ("data", "docs", "tests", "README.md", "AGENTS.md")]
 TEXT_SUFFIXES = frozenset({".md", ".py", ".json", ".jsonl", ".yaml", ".yml", ".txt", ".toml"})
 PRIVACY_SRC = REPO_ROOT / "src" / "alverno_lab" / "privacy"
-# One-shot holdouts (ADR 0010, ADR 0015): never read by any test that looks at their
-# text. The module 3 names are listed before the files exist (increment I1).
-HOLDOUTS = frozenset({"hr_holdout.jsonl", "svc_holdout.jsonl", "maint_holdout.jsonl"})
+# One-shot holdouts (ADR 0010, ADR 0015, ADR 0020): never read by any test that looks at
+# their text. The module 3 and module 5 names are listed before the files exist (step I1).
+HOLDOUTS = frozenset(
+    {"hr_holdout.jsonl", "svc_holdout.jsonl", "maint_holdout.jsonl", "dir_holdout.jsonl"}
+)
 # Keys whose values are free text a screen or a guard reads: HR questions, the module 3
 # operator requests and the edited text of an approval script, at any nesting depth.
 QUESTION_KEYS = ("question", "text", "request", "edited_text")
