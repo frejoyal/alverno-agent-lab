@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.1 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 en attente de l'avis du RPRP et de l'approbation |
+| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 approuvée le 2026-11-11 |
 | Moment | version 1.0 rédigée avant l'implémentation, quand aucun code `src/` du module 5 n'existait ; version 1.1 rédigée après les mesures du 2026-11-11 (portes, banc d'essai, jeu réservé, non-régression) |
 | Gabarit | [template.md](template.md) |
 | Sous-modules | 5a, serveur MCP (`alverno mcp serve`) ; 5b, orchestrateur de la direction (`alverno direction`) ; 5c, images Docker et `docker compose` |
@@ -36,7 +36,7 @@
 
 **Résultats (version 1.1).** Les sous-modules 5a et 5b sont réalisés et mesurés : toutes les portes réussissent, chaque compte de sécurité vaut 0 dans chaque exécution, et la non-régression des modules 1 à 3 ne montre aucun écart sur 202 items. Le jeu réservé de l'orchestrateur refuse ses 3 pièges, mais aussi 2 questions répondables sur 9 (section 5). **Le sous-module 5c (Docker) est reporté** par décision du responsable du dépôt le 2026-11-11 ([ADR 0019](../adr/0019-docker-local-deployment.md#report-de-létape-i8-2026-11-11)) : l'affirmation G6 et les risques R12 et R13 restent sans mesure.
 
-**Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-10 par le responsable du dépôt dans le rôle du RPRP. Approbation de la haute direction et acceptation des risques R1, R2 et R12 : **confirmées le 2026-11-10** (section 7). Version 1.1 : avis du RPRP sur les résultats et approbation **en attente** (section 7).
+**Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-10 par le responsable du dépôt dans le rôle du RPRP. Approbation de la haute direction et acceptation des risques R1, R2 et R12 : **confirmées le 2026-11-10** (section 7). Version 1.1 : avis du RPRP sur les résultats et approbation de la haute direction **confirmés le 2026-11-11** par le responsable du dépôt dans ces deux rôles (section 7).
 
 **Limites de l'évaluation.** Le serveur ne peut pas contrôler son client : l'évaluation couvre le serveur et la règle d'usage, pas un client précis. Le sous-module 5c n'est pas réalisé (version 1.1) : aucune image ni aucun fichier `compose` n'a été évalué. Les mesures porteront sur des données fictives et des connecteurs simulés ; les jeux sont petits (12 pièges de l'orchestrateur, 12 items réservés) et les bornes de la règle de trois resteront larges. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
 
@@ -216,7 +216,7 @@ Ces résultats ne servent pas à régler les règles, et le jeu réservé n'est 
 | Réussir les portes et mesurer le jeu réservé | Responsable du dépôt | Fait le 2026-11-11, sauf le travail Docker (5c reporté) | Critère de sortie de l'ADR 0020 |
 | Inscrire les règles du module dans la politique de gouvernance | RPRP | Avant la mise en service | Politique mise à jour et datée |
 | Vérifier les droits du volume des journaux et l'absence de port sur le serveur réel | Soutien informatique | Avant la mise en service du déploiement retenu (5c reporté) | Vérification datée |
-| Publier la version 1.1 | Responsable du dépôt et RPRP | Rédigée le 2026-11-11 ; avis et approbation en attente | Résultats recopiés ; avis confirmé ; approbation |
+| Publier la version 1.1 | Responsable du dépôt et RPRP | Fait le 2026-11-11 : résultats recopiés ; avis confirmé et version approuvée | Résultats recopiés ; avis confirmé ; approbation |
 
 | Réévaluation | Date ou déclencheur |
 |---|---|
@@ -249,7 +249,7 @@ Ces résultats ne servent pas à régler les règles, et le jeu réservé n'est 
 6. la version 1.1, avec les résultats mesurés, est soumise au RPRP ;
 7. si une borne de sécurité échoue, on corrige le système, jamais la borne, et le résultat négatif est publié tel quel.
 
-**Version 1.1** : soumise au RPRP avec les résultats mesurés (condition 6) ; avis **en attente**. Les conditions 2, 3 et 5 restent ouvertes jusqu'à la mise en service.
+**Version 1.1** : soumise au RPRP avec les résultats mesurés (condition 6) ; avis **favorable, sous les mêmes conditions**, confirmé le 2026-11-11 par le responsable du dépôt dans le rôle du RPRP. Les conditions 2, 3 et 5 restent ouvertes jusqu'à la mise en service.
 
 Les lectures juridiques marquées « incertain » restent des lectures du labo : la signature de l'avis ne les transforme pas en avis juridique.
 
@@ -265,15 +265,15 @@ Le module n'utilise aucun renseignement de niveau 5 : une question de ce type es
 | Décisions de conception 1 à 11 | Approuvées par le responsable du dépôt le 2026-11-10 |
 | Risques R1, R2 et R12 | Acceptés par la présidente le 2026-11-10 |
 | Approbation de la version 1.0 | Approuvée |
-| Avis du RPRP sur la version 1.1 | En attente |
-| Approbation de la version 1.1 | En attente |
+| Avis du RPRP sur la version 1.1 | Favorable, sous les mêmes conditions ; confirmé le 2026-11-11 |
+| Approbation de la version 1.1 | Approuvée, avec les résultats mesurés de la section 5 |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | 2026-11-10 (version 1.0) |
+| Date | 2026-11-10 (version 1.0) ; 2026-11-11 (version 1.1) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-10 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-10 |
-| 1.1 | 2026-11-11 | Après les mesures : portes simulées 5a et 5b, banc d'essai de l'orchestrateur sur Ollama, jeu réservé mesuré une seule fois, non-régression des modules 1 à 3 sans écart ; risques R7, R8, R10 et R14 revus ; 5c reporté (G6, R12 et R13 sans mesure) ; ADR 0021 et rapports joints (annexe D) ; avis du RPRP et approbation en attente |
+| 1.1 | 2026-11-11 | Après les mesures : portes simulées 5a et 5b, banc d'essai de l'orchestrateur sur Ollama, jeu réservé mesuré une seule fois, non-régression des modules 1 à 3 sans écart ; risques R7, R8, R10 et R14 revus ; 5c reporté (G6, R12 et R13 sans mesure) ; ADR 0021 et rapports joints (annexe D) ; avis du RPRP confirmé et version approuvée le 2026-11-11 |
 
 ## Annexes
 

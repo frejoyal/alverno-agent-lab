@@ -280,6 +280,6 @@ Depuis cette précision, chaque appel au modèle de clavardage porte `num_predic
 | 3. `dir-full-ollama` avec `gemma4:e4b`, 3 répétitions | atteint | `reports/bench-dir-ollama-20261111-040705/` |
 | 4. Non-régression des modules 1 à 3 | atteint | `reports/m5-regression-ollama-20261111/` : les 8 portes passent ; les 202 items sont identiques sur tous les champs sauf la latence, réponses comprises |
 | 5. Travail Docker de la CI ; blocs `RESULTS-DIR` écrits par le banc ; autres marqueurs identiques | **partiel** : blocs écrits par le banc et autres familles identiques, octet pour octet ; **Docker non réalisé** | [ADR 0019, « Report de l'étape I8 »](0019-docker-local-deployment.md#report-de-létape-i8-2026-11-11) |
-| 6. Jeu réservé mesuré une seule fois et publié ; EFVP v1.1 | atteint, sous réserve de l'approbation de l'EFVP v1.1 | `reports/dir-holdout/` ; [EFVP du module 5](../efvp/direction-module.md) |
+| 6. Jeu réservé mesuré une seule fois et publié ; EFVP v1.1 | atteint ; EFVP v1.1 approuvée le 2026-11-11 | `reports/dir-holdout/` ; [EFVP du module 5](../efvp/direction-module.md) |
 
 Le sous-module 5a est livré (point 1 et `mcp-fake`). Le sous-module 5b remplit les points qui le concernent (1 à 4 et 6). Le module 5 n'est **pas livré au complet** : 5c est reporté par décision du responsable du dépôt.
