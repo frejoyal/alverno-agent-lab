@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.0 |
 | Date | 2026-11-10 |
-| Statut | à approuver |
+| Statut | version 1.0 approuvée le 2026-11-10 |
 | Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 5 n'existe |
 | Gabarit | [template.md](template.md) |
 | Sous-modules | 5a, serveur MCP (`alverno mcp serve`) ; 5b, orchestrateur de la direction (`alverno direction`) ; 5c, images Docker et `docker compose` |
@@ -34,7 +34,7 @@
 
 **Risques résiduels principaux.** R1 (client MCP hébergé choisi par l'utilisateur malgré la règle) et R2 (option `ALVERNO_MCP_OPS` activée avec un client hébergé) reposent sur la discipline de l'utilisateur : le serveur ne peut pas voir où va son résultat. R12 (droits sur le volume des journaux d'un serveur réel) dépend de l'hôte. Ces trois risques sont soumis à la présidente (section 7).
 
-**Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **proposé — favorable, sous conditions** (section 7), à confirmer. Approbation de la haute direction : **en attente**.
+**Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-10 par le responsable du dépôt dans le rôle du RPRP. Approbation de la haute direction et acceptation des risques R1, R2 et R12 : **confirmées le 2026-11-10** (section 7).
 
 **Limites de l'évaluation.** Le serveur ne peut pas contrôler son client : l'évaluation couvre le serveur et la règle d'usage, pas un client précis. Le chemin Ollama + processeur graphique de `docker compose` n'est pas testé automatiquement. Les mesures porteront sur des données fictives et des connecteurs simulés ; les jeux sont petits (12 pièges de l'orchestrateur, 12 items réservés) et les bornes de la règle de trois resteront larges. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
 
@@ -167,8 +167,8 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP, accès et rectificatio
 
 | Action | Responsable (rôle) | Échéance | Critère |
 |---|---|---|---|
-| Confirmer l'avis proposé du RPRP | RPRP | Avant l'incrément I1 | Avis daté à la section 7 |
-| Approuver l'EFVP et décider des risques R1, R2 et R12 | Présidente | À la lecture de l'EFVP | Approbation datée ; ADR 0017 à 0020 passent à « accepté » |
+| Confirmer l'avis du RPRP | RPRP | Fait le 2026-11-10 | Avis daté à la section 7 |
+| Approuver l'EFVP et décider des risques R1, R2 et R12 | Présidente | Fait le 2026-11-10 | Approbation datée ; ADR 0017 à 0020 passent à « accepté » |
 | Écrire le jeu réservé `dir_holdout` (12 items) dans une session séparée, sans accès au code du filtre ni du routage | Responsable du dépôt | Incrément I2, avant ce code | Empreinte inscrite au registre de l'[ADR 0020](../adr/0020-direction-evaluation-protocol.md) |
 | Vérifier qu'aucun exportateur de télémétrie n'est installé ni activé par le SDK `mcp` | Responsable du dépôt | Incrément I3 | Test d'import et note datée |
 | Documenter un client MCP local et la règle « client local » | Responsable du dépôt | Incrément I4 | README et champ `instructions` |
@@ -197,7 +197,7 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP, accès et rectificatio
 
 ### Avis du RPRP
 
-**Avis proposé : favorable, sous conditions** (rédigé le 2026-11-10, à confirmer par le responsable du dépôt dans le rôle du RPRP) :
+**Avis : favorable, sous conditions** (rédigé le 2026-11-10, **confirmé le 2026-11-10** par le responsable du dépôt dans le rôle du RPRP) :
 
 1. aucune ligne de code `src/` du module 5 avant la confirmation de cet avis et l'approbation de cette version ;
 2. aucun client MCP hébergé, et l'option `ALVERNO_MCP_OPS` seulement avec un client local, tant qu'une nouvelle version de l'EFVP ne l'autorise pas ;
@@ -211,22 +211,22 @@ Les lectures juridiques marquées « incertain » restent des lectures du labo :
 
 ### Risques soumis à la présidente
 
-Le module n'utilise aucun renseignement de niveau 5 : une question de ce type est refusée (`sensitive_out_of_scope`). La présidente est invitée à accepter, pour la durée du labo, les risques résiduels R1 (client hébergé choisi malgré la règle), R2 (option X4 avec un client hébergé) et R12 (droits de l'hôte sur un serveur réel) : **en attente**.
+Le module n'utilise aucun renseignement de niveau 5 : une question de ce type est refusée (`sensitive_out_of_scope`). La présidente est invitée à accepter, pour la durée du labo, les risques résiduels R1 (client hébergé choisi malgré la règle), R2 (option X4 avec un client hébergé) et R12 (droits de l'hôte sur un serveur réel) : **acceptés le 2026-11-10** par le responsable du dépôt dans le rôle de la présidente.
 
 ### Approbation de la haute direction
 
 | Élément | Contenu |
 |---|---|
-| Avis du RPRP | Proposé : favorable, sous conditions ; à confirmer |
+| Avis du RPRP | Favorable, sous conditions ; confirmé le 2026-11-10 |
 | Décisions de conception 1 à 11 | Approuvées par le responsable du dépôt le 2026-11-10 |
-| Risques R1, R2 et R12 | En attente |
-| Approbation de la version 1.0 | En attente |
+| Risques R1, R2 et R12 | Acceptés par la présidente le 2026-11-10 |
+| Approbation de la version 1.0 | Approuvée |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | à inscrire |
+| Date | 2026-11-10 |
 
 | Version | Date | Changements |
 |---|---|---|
-| 1.0 | 2026-11-10 | Première version, rédigée avant l'implémentation ; à approuver |
+| 1.0 | 2026-11-10 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-10 |
 
 ## Annexes
 

@@ -1,6 +1,6 @@
 # ADR 0019 — Module 5c : images Docker et `docker compose` pour un serveur de l'usine, sans port publié ni registre
 
-- **Statut** : proposé le 2026-11-10 ; accepté à l'approbation de l'[EFVP du module 5](../efvp/direction-module.md#7-avis-du-responsable-décision-et-approbation) par la présidente (dans ce labo, le responsable du dépôt dans ce rôle)
+- **Statut** : accepté le 2026-11-10, à l'approbation de l'[EFVP du module 5](../efvp/direction-module.md#7-avis-du-responsable-décision-et-approbation) par la présidente (dans ce labo, le responsable du dépôt dans ce rôle)
 - **Date** : 2026-11-10
 
 ## Contexte
