@@ -43,6 +43,8 @@ NUMERIC_TYPES: frozenset[PIType] = frozenset(
 )
 
 # Why a span was emitted. Overlaps are resolved in this order (strongest first).
+# Entry point of a request, recorded by the access logs (ADR 0008, ADR 0014, ADR 0017).
+Channel = Literal["cli", "eval", "mcp"]
 Basis = Literal["validated", "pattern", "context", "heuristic"]
 BASIS_RANK: dict[str, int] = {"validated": 0, "pattern": 1, "context": 2, "heuristic": 3}
 

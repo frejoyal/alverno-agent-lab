@@ -89,3 +89,14 @@ Négatives :
 - Sans transport réseau, un client sur un autre poste ne peut pas utiliser le serveur avant le module 6.
 
 Voir aussi l'[ADR 0018](0018-direction-orchestrator.md) (orchestrateur de la direction), l'[ADR 0019](0019-docker-local-deployment.md) (images Docker) et l'[ADR 0020](0020-direction-evaluation-protocol.md) (protocole d'évaluation du module 5).
+
+## Précisions de l'étape I3 (2026-11-10)
+
+Ajoutées après l'acceptation, avec la première version du code ; elles ne changent aucune décision ci-dessus.
+
+- **Le SDK charge sa pile web à l'import.** Le paquet `mcp` 2.3.0 importe `starlette`, `uvicorn`, `sse-starlette`, `httpx2` et l'API OpenTelemetry dès `import mcp`, même pour stdio. Le code du serveur ne les importe jamais lui-même (`tests/test_module5_layout.py`) et ne démarre aucun serveur web. La preuve qu'aucun port n'est ouvert est donc la sonde `network_listeners` de l'[ADR 0020](0020-direction-evaluation-protocol.md), qui compte les appels de `bind` et de `listen` pendant toute l'évaluation, et non un test d'import dans un interpréteur neuf. Seule l'API OpenTelemetry est installée, sans son SDK : les traces du SDK `mcp` ne vont nulle part (un test vérifie l'absence de `opentelemetry.sdk`).
+- **Serveur bas niveau.** Le serveur utilise le `Server` bas niveau du SDK, pas sa surcouche : la liste des outils et chaque appel passent par deux gestionnaires du labo, qui décident de chaque erreur. Un outil inconnu ou fermé est rendu comme une erreur d'outil de code `unknown_tool`, et non comme une erreur du protocole JSON-RPC ; le client reçoit le même code fermé dans les deux cas.
+- **Nom du réglage.** Le champ s'appelle `mcp_ops` (variable `ALVERNO_MCP_OPS`), et non `mcp_ops_tools`.
+- **Outils du module 3 en mode outils.** `order_status` et `machine_diagnosis` utilisent les moteurs du module 3 en mode outils, sans modèle de langage, avec une demande fixe construite à partir des identifiants typés. Une demande de lecture ne produit jamais de brouillon ; si cela arrivait, le brouillon serait abandonné, jamais approuvé. Un code de symptôme hors du vocabulaire de la GMAO donne `invalid_input`.
+- **Annotations.** Chaque outil déclare `readOnlyHint: true` et `destructiveHint: false` ; `exposed_write_tools` compte aussi tout outil listé sans `readOnlyHint`.
+- **Sonde sous Windows.** Python émule `socket.socketpair()` sous Windows par un écouteur en boucle locale, sur un port éphémère, fermé dès que la paire est connectée (le tube interne de la boucle asyncio). La sonde ne compte pas les appels faits à l'intérieur de `socketpair` ; un test vérifie qu'elle compte toujours un vrai écouteur.

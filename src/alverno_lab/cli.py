@@ -149,6 +149,13 @@ maint_app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(maint_app, name="maint")
+mcp_app = typer.Typer(
+    help="Local MCP server (module 5a): read-only tools over stdio, level 2 by default.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(mcp_app, name="mcp")
 
 
 class MarkerError(ValueError):
@@ -1842,6 +1849,62 @@ def access_purge(
         for path in paths:
             typer.echo(f"{verb} {_shown_path(path)}")
         typer.echo(f"{verb} {len(paths)} {kind}day file(s) older than {days} days in {shown}.")
+
+
+# --------------------------------------------------------------------------- module 5a
+@mcp_app.command("serve")
+def mcp_serve(
+    fake: FakeOpt = False,
+    model: Annotated[str | None, typer.Option("--model", help="Chat model.")] = None,
+) -> None:
+    """Serve the MCP tools on stdin and stdout, for a client that launches this command.
+
+    No port is opened. The Quality and HR tools are listed by default; ``order_status``
+    and ``machine_diagnosis`` only with ``ALVERNO_MCP_OPS=true``, and then only for a
+    client whose model runs on this workstation (docs/adr/0017). Exit 2 on a user error
+    (index missing, remote Ollama, cloud model, unwritable access log).
+    """
+    # Imported here: the SDK loads its web stack at import, which no other command needs.
+    from alverno_lab.mcp_server.adapters import build_backends
+    from alverno_lab.mcp_server.server import run_stdio
+
+    settings = _settings()
+    backends = _hr_guard(lambda: build_backends(settings, fake=fake, model=model))
+    run_stdio(backends, settings)
+
+
+@mcp_app.command("eval")
+def mcp_eval(
+    fake: FakeOpt = False,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+) -> None:
+    """Run the MCP evaluation (profile mcp-fake) and write ``<out>/eval-mcp-fake.{json,md}``.
+
+    Parity with the command line on the Quality and HR gold sets, the 16 protocol traps of
+    ``mcp_gold.jsonl`` and the structural checks (ADR 0020). Needs ``--fake``: parity is
+    measured where both paths are deterministic. Exit 1 when the gate fails, 2 on a user
+    error.
+    """
+    from alverno_lab.evals.mcp_eval import run_mcp_eval  # the SDK, see mcp_serve
+
+    if not fake:
+        raise typer.BadParameter(
+            "the MCP evaluation runs in fake mode only: add --fake (profile mcp-fake)",
+            param_hint="--fake",
+        )
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    report = _hr_guard(lambda: run_mcp_eval(settings, out_dir=settings.reports_dir))
+    typer.echo(f"Evaluated {report.n_parity_items} parity calls and {len(report.traps)} traps.")
+    for key, value in report.metrics.items():
+        typer.echo(f"  {key:30} {value}")
+    stem = settings.reports_dir / "eval-mcp-fake"
+    typer.echo(f"Reports: {stem}.json, {stem}.md")
+    if gate:
+        code = _hr_guard(lambda: _gate(report, settings.thresholds_path))
+        if code:
+            raise typer.Exit(code=code)
 
 
 if __name__ == "__main__":  # pragma: no cover

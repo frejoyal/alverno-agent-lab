@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Annotated, Generic, Literal, cast, get_args, o
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from alverno_lab.privacy.types import Kind, PIType, RefusalCode, Subject
+from alverno_lab.privacy.types import Channel, Kind, PIType, RefusalCode, Subject
 
 if TYPE_CHECKING:
     # The default of a type variable (PEP 696) is in ``typing`` from Python 3.13 only;
@@ -78,7 +78,7 @@ class AccessLogRecord(BaseModel):
     event_id: str = Field(pattern=r"^[0-9a-f]{32}$")
     ts: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:00Z$")
     module: Literal["hr"] = "hr"
-    channel: Literal["cli", "eval"]
+    channel: Channel
     decision: Literal["answered", "refused", "error"]
     reason: RefusalCode | None = None
     kind: Kind | None = None

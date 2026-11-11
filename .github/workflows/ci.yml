@@ -72,6 +72,9 @@ jobs:
       - name: Maintenance eval (full, fake) + gate
         run: uv run alverno maint eval --mode full --fake --out reports/ci
 
+      - name: MCP server eval (fake) + gate
+        run: uv run alverno mcp eval --fake --out reports/ci
+
       # Nothing is uploaded unless the scan finds no canary of the HR, customer service and
       # maintenance gold sets (ADR 0015). Holdouts never enter CI.
       - name: Canary scan before upload

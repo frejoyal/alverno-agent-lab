@@ -109,7 +109,7 @@ from alverno_lab.privacy.ops_access_log import (
 from alverno_lab.privacy.ops_policy import OpsRefusalPolicy
 from alverno_lab.privacy.ops_screen import OpsScreening
 from alverno_lab.privacy.ops_types import OPS_REFUSAL_CODES, Flow, OpsFlag, OpsRefusalCode
-from alverno_lab.privacy.types import PIType
+from alverno_lab.privacy.types import Channel, PIType
 from alverno_lab.tools.authority import ApprovalAuthority, ApprovalToken
 from alverno_lab.tools.registry import TOOL_NAMES
 
@@ -415,7 +415,7 @@ class OpsEnvelope:
         log: AccessLog[OpsAccessLogRecord],
         authority: ApprovalAuthority,
         policy: OpsRefusalPolicy,
-        channel: Literal["cli", "eval"],
+        channel: Channel,
         header_for: Callable[[OpsState], DraftHeader | None] = _no_header,
         model_name: Callable[[], str | None] = _no_model,
         chat_attempts: Callable[[], int] = _no_attempts,
@@ -425,7 +425,7 @@ class OpsEnvelope:
         rule: str | None = None
         if module not in ("service", "maint"):
             rule = "module"
-        elif channel not in ("cli", "eval"):
+        elif channel not in ("cli", "eval", "mcp"):
             rule = "channel"
         elif not isinstance(policy, OpsRefusalPolicy) or policy.module != module:
             rule = "policy"
@@ -438,7 +438,7 @@ class OpsEnvelope:
         if rule is not None:
             raise OpsRuntimeError(f"envelope:{rule}")
         self.module: Literal["service", "maint"] = module
-        self.channel: Literal["cli", "eval"] = channel
+        self.channel: Channel = channel
         self.policy = policy
         self.log = log
         self.authority = authority

@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     ops_max_edit_rounds: int = Field(default=2, ge=1, le=2)
     ops_max_work_orders: int = Field(default=8, ge=1, le=12)
     ops_history_days: int = Field(default=548, ge=1)
+    # Module 5a, MCP server (docs/adr/0017): stdio only, so no address and no port. The
+    # module 3 tools stay closed unless ALVERNO_MCP_OPS=true, and only with a local client.
+    mcp_ops: bool = False
+    mcp_max_input_chars: int = Field(default=500, ge=1, le=2000)
+    mcp_eval_path: Path = Path("data/eval/mcp_gold.jsonl")
 
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:
