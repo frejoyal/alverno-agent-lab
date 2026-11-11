@@ -46,3 +46,25 @@ def test_chat_answer_length_is_capped() -> None:
     assert Settings().num_predict == 1024
     chat = make_chat(Settings(num_predict=256), fake=False, model="gemma4:e4b")
     assert getattr(chat, "num_predict", None) == 256
+
+
+def test_a_trusted_compose_host_is_local_but_opens_no_cloud_model(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # docker compose (ADR 0019): the agents reach Ollama as "ollama" on an internal
+    # network. The host is accepted without the remote opt-in and without a warning...
+    settings = Settings(ollama_url="http://ollama:11434", trusted_ollama_hosts={"Ollama"})
+    assert settings.ollama_url == "http://ollama:11434"
+    assert capsys.readouterr().err == ""
+    # ...but a cloud model still needs ALVERNO_ALLOW_REMOTE_OLLAMA (Ollama has a way out).
+    with pytest.raises(RemoteOllamaError, match="cloud model"):
+        settings.check_model_is_local("qwen3.5:cloud")
+    # Any other host stays refused (pydantic wraps the error in a ValueError).
+    with pytest.raises(ValueError, match="not local"):
+        Settings(ollama_url="http://gpu.alverno.example:11434", trusted_ollama_hosts={"ollama"})
+
+
+def test_trusted_ollama_hosts_reads_a_json_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALVERNO_TRUSTED_OLLAMA_HOSTS", '["ollama"]')
+    monkeypatch.setenv("ALVERNO_OLLAMA_URL", "http://ollama:11434")
+    assert Settings().trusted_ollama_hosts == frozenset({"ollama"})

@@ -4,9 +4,9 @@
 
 | Élément | Valeur |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 approuvée le 2026-11-11 |
+| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 approuvée le 2026-11-11 ; version 1.2 (5c) en attente de l'avis du RPRP et de l'approbation |
 | Moment | version 1.0 rédigée avant l'implémentation, quand aucun code `src/` du module 5 n'existait ; version 1.1 rédigée après les mesures du 2026-11-11 (portes, banc d'essai, jeu réservé, non-régression) |
 | Gabarit | [template.md](template.md) |
 | Sous-modules | 5a, serveur MCP (`alverno mcp serve`) ; 5b, orchestrateur de la direction (`alverno direction`) ; 5c, images Docker et `docker compose` |
@@ -34,11 +34,11 @@
 
 **Risques résiduels principaux.** R1 (client MCP hébergé choisi par l'utilisateur malgré la règle) et R2 (option `ALVERNO_MCP_OPS` activée avec un client hébergé) reposent sur la discipline de l'utilisateur : le serveur ne peut pas voir où va son résultat. R12 (droits sur le volume des journaux d'un serveur réel) dépend de l'hôte. Ces trois risques sont soumis à la présidente (section 7).
 
-**Résultats (version 1.1).** Les sous-modules 5a et 5b sont réalisés et mesurés : toutes les portes réussissent, chaque compte de sécurité vaut 0 dans chaque exécution, et la non-régression des modules 1 à 3 ne montre aucun écart sur 202 items. Le jeu réservé de l'orchestrateur refuse ses 3 pièges, mais aussi 2 questions répondables sur 9 (section 5). **Le sous-module 5c (Docker) est reporté** par décision du responsable du dépôt le 2026-11-11 ([ADR 0019](../adr/0019-docker-local-deployment.md#report-de-létape-i8-2026-11-11)) : l'affirmation G6 et les risques R12 et R13 restent sans mesure.
+**Résultats (version 1.1).** Les sous-modules 5a et 5b sont réalisés et mesurés : toutes les portes réussissent, chaque compte de sécurité vaut 0 dans chaque exécution, et la non-régression des modules 1 à 3 ne montre aucun écart sur 202 items. Le jeu réservé de l'orchestrateur refuse ses 3 pièges, mais aussi 2 questions répondables sur 9 (section 5). Le sous-module 5c (Docker), d'abord reporté, a été réalisé le même jour sous la forme prévue : image construite et vérifiée dans la CI seulement ([ADR 0019](../adr/0019-docker-local-deployment.md#reprise-de-létape-i8-2026-11-11)). La version 1.2 ajoute ses preuves (G6, R12, R13).
 
 **Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-10 par le responsable du dépôt dans le rôle du RPRP. Approbation de la haute direction et acceptation des risques R1, R2 et R12 : **confirmées le 2026-11-10** (section 7). Version 1.1 : avis du RPRP sur les résultats et approbation de la haute direction **confirmés le 2026-11-11** par le responsable du dépôt dans ces deux rôles (section 7).
 
-**Limites de l'évaluation.** Le serveur ne peut pas contrôler son client : l'évaluation couvre le serveur et la règle d'usage, pas un client précis. Le sous-module 5c n'est pas réalisé (version 1.1) : aucune image ni aucun fichier `compose` n'a été évalué. Les mesures porteront sur des données fictives et des connecteurs simulés ; les jeux sont petits (12 pièges de l'orchestrateur, 12 items réservés) et les bornes de la règle de trois resteront larges. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
+**Limites de l'évaluation.** Le serveur ne peut pas contrôler son client : l'évaluation couvre le serveur et la règle d'usage, pas un client précis. Le chemin Ollama + processeur graphique de `docker compose` n'est pas testé automatiquement (version 1.2) : l'image est vérifiée dans la CI, sans Ollama. Les mesures porteront sur des données fictives et des connecteurs simulés ; les jeux sont petits (12 pièges de l'orchestrateur, 12 items réservés) et les bornes de la règle de trois resteront larges. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
 
 ## 1. Description du projet et objet de l'EFVP
 
@@ -201,7 +201,7 @@ Ces résultats ne servent pas à régler les règles, et le jeu réservé n'est 
 - **R8 (petit groupe)** : pièges `profiling` refusés partout ; `duration_exposure` 0. **Faible**, inchangé.
 - **R10 (nombre inventé)** : `count_fidelity` 1,000 pour chaque modèle et au jeu réservé ; `must_not_include_hits` 0. Les mesures ne couvrent pas une reformulation trompeuse sans nombre faux : risque résiduel maintenu à **moyen**.
 - **R14 (dépendance)** : le SDK `mcp` charge sa pile web à l'import, mais n'ouvre aucun port (`network_listeners` 0) et seule l'API OpenTelemetry est installée, sans son SDK ([ADR 0017](../adr/0017-mcp-server-read-only.md)). **Faible**, confirmé.
-- **R12 et R13 (Docker)** : sans mesure, 5c étant reporté ; aucun serveur n'est déployé. R12 reste accepté pour le labo ; les deux seront évalués avec le déploiement retenu.
+- **R12 et R13 (Docker), version 1.2** : le travail `docker` de la CI construit l'image et la vérifie par structure : utilisateur non privilégié (UID 10001), aucun port déclaré, aucun fichier exclu dans l'image (jeux réservés, rapports, journaux, `.env`, `.git`), aucun port publié par `compose`, agents reliés au seul réseau interne, sortie d'Ollama retirée par `compose.offline.yaml` ; les portes `--fake` des modules 1 et 5 et `privacy eval` passent dans le conteneur, sans réseau et en lecture seule. R13 est ramené à **faible**. R12 reste **moyen** et accepté : les droits du volume des journaux dépendent de l'hôte et seront vérifiés avant une mise en service. Précision de conception : l'hôte `ollama` est accepté comme local par `ALVERNO_TRUSTED_OLLAMA_HOSTS`, qui n'ouvre jamais les modèles infonuagiques d'Ollama ([ADR 0019](../adr/0019-docker-local-deployment.md#reprise-de-létape-i8-2026-11-11)).
 - **R1 et R2 (client hébergé)** : inchangés ; ils reposent sur la règle d'usage, que le serveur rappelle dans son champ `instructions`.
 
 ## 6. Plan d'action
@@ -213,15 +213,15 @@ Ces résultats ne servent pas à régler les règles, et le jeu réservé n'est 
 | Écrire le jeu réservé `dir_holdout` (12 items) dans une session séparée, sans accès au code du filtre ni du routage | Responsable du dépôt | Fait à l'incrément I2, avant ce code | Empreinte inscrite au registre de l'[ADR 0020](../adr/0020-direction-evaluation-protocol.md) |
 | Vérifier qu'aucun exportateur de télémétrie n'est installé ni activé par le SDK `mcp` | Responsable du dépôt | Fait à l'incrément I3 ([ADR 0017](../adr/0017-mcp-server-read-only.md)) | Test d'import et note datée |
 | Documenter un client MCP local et la règle « client local » | Responsable du dépôt | Fait à l'incrément I4 | README et champ `instructions` |
-| Réussir les portes et mesurer le jeu réservé | Responsable du dépôt | Fait le 2026-11-11, sauf le travail Docker (5c reporté) | Critère de sortie de l'ADR 0020 |
+| Réussir les portes et mesurer le jeu réservé | Responsable du dépôt | Fait le 2026-11-11, travail Docker compris (version 1.2) | Critère de sortie de l'ADR 0020 |
 | Inscrire les règles du module dans la politique de gouvernance | RPRP | Avant la mise en service | Politique mise à jour et datée |
-| Vérifier les droits du volume des journaux et l'absence de port sur le serveur réel | Soutien informatique | Avant la mise en service du déploiement retenu (5c reporté) | Vérification datée |
+| Vérifier les droits du volume des journaux et l'absence de port sur le serveur réel | Soutien informatique | Avant la mise en service | Vérification datée |
 | Publier la version 1.1 | Responsable du dépôt et RPRP | Fait le 2026-11-11 : résultats recopiés ; avis confirmé et version approuvée | Résultats recopiés ; avis confirmé ; approbation |
 
 | Réévaluation | Date ou déclencheur |
 |---|---|
 | Version 1.1 | Rédigée le 2026-11-11, après les mesures des incréments I7 et I9 |
-| Déploiement sur un serveur (5c ou solution de remplacement) | Avant toute mise en œuvre, avec les risques R12 et R13 et l'affirmation G6 |
+| Déploiement sur un serveur réel | Avant la mise en service, avec la vérification des droits du volume (R12) |
 | Revue périodique | Au plus tard le 2027-11-10, puis chaque année |
 | Transport HTTP ou authentification (module 6) | Avant tout développement |
 | Client MCP hébergé, ou option `ALVERNO_MCP_OPS` avec un client autre que local | Avant tout usage, avec l'évaluation de l'art. 17 et une entente écrite |
@@ -267,6 +267,8 @@ Le module n'utilise aucun renseignement de niveau 5 : une question de ce type es
 | Approbation de la version 1.0 | Approuvée |
 | Avis du RPRP sur la version 1.1 | Favorable, sous les mêmes conditions ; confirmé le 2026-11-11 |
 | Approbation de la version 1.1 | Approuvée, avec les résultats mesurés de la section 5 |
+| Avis du RPRP sur la version 1.2 | En attente |
+| Approbation de la version 1.2 | En attente |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
 | Date | 2026-11-10 (version 1.0) ; 2026-11-11 (version 1.1) |
 
@@ -274,6 +276,7 @@ Le module n'utilise aucun renseignement de niveau 5 : une question de ce type es
 |---|---|---|
 | 1.0 | 2026-11-10 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-10 |
 | 1.1 | 2026-11-11 | Après les mesures : portes simulées 5a et 5b, banc d'essai de l'orchestrateur sur Ollama, jeu réservé mesuré une seule fois, non-régression des modules 1 à 3 sans écart ; risques R7, R8, R10 et R14 revus ; 5c reporté (G6, R12 et R13 sans mesure) ; ADR 0021 et rapports joints (annexe D) ; avis du RPRP confirmé et version approuvée le 2026-11-11 |
+| 1.2 | 2026-11-11 | Sous-module 5c réalisé sous la forme prévue par l'ADR 0019 (image vérifiée dans la CI seulement) ; preuves de G6, R12 et R13 ; nouveau réglage `ALVERNO_TRUSTED_OLLAMA_HOSTS` ; avis du RPRP et approbation en attente |
 
 ## Annexes
 

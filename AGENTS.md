@@ -49,6 +49,7 @@ Before declaring a change done, run: `ruff check`, `ruff format --check`, `mypy 
 - `data/hr/corpus/` — fictional HR policies (2/5, roles only); `data/hr/{org_roles,contacts,legal_floors}.yaml`.
 - `data/eval/hr_gold.jsonl` (64-item HR gate set), `data/eval/hr_holdout.jsonl` (one-shot holdout), `data/eval/pii_detect.jsonl` (detector bench), `data/eval/synthetic_identities.yaml` (rules for synthetic values).
 - `logs/` — local access log of the HR assistant; ignored by git.
+- `Dockerfile`, `.dockerignore`, `compose.yaml`, `compose.offline.yaml` — module 5c (`docs/adr/0019`): built and checked by the CI `docker` job only (`.github/scripts/check_docker.py`), never pushed; `tests/test_docker_files.py` pins them. Never add `EXPOSE`, a `ports` section, `ALVERNO_ALLOW_REMOTE_OLLAMA` in compose, or a registry push.
 - `tests/` — offline tests only.
 - `reports/` — generated reports; do not hand-edit.
 - `docs/` — company profile, architecture, Law 25, roadmap, ADRs, `efvp/` (template, HR and module 3 assessments), `hr-legal-sources.md` (the only source of legal statements in the HR corpus), `ops-legal-sources.md` (legal register for module 3).

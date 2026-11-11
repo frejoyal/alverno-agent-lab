@@ -1,0 +1,51 @@
+# Local deployment on a plant server (docs/adr/0019-docker-local-deployment.md).
+# No published port: use the agents with `docker compose run --rm -i alverno <command>`.
+# The agents have no way out (network "interne" is internal); Ollama alone reaches the
+# Internet, to pull its models, until compose.offline.yaml removes that network.
+name: alverno
+
+services:
+  ollama:
+    image: ollama/ollama:0.24.0@sha256:a6149234667efc71d37766d61c1a16f24c33e4cd7a0bf4125c44a7e47e2419c4
+    networks:
+      - interne
+      - sortie
+    volumes:
+      - ollama-models:/root/.ollama
+    # Needs the NVIDIA Container Toolkit on the host; without it, Ollama runs on the CPU.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  alverno:
+    build: .
+    image: alverno-agent-lab:local
+    depends_on:
+      - ollama
+    networks:
+      - interne
+    environment:
+      ALVERNO_OLLAMA_URL: http://ollama:11434
+      # "ollama" counts as local; this never opens the Ollama cloud models.
+      ALVERNO_TRUSTED_OLLAMA_HOSTS: '["ollama"]'
+    volumes:
+      - alverno-index:/var/lib/alverno/index
+      - alverno-logs:/var/lib/alverno/logs
+    read_only: true
+    tmpfs:
+      - /tmp
+    stdin_open: true
+
+networks:
+  interne:
+    internal: true
+  sortie: {}
+
+volumes:
+  ollama-models: {}
+  alverno-index: {}
+  alverno-logs: {}

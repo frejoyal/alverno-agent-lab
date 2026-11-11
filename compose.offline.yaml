@@ -1,0 +1,6 @@
+# Once the models are pulled, remove Ollama's way out (docs/adr/0019):
+#   docker compose -f compose.yaml -f compose.offline.yaml up -d
+services:
+  ollama:
+    networks: !override
+      - interne

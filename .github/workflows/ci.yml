@@ -103,3 +103,32 @@ jobs:
             reports/ci/
             !reports/ci/**/access/
           if-no-files-found: ignore
+
+  docker:
+    # docs/adr/0019: the image is built and checked here only; it is never pushed to a
+    # registry, and Ollama does not run in CI (no GPU, no model).
+    name: Docker image (built and checked, never pushed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build the agents image
+        run: docker build --tag alverno-agent-lab:ci .
+
+      - name: Structural checks (user, ports, excluded files, compose networks)
+        run: python3 .github/scripts/check_docker.py alverno-agent-lab:ci
+
+      - name: Fake gates inside the container, without network and read-only
+        run: |
+          gate() {
+            docker run --rm --network none --read-only \
+              --tmpfs /tmp:mode=1777 --tmpfs /var/lib/alverno:mode=1777 \
+              alverno-agent-lab:ci "$@"
+          }
+          gate eval --mode retrieval --fake --out /tmp/ci
+          gate eval --mode full --fake --out /tmp/ci
+          gate privacy eval --out /tmp/ci
+          gate mcp eval --fake --out /tmp/ci
+          gate direction eval --mode tools --fake --out /tmp/ci
+          gate direction eval --mode full --fake --out /tmp/ci
