@@ -158,6 +158,7 @@ def run_direction_eval(
         "errors": 0,
     }
     citations_kept = citations_dropped = 0
+    latencies: list[float] = []
     for item in items:
         before_calls = rig.counter.calls
         before_lines = _log_count(log, access)
@@ -168,6 +169,7 @@ def run_direction_eval(
             results.append(_error_result(item))
             continue
         calls = rig.counter.calls - before_calls
+        latencies.append(answer.latency_ms)
         if _log_count(log, access) <= before_lines:
             totals["log_missing_count"] += 1
         text = answer.answer
@@ -197,6 +199,9 @@ def run_direction_eval(
         newline="\n",
     )
     metrics = _metrics(items, results, totals, prompts, citations_kept, citations_dropped)
+    # Unbounded: per question, served or refused (bench table).
+    metrics["latency_p50_ms"] = _percentile(latencies, 50)
+    metrics["latency_p95_ms"] = _percentile(latencies, 95)
     report = DirEvalReport(
         profile=f"dir-{mode}-{'fake' if fake else 'ollama'}",
         mode=mode,
@@ -226,6 +231,15 @@ def run_direction_eval(
     report = report.model_copy(update={"metrics": metrics})
     write_direction_report(report, out_dir, stem)
     return report
+
+
+def _percentile(values: list[float], q: int) -> float:
+    """Nearest-rank percentile; 0.0 for no value."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    rank = max(1, -(-q * len(ordered) // 100))
+    return float(ordered[rank - 1])
 
 
 def _log_count(log: AccessLog[DirectionAccessLogRecord], access: Path) -> int:

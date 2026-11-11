@@ -2028,5 +2028,121 @@ def direction_eval(
         raise typer.Exit(code=1)
 
 
+DIR_MARKERS = ("RESULTS-DIR:FR", "RESULTS-DIR:EN")
+
+
+@direction_app.command("bench")
+def direction_bench(
+    models: Annotated[str, typer.Option("--models", help="Comma-separated chat models.")],
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Management gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int,
+        typer.Option("--repeats", min=1, max=9, help="Repetitions (k) of the default chat model."),
+    ] = 3,
+    readme: Annotated[
+        Path | None,
+        typer.Option(
+            "--readme",
+            exists=True,
+            dir_okay=False,
+            help="Also update the RESULTS-DIR:FR and RESULTS-DIR:EN blocks.",
+        ),
+    ] = None,
+) -> None:
+    """Run the full management evaluation for each chat model (ADR 0020 « Répétitions »).
+
+    The default chat model runs ``--repeats`` times, every other model once; each
+    repetition is gated on its own counts, rates and preconditions and on the median of
+    the service metrics (profile dir-full-ollama, or dir-full-fake with ``--fake``).
+    Writes ``<out>/bench-dir-<backend>-<stamp>/`` with one report per repetition,
+    summary.md and summary.fr.md. The README is rewritten (RESULTS-DIR blocks only) when no
+    repetition has an error or a persisted canary, every precondition is met and the run
+    folder holds no canary; otherwise exit 1. A folder with a canary hit is renamed
+    ``<folder>.quarantine``. Exit 2 on a user error.
+    """
+    from alverno_lab.evals.canaries import load_canaries
+    from alverno_lab.evals.direction_bench import (
+        dir_bench_blockers,
+        dir_bench_note,
+        dir_bench_table,
+        gate_row,
+    )
+    from alverno_lab.evals.direction_eval import run_direction_eval
+    from alverno_lab.evals.direction_gold import load_dir_set
+    from alverno_lab.evals.direction_oracle import load_oracle
+
+    names = _bench_names(models)
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    path = dataset or settings.dir_eval_path
+    oracle = _hr_guard(lambda: load_oracle(settings.ops_erp_path, settings.ops_gmao_path))
+    _hr_guard(lambda: load_dir_set(path, oracle))
+    canaries = list(dict.fromkeys(c.canary for c in load_canaries(path)))
+    if readme is not None:
+        text = readme.read_text(encoding="utf-8")
+        for marker in DIR_MARKERS:
+            _guard(partial(replace_marked_block, text, marker, ""))
+    backend = "fake" if fake else "ollama"
+    version = "fake" if fake else ollama_server_version(settings.ollama_url)
+    run_dir = settings.reports_dir / f"bench-dir-{backend}-{dt.datetime.now():%Y%m%d-%H%M%S}"
+    rows = []
+    taken = {"summary", "summary.fr"}
+    for name in names:
+        k = repeats if name == settings.chat_model else 1
+        reports = []
+        for index, stem in enumerate(_bench_stems(name, k, taken), start=1):
+            typer.echo(f"Benchmarking {name} (repetition {index} of {k}) on the 5b set...")
+            reports.append(
+                _hr_guard(
+                    partial(
+                        run_direction_eval,
+                        settings.model_copy(update={"chat_model": name}),
+                        mode="full",
+                        fake=fake,
+                        dataset=path,
+                        out_dir=run_dir,
+                        stem=stem,
+                        model=name,
+                        limit=limit,
+                    )
+                )
+            )
+        rows.append(gate_row(name, reports, settings.thresholds_path))
+    measured = dt.date.today().isoformat()
+    blank = "\n\n"
+    tables = {
+        lang: dir_bench_table(rows, lang)
+        + blank
+        + dir_bench_note(rows, lang, ollama_version=version, measured=measured)
+        for lang in ("fr", "en")
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_lf(run_dir / "summary.md", f"# Benchmark — management (5b){blank}{tables['en']}\n")
+    _write_lf(run_dir / "summary.fr.md", f"# Banc d'essai — direction (5b){blank}{tables['fr']}\n")
+    hits = canary_hit_files([run_dir], canaries)
+    if hits:
+        quarantine = run_dir.with_name(f"{run_dir.name}.quarantine")
+        run_dir.rename(quarantine)
+        run_dir = quarantine
+    blocked = dir_bench_blockers(rows, settings.thresholds_path)
+    if readme is not None and not blocked and not hits and canaries:
+        text = readme.read_text(encoding="utf-8")
+        for marker, lang in zip(DIR_MARKERS, ("fr", "en"), strict=True):
+            text = _guard(partial(replace_marked_block, text, marker, tables[lang]))
+        _write_lf(readme, text)
+        typer.echo(f"Updated {readme}")
+    typer.echo(tables["en"])
+    typer.echo(f"Reports: {run_dir}")
+    if blocked or hits:
+        why = ", ".join(blocked) if blocked else f"{len(hits)} canary hit(s) in the run folder"
+        typer.secho(f"Error: {why}: the README is not updated.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()
