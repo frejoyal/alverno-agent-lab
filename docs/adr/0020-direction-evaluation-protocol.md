@@ -220,8 +220,12 @@ Une ligne n'est jamais effacée ; un changement ajoute une nouvelle ligne datée
 
 | Fichier | Contenu | SHA-256 | Date |
 |---|---|---|---|
+| `evals/thresholds.yaml` | `dir_thresholds_sha256` : plage des profils `mcp-fake` à `dir-full-ollama` (lignes 540 à 668 à cette date), bornes préenregistrées avant toute exécution du module 5 ; `thresholds_sha256` et `ops_thresholds_sha256` inchangées | `ff5585adb8f247852068f41cfcdca66170fa8fb64586c1e23028ec63aae3c4f1` | 2026-11-10 |
+| `data/eval/dir_gold.jsonl` | jeu de référence 5b, 40 items | `3b6e334028d103b7fa214c8e6a98ad5289c31689964c5731358e7e9a558b81e6` | 2026-11-10 |
+| `data/eval/mcp_gold.jsonl` | pièges de protocole 5a, 16 items | `bbef0a35e4ce5bebd3a8452e1df45efeb2dae53a268d1f3f295aaad75a7e3c5e` | 2026-11-10 |
+| `data/eval/dir_holdout.jsonl` | jeu réservé 5b, à usage unique, 12 items : `quality_policy` 2, `hr_policy` 2, `orders_overview` 2, `maintenance_overview` 2, `consolidated` 1, `person_join` 1, `profiling` 1, `sensitive_out_of_scope` 1 ; 1 paire, 5 items avec témoins | `0e3249d9ac5568973e0594f62a4e057cf2d4339f4758f169048e628c8108ed71` | 2026-11-10 |
 
-Aucune ligne avant l'incrément I2.
+Les lignes de l'incrément I2 sont inscrites avant toute ligne de code `src/` du module 5. Le jeu réservé a été écrit par une session d'agent distincte, qui n'a ouvert ni les jeux de référence ni le code des agents ; seuls son empreinte et ses comptes par famille ont été lus.
 
 ## Solutions écartées
 

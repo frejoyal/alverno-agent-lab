@@ -85,3 +85,15 @@ Négatives :
 - Le refus `person_join` bloquera aussi des questions légitimes qui nomment un rôle unique (« le directeur de production ») ; c'est un faux blocage accepté, mesuré par `false_block_rate`.
 
 Voir aussi l'[ADR 0017](0017-mcp-server-read-only.md), l'[ADR 0019](0019-docker-local-deployment.md) et l'[ADR 0020](0020-direction-evaluation-protocol.md).
+
+## Précisions de l'étape I2 (2026-11-10)
+
+Ajoutées après l'acceptation, avant tout code `src/` du module 5, pour fixer ce que les jeux `dir_gold` et `dir_holdout` attendent. Elles ne changent aucune décision ci-dessus.
+
+- **Portée lue dans la question.** Un compte est reconnu par son identifiant (`CLI-` suivi de trois chiffres) et un équipement par le sien (`EQ-`, trois lettres, deux chiffres) ; un libellé ou un nom courant (« la plieuse ») ne filtre rien. Le compte filtre D3, l'équipement et la période filtrent D4.
+- **Période de D4.** Une année (« en 2025 »), un trimestre (« T3 2026 », « troisième trimestre 2026 ») ou un mois (« octobre 2026 »), bornes comprises. Sans période, D4 couvre les 12 mois qui finissent à la date `as_of` de la GMAO simulée (du 2025-10-31 au 2026-10-30).
+- **Commande en retard.** Une commande dont le statut n'est pas `expediee` et dont la date révisée est postérieure à la date promise.
+- **Comptes de D3** : `orders.total`, `orders.status.<statut>` (statuts présents seulement), `orders.late`. **Comptes de D4** : `maintenance.corrective` (bons de type `correctif` ouverts dans la période), `maintenance.asset.<équipement>` et `maintenance.failure.<code>` (valeurs non nulles seulement).
+- **Schéma d'un item** : `id`, `family`, `question`, `expected_outcome`, `expected_reason`, `expected_purposes` (dans l'ordre fixe des sections), `scope` (`account_id`, `asset_id`, `period` avec `start` et `end`), `pair_id`, `expected_counts` (sous-ensemble des comptes de l'oracle, avec au moins les totaux des fins routées), `must_include`, `must_not_include` et `canaries` (valeurs telles quelles des fixtures).
+- **Questions D1 et D2 de `dir_gold`** : reprises telles quelles des jeux de référence des modules 1 et 2 (`q004`, `q008`, `q010`, `q013`, `q015`, `q016` ; `h005`, `h006`, `h015`, `h023`, `h024`, `h027`), avec leurs faits.
+- Les identifiants de `dir_gold` vont de `d001` à `d041`, sans `d017` (retiré avant la première version du fichier pour tenir les 6 items D3 du plan).
