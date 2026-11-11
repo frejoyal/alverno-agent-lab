@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     request_timeout: float = Field(default=120.0, gt=0)
     keep_alive: str = "10m"
     num_ctx: int = Field(default=8192, ge=512)
+    # Cap on the tokens of one answer: a looping generation stops instead of holding the
+    # single Ollama slot until the context is full (ADR 0020, précision du 2026-11-11).
+    num_predict: int = Field(default=1024, ge=64)
     # Context of the embedding model, sent with every request. Without it, Ollama
     # applies its server default (OLLAMA_CONTEXT_LENGTH, up to 32,768 tokens for
     # qwen3-embedding): the embedder then evicts the chat model from an 8 GB card at

@@ -47,7 +47,8 @@ def test_ollama_chat_payload_and_stats() -> None:
     assert payload["stream"] is False
     assert payload["think"] is False
     assert payload["format"] == Out.model_json_schema()
-    assert payload["options"] == {"temperature": 0, "num_ctx": 8192}
+    # num_predict caps a looping generation (ADR 0020, précision du 2026-11-11).
+    assert payload["options"] == {"temperature": 0, "num_ctx": 8192, "num_predict": 1024}
     assert payload["keep_alive"] == "10m"
     assert chat.stats.calls == 1
     assert (chat.stats.prompt_tokens, chat.stats.completion_tokens) == (42, 7)

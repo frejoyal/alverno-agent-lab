@@ -128,6 +128,7 @@ def make_chat(settings: Settings, *, fake: bool, model: str | None = None) -> Ch
         timeout=settings.request_timeout,
         keep_alive=settings.keep_alive,
         num_ctx=settings.num_ctx,
+        num_predict=settings.num_predict,
     )
 
 
