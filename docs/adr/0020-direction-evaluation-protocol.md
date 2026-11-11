@@ -270,3 +270,16 @@ Le premier banc sur Ollama (`reports/bench-dir-ollama-20261111-005346/`) a montr
 Le deuxième banc (`reports/bench-dir-ollama-20261111-014457/`), lancé après la précision précédente, a bloqué le README : `gemma4:e4b` (répétitions 1 et 2) et `llama3.2:3b` avaient chacun 7 items en erreur sur 40, toujours en bloc de 7 items consécutifs. Le journal du serveur Ollama en donne la cause : une génération qui boucle n'a aucune limite de longueur et court jusqu'à remplir le contexte, soit environ 15 minutes sur la carte de 8 Go. Ollama ne l'arrête pas quand le client abandonne à 120 s, et les 7 requêtes suivantes, en file derrière elle, expirent chacune à 120 s. La troisième répétition de `gemma4:e4b` a servi les mêmes items sans erreur : ce n'est pas un défaut des réponses du modèle, mais de l'exécution.
 
 Depuis cette précision, chaque appel au modèle de clavardage porte `num_predict` = 1024 (réglage `ALVERNO_NUM_PREDICT`). La plus longue réponse des rapports publiés compte 307 jetons ; le plafond en laisse plus du triple. Le changement touche aussi les modules 1 à 3 : la non-régression de l'étape I9 compare leurs items un à un avec le code de clôture du module 3, qui n'a pas ce plafond. Aucune borne ne change. Le deuxième banc est versé tel quel, avec une note de provenance ; le README vient du banc suivant.
+
+## État du critère de sortie (2026-11-11, étape I10)
+
+| Point | État | Preuve |
+|---|---|---|
+| 1. EFVP v1.0, ADR 0017 à 0020 et empreinte du jeu réservé avant le code | atteint | registre des empreintes ; `tests/test_direction_docs.py` |
+| 2. Portes simulées, `ruff`, `mypy --strict`, couverture | atteint sur le poste ; à confirmer dans la CI de la PR | `mcp-fake`, `dir-tools-fake` et `dir-full-fake` passent ; `test_quality_frozen.py`, `thresholds_sha256` et `ops_thresholds_sha256` inchangés |
+| 3. `dir-full-ollama` avec `gemma4:e4b`, 3 répétitions | atteint | `reports/bench-dir-ollama-20261111-040705/` |
+| 4. Non-régression des modules 1 à 3 | atteint | `reports/m5-regression-ollama-20261111/` : les 8 portes passent ; les 202 items sont identiques sur tous les champs sauf la latence, réponses comprises |
+| 5. Travail Docker de la CI ; blocs `RESULTS-DIR` écrits par le banc ; autres marqueurs identiques | **partiel** : blocs écrits par le banc et autres familles identiques, octet pour octet ; **Docker non réalisé** | [ADR 0019, « Report de l'étape I8 »](0019-docker-local-deployment.md#report-de-létape-i8-2026-11-11) |
+| 6. Jeu réservé mesuré une seule fois et publié ; EFVP v1.1 | atteint, sous réserve de l'approbation de l'EFVP v1.1 | `reports/dir-holdout/` ; [EFVP du module 5](../efvp/direction-module.md) |
+
+Le sous-module 5a est livré (point 1 et `mcp-fake`). Le sous-module 5b remplit les points qui le concernent (1 à 4 et 6). Le module 5 n'est **pas livré au complet** : 5c est reporté par décision du responsable du dépôt.

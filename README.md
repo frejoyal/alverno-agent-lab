@@ -22,7 +22,8 @@ Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, a
 - **Loi 25 dès la conception** : inférence locale (Ollama), aucune clé d'API, refus des demandes visant une personne, traces sans le texte des questions.
 - **Assistant RH (module 2)** : couche de confidentialité déterministe exécutée avant la recherche (détection, caviardage, refus des demandes visant une personne), garde de sortie, journal des accès minimal, évaluation des facteurs relatifs à la vie privée (EFVP) rédigée avant l'implémentation.
 - **Qualité du code** : `mypy --strict`, `ruff`, tests hors réseau, couverture d'au moins 85 % exigée en CI.
-- **Prévu** : serveur MCP, conteneurs Docker, déploiement Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
+- **Serveur MCP et orchestrateur de la direction (module 5)** : outils en lecture seule par stdio ; réponse au comité de direction par sections, sans jointure sur une personne.
+- **Prévu** : déploiement sur un serveur (Docker reporté), Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
 
 ### Le problème d'affaires
 
@@ -359,7 +360,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 | 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
 | 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
-| 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | en cours (serveur MCP livré) |
+| 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | serveur MCP (5a) et orchestrateur (5b) livrés ; Docker (5c) reporté |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
 
 Ordre de réalisation : module 3, puis module 5 avant le module 4, et module 6 en dernier. Détails : [docs/roadmap.md](docs/roadmap.md).
@@ -404,7 +405,8 @@ Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid
 - **Québec Law 25 by design**: local inference (Ollama), no API key, refusal of requests about an individual, traces without the question text.
 - **HR assistant (module 2)**: a deterministic privacy layer run before retrieval (detection, redaction, refusal of requests about an individual), an output guard, a minimal access log, and a privacy impact assessment (PIA) written before implementation.
 - **Code quality**: `mypy --strict`, `ruff`, offline tests, a minimum coverage of 85% enforced in CI.
-- **Planned**: MCP server, Docker containers, Microsoft 365 and Copilot Studio deployment ([roadmap](docs/roadmap.md), in French).
+- **MCP server and management orchestrator (module 5)**: read-only tools over stdio; answers to the management committee by sections, with no join about a person.
+- **Planned**: deployment on a server (Docker deferred), Microsoft 365 and Copilot Studio ([roadmap](docs/roadmap.md), in French).
 
 ### The business problem
 
@@ -741,7 +743,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 | 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
 | 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
-| 5 | Orchestration for management, MCP server, Docker containers | in progress (MCP server delivered) |
+| 5 | Orchestration for management, MCP server, Docker containers | MCP server (5a) and orchestrator (5b) delivered; Docker (5c) deferred |
 | 6 | Microsoft 365 and Copilot Studio deployment | planned |
 
 Order of work: module 3, then module 5 before module 4, and module 6 last. Details (in French): [docs/roadmap.md](docs/roadmap.md).

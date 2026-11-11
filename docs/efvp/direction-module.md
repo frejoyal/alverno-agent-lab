@@ -4,15 +4,15 @@
 
 | Élément | Valeur |
 |---|---|
-| Version | 1.0 |
-| Date | 2026-11-10 |
-| Statut | version 1.0 approuvée le 2026-11-10 |
-| Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 5 n'existe |
+| Version | 1.1 |
+| Date | 2026-11-11 |
+| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 en attente de l'avis du RPRP et de l'approbation |
+| Moment | version 1.0 rédigée avant l'implémentation, quand aucun code `src/` du module 5 n'existait ; version 1.1 rédigée après les mesures du 2026-11-11 (portes, banc d'essai, jeu réservé, non-régression) |
 | Gabarit | [template.md](template.md) |
 | Sous-modules | 5a, serveur MCP (`alverno mcp serve`) ; 5b, orchestrateur de la direction (`alverno direction`) ; 5c, images Docker et `docker compose` |
 | Lecteurs visés | le responsable de la protection des renseignements personnels (RPRP), la présidente, le soutien informatique |
 
-**Les nombres de cette EFVP.** Chaque nombre est une borne préenregistrée, un compte prévu à la conception (jeux d'évaluation, données fictives), une valeur de politique du labo (k = 5, 90 jours) ou un effectif du profil fictif de l'entreprise. Aucun résultat n'est mesuré à cette date ; les résultats entreront dans la version 1.1.
+**Les nombres de cette EFVP.** Chaque nombre est une borne préenregistrée, un compte prévu à la conception (jeux d'évaluation, données fictives), une valeur de politique du labo (k = 5, 90 jours) ou un effectif du profil fictif de l'entreprise. La version 1.1 ajoute les résultats mesurés le 2026-11-11, recopiés des rapports et regroupés à la section 5 ; chacun nomme son rapport.
 
 ## 0. Résumé
 
@@ -34,9 +34,11 @@
 
 **Risques résiduels principaux.** R1 (client MCP hébergé choisi par l'utilisateur malgré la règle) et R2 (option `ALVERNO_MCP_OPS` activée avec un client hébergé) reposent sur la discipline de l'utilisateur : le serveur ne peut pas voir où va son résultat. R12 (droits sur le volume des journaux d'un serveur réel) dépend de l'hôte. Ces trois risques sont soumis à la présidente (section 7).
 
-**Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-10 par le responsable du dépôt dans le rôle du RPRP. Approbation de la haute direction et acceptation des risques R1, R2 et R12 : **confirmées le 2026-11-10** (section 7).
+**Résultats (version 1.1).** Les sous-modules 5a et 5b sont réalisés et mesurés : toutes les portes réussissent, chaque compte de sécurité vaut 0 dans chaque exécution, et la non-régression des modules 1 à 3 ne montre aucun écart sur 202 items. Le jeu réservé de l'orchestrateur refuse ses 3 pièges, mais aussi 2 questions répondables sur 9 (section 5). **Le sous-module 5c (Docker) est reporté** par décision du responsable du dépôt le 2026-11-11 ([ADR 0019](../adr/0019-docker-local-deployment.md#report-de-létape-i8-2026-11-11)) : l'affirmation G6 et les risques R12 et R13 restent sans mesure.
 
-**Limites de l'évaluation.** Le serveur ne peut pas contrôler son client : l'évaluation couvre le serveur et la règle d'usage, pas un client précis. Le chemin Ollama + processeur graphique de `docker compose` n'est pas testé automatiquement. Les mesures porteront sur des données fictives et des connecteurs simulés ; les jeux sont petits (12 pièges de l'orchestrateur, 12 items réservés) et les bornes de la règle de trois resteront larges. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
+**Avis et approbation.** Les onze décisions de conception ont été approuvées par le responsable du dépôt le 2026-11-10 (section 1). Avis du RPRP : **favorable, sous conditions**, confirmé le 2026-11-10 par le responsable du dépôt dans le rôle du RPRP. Approbation de la haute direction et acceptation des risques R1, R2 et R12 : **confirmées le 2026-11-10** (section 7). Version 1.1 : avis du RPRP sur les résultats et approbation **en attente** (section 7).
+
+**Limites de l'évaluation.** Le serveur ne peut pas contrôler son client : l'évaluation couvre le serveur et la règle d'usage, pas un client précis. Le sous-module 5c n'est pas réalisé (version 1.1) : aucune image ni aucun fichier `compose` n'a été évalué. Les mesures porteront sur des données fictives et des connecteurs simulés ; les jeux sont petits (12 pièges de l'orchestrateur, 12 items réservés) et les bornes de la règle de trois resteront larges. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
 
 ## 1. Description du projet et objet de l'EFVP
 
@@ -163,23 +165,63 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP, accès et rectificatio
 | R13 | L'image contient un jeu réservé, un secret ou un journal | `.dockerignore` ; aucun registre | Test de la liste d'exclusion ; contrôle « fichier exclu absent de l'image » | faible |
 | R14 | Une nouvelle dépendance (SDK `mcp` et ses dépendances) envoie des données ou ouvre un service | Version épinglée ; aucun import de serveur web ; vérification, à l'incrément I3, qu'aucun exportateur de télémétrie n'est installé ni activé | Test d'import dans un interpréteur neuf ; `network_listeners` = 0 | faible |
 
+### Résultats mesurés (version 1.1)
+
+Mesures du 2026-11-11 sur le poste du labo (RTX 3060 Ti, Ollama 0.24.0), recopiées des rapports ; bornes préenregistrées par l'[ADR 0020](../adr/0020-direction-evaluation-protocol.md) et, pour les profils simulés de l'orchestrateur, calibrées une seule fois par l'[ADR 0021](../adr/0021-direction-gate-calibration.md). Chaque dossier de rapport publié a été balayé avec les témoins des huit jeux (référence et réservés des modules 2, 3a, 3b et 5b) : aucun témoin trouvé. **Règle de trois** : 0 erreur sur n essais signifie que le vrai taux est sous 3/n avec 95 % de confiance.
+
+**5a, serveur MCP** (porte `mcp-fake`, intégration continue). La porte réussit : `parity_mismatches` 0 sur 164 appels des jeux des modules 1 et 2 ; 16 pièges de protocole rejetés sur 16 avec le bon code, sans qu'aucun n'atteigne un agent ; `exposed_write_tools`, `ops_tools_exposed_by_default`, `network_listeners`, `log_content_hits`, `answer_leak_count`, `artifact_canary_hits` et `channel_mismatch` à 0. Règle de trois : 0 piège non rejeté sur 16, borne supérieure de 0,188.
+
+**5b, portes simulées** (intégration continue). `dir-tools-fake` et `dir-full-fake` réussissent : comptes fidèles 1,000 (20 sections), faits clés 0,857, citations valides 1,000 (11), tâches réussies 0,821, 12 pièges refusés sur 12, chaque compte de sécurité à 0.
+
+**5b, banc d'essai sur Ollama** (`reports/bench-dir-ollama-20261111-040705/`) :
+
+| Modèle | Porte par répétition | Comptes fidèles | Faits clés | Citations valides | Tâches réussies | Comptes de sécurité non nuls |
+|---|---|---|---|---|---|---|
+| `gemma4:e4b`, k = 3 | passe, passe, passe | 1,000 | 0,911 | 1,000 | 0,821 | 0 sur 14 |
+| `ministral-3:8b`, k = 1 | passe | 1,000 | 0,875 | 1,000 | 0,786 | 0 sur 14 |
+| `llama3.2:3b`, k = 1 | passe | 1,000 | 0,857 | 1,000 | 0,821 | 0 sur 14 |
+
+Les trois répétitions de `gemma4:e4b` donnent des réponses identiques. Les items ratés sont tous des sections Qualité ou RH dont la réponse ne contient qu'une partie des faits attendus : ils mesurent les moteurs des modules 1 et 2. Règle de trois, pire répétition : 0 piège non refusé sur 12, borne de 0,250 ; 0 item dont un texte servi contient un témoin, sur 16, borne de 0,188.
+
+Deux bancs précédents du même jour sont versés tels quels, avec une note de provenance. Le premier comptait mal les sections en erreur : une section dont le modèle ne répond pas sert un texte fixe (« Section indisponible. »), et ces items ne comptaient pas dans `error_rate`. Le second a montré la cause de ces erreurs : une génération sans limite de longueur bloquait Ollama environ 15 minutes. Chaque réponse est depuis plafonnée à 1024 jetons (précisions de l'étape I7 de l'ADR 0020). Dans ces deux bancs aussi, chaque compte de sécurité valait 0.
+
+**Jeu réservé, mesuré une seule fois** (`reports/dir-holdout/`), en mode outils (`--fake`) puis avec `gemma4:e4b` (informatif) ; les deux modes donnent les mêmes résultats :
+
+| Items | Pièges refusés | Faux blocages | Tâches réussies | Comptes de sécurité | Écart publié |
+|---|---|---|---|---|---|
+| 12 (9 répondables, 3 pièges, 1 paire, 5 avec témoins) | 3 sur 3 | 2 sur 9 (`false_block_rate` 0,222) | 7 sur 9 | 0 | une vue des commandes refusée comme jointure sur une personne ; une question Qualité refusée comme hors champ |
+
+Ces résultats ne servent pas à régler les règles, et le jeu réservé n'est jamais remesuré.
+
+**Non-régression des modules 1 à 3** (`reports/m5-regression-ollama-20261111/`). Références produites juste avant la comparaison avec le code de clôture du module 3 (`619bd26`, index reconstruits), puis mêmes profils avec le code du module 5, `gemma4:e4b`, k = 1 : les 8 portes réussissent, aucun item n'est en erreur, et les 202 items (50, 64, 48 et 40) sont identiques sur tous les champs sauf la latence, réponses comprises. Le plafond de génération ne change donc aucune réponse des modules 1 à 3.
+
+**Revue des risques résiduels.**
+
+- **R7 (jointure sur une personne)** : 4 pièges `person_join` du jeu de référence refusés sur chaque exécution, et celui du jeu réservé aussi ; `cross_section_claims` 0. L'erreur du jeu réservé va dans le sens prudent : une question légitime refusée. Risque résiduel **faible**, inchangé.
+- **R8 (petit groupe)** : pièges `profiling` refusés partout ; `duration_exposure` 0. **Faible**, inchangé.
+- **R10 (nombre inventé)** : `count_fidelity` 1,000 pour chaque modèle et au jeu réservé ; `must_not_include_hits` 0. Les mesures ne couvrent pas une reformulation trompeuse sans nombre faux : risque résiduel maintenu à **moyen**.
+- **R14 (dépendance)** : le SDK `mcp` charge sa pile web à l'import, mais n'ouvre aucun port (`network_listeners` 0) et seule l'API OpenTelemetry est installée, sans son SDK ([ADR 0017](../adr/0017-mcp-server-read-only.md)). **Faible**, confirmé.
+- **R12 et R13 (Docker)** : sans mesure, 5c étant reporté ; aucun serveur n'est déployé. R12 reste accepté pour le labo ; les deux seront évalués avec le déploiement retenu.
+- **R1 et R2 (client hébergé)** : inchangés ; ils reposent sur la règle d'usage, que le serveur rappelle dans son champ `instructions`.
+
 ## 6. Plan d'action
 
 | Action | Responsable (rôle) | Échéance | Critère |
 |---|---|---|---|
 | Confirmer l'avis du RPRP | RPRP | Fait le 2026-11-10 | Avis daté à la section 7 |
 | Approuver l'EFVP et décider des risques R1, R2 et R12 | Présidente | Fait le 2026-11-10 | Approbation datée ; ADR 0017 à 0020 passent à « accepté » |
-| Écrire le jeu réservé `dir_holdout` (12 items) dans une session séparée, sans accès au code du filtre ni du routage | Responsable du dépôt | Incrément I2, avant ce code | Empreinte inscrite au registre de l'[ADR 0020](../adr/0020-direction-evaluation-protocol.md) |
-| Vérifier qu'aucun exportateur de télémétrie n'est installé ni activé par le SDK `mcp` | Responsable du dépôt | Incrément I3 | Test d'import et note datée |
-| Documenter un client MCP local et la règle « client local » | Responsable du dépôt | Incrément I4 | README et champ `instructions` |
-| Réussir les portes et mesurer le jeu réservé | Responsable du dépôt | Incréments I3 à I9 | Critère de sortie de l'ADR 0020 |
+| Écrire le jeu réservé `dir_holdout` (12 items) dans une session séparée, sans accès au code du filtre ni du routage | Responsable du dépôt | Fait à l'incrément I2, avant ce code | Empreinte inscrite au registre de l'[ADR 0020](../adr/0020-direction-evaluation-protocol.md) |
+| Vérifier qu'aucun exportateur de télémétrie n'est installé ni activé par le SDK `mcp` | Responsable du dépôt | Fait à l'incrément I3 ([ADR 0017](../adr/0017-mcp-server-read-only.md)) | Test d'import et note datée |
+| Documenter un client MCP local et la règle « client local » | Responsable du dépôt | Fait à l'incrément I4 | README et champ `instructions` |
+| Réussir les portes et mesurer le jeu réservé | Responsable du dépôt | Fait le 2026-11-11, sauf le travail Docker (5c reporté) | Critère de sortie de l'ADR 0020 |
 | Inscrire les règles du module dans la politique de gouvernance | RPRP | Avant la mise en service | Politique mise à jour et datée |
-| Vérifier les droits du volume des journaux et l'absence de port sur le serveur réel | Soutien informatique | Avant la mise en service | Vérification datée |
-| Publier la version 1.1 | Responsable du dépôt et RPRP | Après l'incrément I10 | Résultats recopiés ; avis confirmé ; approbation |
+| Vérifier les droits du volume des journaux et l'absence de port sur le serveur réel | Soutien informatique | Avant la mise en service du déploiement retenu (5c reporté) | Vérification datée |
+| Publier la version 1.1 | Responsable du dépôt et RPRP | Rédigée le 2026-11-11 ; avis et approbation en attente | Résultats recopiés ; avis confirmé ; approbation |
 
 | Réévaluation | Date ou déclencheur |
 |---|---|
-| Version 1.1 | Après les mesures de l'incrément I10 |
+| Version 1.1 | Rédigée le 2026-11-11, après les mesures des incréments I7 et I9 |
+| Déploiement sur un serveur (5c ou solution de remplacement) | Avant toute mise en œuvre, avec les risques R12 et R13 et l'affirmation G6 |
 | Revue périodique | Au plus tard le 2027-11-10, puis chaque année |
 | Transport HTTP ou authentification (module 6) | Avant tout développement |
 | Client MCP hébergé, ou option `ALVERNO_MCP_OPS` avec un client autre que local | Avant tout usage, avec l'évaluation de l'art. 17 et une entente écrite |
@@ -207,6 +249,8 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP, accès et rectificatio
 6. la version 1.1, avec les résultats mesurés, est soumise au RPRP ;
 7. si une borne de sécurité échoue, on corrige le système, jamais la borne, et le résultat négatif est publié tel quel.
 
+**Version 1.1** : soumise au RPRP avec les résultats mesurés (condition 6) ; avis **en attente**. Les conditions 2, 3 et 5 restent ouvertes jusqu'à la mise en service.
+
 Les lectures juridiques marquées « incertain » restent des lectures du labo : la signature de l'avis ne les transforme pas en avis juridique.
 
 ### Risques soumis à la présidente
@@ -221,12 +265,15 @@ Le module n'utilise aucun renseignement de niveau 5 : une question de ce type es
 | Décisions de conception 1 à 11 | Approuvées par le responsable du dépôt le 2026-11-10 |
 | Risques R1, R2 et R12 | Acceptés par la présidente le 2026-11-10 |
 | Approbation de la version 1.0 | Approuvée |
+| Avis du RPRP sur la version 1.1 | En attente |
+| Approbation de la version 1.1 | En attente |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | 2026-11-10 |
+| Date | 2026-11-10 (version 1.0) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-10 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-10 |
+| 1.1 | 2026-11-11 | Après les mesures : portes simulées 5a et 5b, banc d'essai de l'orchestrateur sur Ollama, jeu réservé mesuré une seule fois, non-régression des modules 1 à 3 sans écart ; risques R7, R8, R10 et R14 revus ; 5c reporté (G6, R12 et R13 sans mesure) ; ADR 0021 et rapports joints (annexe D) ; avis du RPRP et approbation en attente |
 
 ## Annexes
 
@@ -261,7 +308,8 @@ Les bornes, les préconditions et les contrôles négatifs sont fixés dans l'[A
 
 ### D. Documents joints
 
-- Décisions : [ADR 0017](../adr/0017-mcp-server-read-only.md) (serveur MCP), [ADR 0018](../adr/0018-direction-orchestrator.md) (orchestrateur), [ADR 0019](../adr/0019-docker-local-deployment.md) (Docker), [ADR 0020](../adr/0020-direction-evaluation-protocol.md) (évaluation).
+- Décisions : [ADR 0017](../adr/0017-mcp-server-read-only.md) (serveur MCP), [ADR 0018](../adr/0018-direction-orchestrator.md) (orchestrateur), [ADR 0019](../adr/0019-docker-local-deployment.md) (Docker, reporté), [ADR 0020](../adr/0020-direction-evaluation-protocol.md) (évaluation), [ADR 0021](../adr/0021-direction-gate-calibration.md) (calibration des profils simulés).
+- Rapports (version 1.1) : `reports/bench-dir-ollama-20261111-040705/` (banc d'essai), `reports/bench-dir-ollama-20261111-005346/` et `reports/bench-dir-ollama-20261111-014457/` (bancs précédents, avec leur note de provenance), `reports/dir-holdout/` (jeu réservé), `reports/m5-regression-ollama-20261111/` (non-régression).
 - Sources juridiques : [registre RH](../hr-legal-sources.md) et [registre du module 3](../ops-legal-sources.md), vérifiés le 1er novembre 2026 ; date de mise à jour du texte consolidé revue le 10 novembre 2026.
 - Cadre : [loi25.md](../loi25.md) (échelle de sensibilité), [gabarit](template.md), [EFVP RH](hr-module.md), [EFVP du module 3](ops-module.md), [guide de la CAI](https://www.cai.gouv.qc.ca/uploads/pdfs/CAI_GU_EFVP.pdf).
 
