@@ -57,6 +57,10 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 - Serveur MCP exposant les capacités des agents (recherche qualité, état de commande) à des clients compatibles.
 - Images Docker et `docker compose` (agents + Ollama) pour un déploiement reproductible sur un serveur de l'usine.
 
+**Statut** : en cours. Le 2026-11-10 (étape I0), EFVP v1.0 ([docs/efvp/direction-module.md](efvp/direction-module.md)) et ADR [0017](adr/0017-mcp-server-read-only.md) (serveur MCP local, en lecture seule, niveau 2 par défaut), [0018](adr/0018-direction-orchestrator.md) (orchestrateur à routage déterministe, réponse par sections), [0019](adr/0019-docker-local-deployment.md) (images Docker sans port publié ni registre) et [0020](adr/0020-direction-evaluation-protocol.md) (protocole d'évaluation et critère de sortie) rédigés avant tout code ; EFVP approuvée et ADR acceptés le 2026-11-10. Trois sous-modules, livrés dans l'ordre 5a (MCP), 5b (direction), 5c (Docker).
+
+**État au 2026-11-11** : 5a et 5b livrés et mesurés (portes, banc d'essai sur Ollama, jeu réservé mesuré une seule fois, non-régression des modules 1 à 3 sans écart ; [état du critère de sortie](adr/0020-direction-evaluation-protocol.md#état-du-critère-de-sortie-2026-11-11-étape-i10)). 5c (Docker) est reporté par décision du responsable du dépôt ; une autre façon de déployer les agents sur un serveur sera cherchée ([ADR 0019](adr/0019-docker-local-deployment.md#report-de-létape-i8-2026-11-11)). EFVP v1.1, avec les résultats, approuvée le 2026-11-11.
+
 ## Module 6 — Déploiement Microsoft 365 et Copilot Studio
 
 **Problème** : rejoindre les employés là où ils travaillent déjà (Teams, SharePoint).

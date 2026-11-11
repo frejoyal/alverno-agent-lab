@@ -27,6 +27,7 @@ from alverno_lab.privacy.access_log import (
     AccessLogError,
     AccessLogRecord,
 )
+from alverno_lab.privacy.direction_access_log import DirectionAccessLogRecord
 from alverno_lab.privacy.ops_access_log import (
     MAX_ENTITY_REFS,
     OPS_EVENTS,
@@ -395,7 +396,8 @@ def test_minute_or_free_timestamps_are_rejected(ts: str) -> None:
 
 # --------------------------------------------------------------------------- prefixes
 def test_prefixes() -> None:
-    assert ACCESS_LOG_PREFIXES == ("hr", "service", "maint")
+    # Module 5 adds the management log (ADR 0018, I5 precisions).
+    assert ACCESS_LOG_PREFIXES == ("hr", "service", "maint", "direction")
 
 
 def test_hr_defaults_are_unchanged(directory: Path) -> None:
@@ -514,6 +516,13 @@ def test_each_instance_purges_only_its_own_prefix(directory: Path, prefix: str) 
     log: AccessLog[Any]  # Any: the record type depends on the prefix
     if prefix == "hr":
         log = AccessLog(directory, clock=Clock(NOW))
+    elif prefix == "direction":
+        log = AccessLog(
+            directory,
+            prefix="direction",
+            record_type=DirectionAccessLogRecord,
+            clock=Clock(NOW),
+        )
     else:
         log = ops_log(directory, "service" if prefix == "service" else "maint")
     assert log.purge(dry_run=True) == [files[prefix][0]]
@@ -605,7 +614,7 @@ def test_ops_error_text_names_a_line_without_location(service: OpsLog, directory
     assert str(caught.value).endswith(":1: invalid access log record (<record>: json_invalid)")
 
 
-def test_cli_access_purge_purges_the_three_prefixes(
+def test_cli_access_purge_purges_the_four_prefixes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     directory = tmp_path / "access"
@@ -623,12 +632,13 @@ def test_cli_access_purge_purges_the_three_prefixes(
     assert "Would remove 1 day file(s) older than 90 days in " in dry.output
     assert "Would remove 1 service day file(s) older than 90 days in " in dry.output
     assert "Would remove 1 maint day file(s) older than 90 days in " in dry.output
+    assert "Would remove 1 direction day file(s) older than 90 days in " in dry.output
     assert all(old.exists() and recent.exists() for old, recent in planted.values())
     done = runner.invoke(app, ["access", "purge"])
     assert done.exit_code == 0, done.output
-    for kind in ("", "service ", "maint "):
+    for kind in ("", "service ", "maint ", "direction "):
         assert f"Removed 1 {kind}day file(s) older than 90 days in " in done.output, kind
     for name, (old, recent) in planted.items():
         assert not old.exists() and recent.exists(), name
     again = runner.invoke(app, ["access", "purge"])
-    assert again.exit_code == 0 and again.output.count("Removed 0 ") == 3
+    assert again.exit_code == 0 and again.output.count("Removed 0 ") == 4

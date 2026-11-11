@@ -1,0 +1,24 @@
+Evaluated 50 items (full, ollama).
+  hit_at_1                 0.971429
+  hit_at_3                 1.0
+  mrr                      0.985714
+  context_recall           0.990476
+  trap_refusal_accuracy    1.0
+  false_answer_rate        0.0
+  over_refusal_rate        0.0
+  decision_accuracy        1.0
+  error_rate               0.0
+  latency_p50_ms           6153.4089
+  latency_p95_ms           13053.294125
+  citation_validity_rate   1.0
+  key_fact_recall          0.947619
+Reports: E:\FredApprendre\alverno-agent-lab\reports\m5-regression-ollama-20261111\reference\m1\eval-full-ollama.json, E:\FredApprendre\alverno-agent-lab\reports\m5-regression-ollama-20261111\reference\m1\eval-full-ollama.md
+Release gate [full-ollama]: PASS
+  ok   hit_at_3 = 1.0 (min 0.9)
+  ok   context_recall = 0.990476 (min 0.95)
+  ok   trap_refusal_accuracy = 1.0 (min 0.9)
+  ok   citation_validity_rate = 1.0 (min 0.95)
+  ok   key_fact_recall = 0.947619 (min 0.8)
+  ok   false_answer_rate = 0.0 (max 0.1)
+  ok   over_refusal_rate = 0.0 (max 0.1)
+  ok   error_rate = 0.0 (max 0.0)

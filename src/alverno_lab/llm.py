@@ -70,6 +70,11 @@ class OllamaChat:
     another chunk after a different predecessor (ADR 0016, non-régression). After the
     reset, every call shares the same short prefix with the cache, so an identical
     request gets an identical answer whatever ran before.
+
+    ``num_predict`` caps each answer. Without it, a generation that loops runs until the
+    context is full (about 15 minutes on an 8 GB card), and Ollama does not stop it when
+    the client gives up: every request queued behind it times out (ADR 0020, précision
+    du 2026-11-11). The longest answer of the published reports is 307 tokens.
     """
 
     def __init__(
@@ -80,6 +85,7 @@ class OllamaChat:
         timeout: float = 120.0,
         keep_alive: str = "10m",
         num_ctx: int = 8192,
+        num_predict: int = 1024,
         max_retries: int = 1,
         reset_prompt_cache: bool = True,
         transport: httpx.BaseTransport | None = None,
@@ -87,6 +93,7 @@ class OllamaChat:
         self.model = model
         self.keep_alive = keep_alive
         self.num_ctx = num_ctx
+        self.num_predict = num_predict
         self.max_retries = max_retries
         self.reset_prompt_cache = reset_prompt_cache
         self.stats = LLMStats()
@@ -109,7 +116,11 @@ class OllamaChat:
                 "format": schema.model_json_schema(),
                 "think": False,
                 "keep_alive": self.keep_alive,
-                "options": {"temperature": 0, "num_ctx": self.num_ctx},
+                "options": {
+                    "temperature": 0,
+                    "num_ctx": self.num_ctx,
+                    "num_predict": self.num_predict,
+                },
             }
             # The latency includes the reset: it is part of the cost of each answer.
             started = time.perf_counter()

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     request_timeout: float = Field(default=120.0, gt=0)
     keep_alive: str = "10m"
     num_ctx: int = Field(default=8192, ge=512)
+    # Cap on the tokens of one answer: a looping generation stops instead of holding the
+    # single Ollama slot until the context is full (ADR 0020, précision du 2026-11-11).
+    num_predict: int = Field(default=1024, ge=64)
     # Context of the embedding model, sent with every request. Without it, Ollama
     # applies its server default (OLLAMA_CONTEXT_LENGTH, up to 32,768 tokens for
     # qwen3-embedding): the embedder then evicts the chat model from an 8 GB card at
@@ -108,6 +111,13 @@ class Settings(BaseSettings):
     ops_max_edit_rounds: int = Field(default=2, ge=1, le=2)
     ops_max_work_orders: int = Field(default=8, ge=1, le=12)
     ops_history_days: int = Field(default=548, ge=1)
+    # Module 5a, MCP server (docs/adr/0017): stdio only, so no address and no port. The
+    # module 3 tools stay closed unless ALVERNO_MCP_OPS=true, and only with a local client.
+    mcp_ops: bool = False
+    mcp_max_input_chars: int = Field(default=500, ge=1, le=2000)
+    mcp_eval_path: Path = Path("data/eval/mcp_gold.jsonl")
+    # Module 5b, management orchestrator (docs/adr/0018).
+    dir_eval_path: Path = Path("data/eval/dir_gold.jsonl")
 
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:

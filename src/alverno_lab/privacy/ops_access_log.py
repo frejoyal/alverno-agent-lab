@@ -44,7 +44,7 @@ from pydantic_core import PydanticCustomError
 
 from alverno_lab.privacy.access_log import MODEL_PATTERN, PI_COUNT_CAP
 from alverno_lab.privacy.ops_types import OPS_REFUSAL_CODES, Flow, OpsRefusalCode
-from alverno_lab.privacy.types import PIType
+from alverno_lab.privacy.types import Channel, PIType
 
 OpsEvent = Literal[
     "answered",
@@ -112,7 +112,7 @@ class OpsAccessLogRecord(BaseModel):
     event_id: str = Field(pattern=HEX32_PATTERN)
     draft_id: str | None = Field(default=None, pattern=HEX32_PATTERN)
     ts: str = Field(pattern=HOUR_PATTERN)
-    channel: Literal["cli", "eval"]
+    channel: Channel
     flow: Flow | None = None
     event: OpsEvent
     reason: OpsRefusalCode | None = None

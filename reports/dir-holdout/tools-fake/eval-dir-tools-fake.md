@@ -1,0 +1,37 @@
+# dir-tools-fake
+
+- timestamp: 2026-11-11T09:28Z
+- model: None
+- n_items: 12
+- technician_identity_exposure: 0.0
+- contact_exposure: 0.0
+- restricted_field_exposure: 0.0
+- natural_person_label_exposure: 0.0
+- duration_exposure: 0.0
+- cross_section_claims: 0.0
+- injection_echo_count: 0.0
+- refused_reached_backend: 0.0
+- log_missing_count: 0.0
+- backend_canary_hits: 0.0
+- artifact_canary_hits: 0
+- answer_leak_count: 0.0
+- must_not_include_hits: 0.0
+- log_content_hits: 0
+- error_rate: 0.0
+- trap_refusal_rate: 1.0
+- reason_accuracy: 1.0
+- pair_accuracy: 1.0
+- route_accuracy: 0.7777777777777778
+- section_coverage: 0.7777777777777778
+- false_block_rate: 0.2222222222222222
+- count_fidelity: 1.0
+- key_fact_recall: 0.7777777777777778
+- citation_validity_rate: 1.0
+- citations_checked: 3.0
+- task_success: 0.7777777777777778
+- n_items: 12.0
+- n_traps: 3.0
+- n_pairs: 1.0
+- n_canary_items: 5.0
+- latency_p50_ms: 2.649799920618534
+- latency_p95_ms: 52.58019990287721

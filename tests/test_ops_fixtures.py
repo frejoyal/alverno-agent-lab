@@ -34,7 +34,9 @@ FIXTURES = (ERP, GMAO, VOCABULARY)
 SVC_GOLD = EVAL_DATA / "svc_gold.jsonl"
 MAINT_GOLD = EVAL_DATA / "maint_gold.jsonl"
 # One-shot holdouts (ADR 0010, ADR 0015): skipped by name, never opened by these tests.
-HOLDOUT_NAMES = frozenset({"hr_holdout.jsonl", "svc_holdout.jsonl", "maint_holdout.jsonl"})
+HOLDOUT_NAMES = frozenset(
+    {"hr_holdout.jsonl", "svc_holdout.jsonl", "maint_holdout.jsonl", "dir_holdout.jsonl"}
+)
 DATA_SUFFIXES = frozenset({".md", ".json", ".jsonl", ".yaml", ".yml", ".txt"})
 
 AS_OF = "2026-10-30"

@@ -30,10 +30,11 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal
+from typing import Literal, get_args
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, ValidationError
@@ -59,7 +60,10 @@ from alverno_lab.connectors.types import (
     FailureCategory,
     FailureCode,
     FailureCodeView,
+    LateOrderRow,
+    MaintenanceOverview,
     OrderId,
+    OrdersOverview,
     OrderStatus,
     OrderView,
     PartRef,
@@ -558,6 +562,48 @@ class SimErp:
         """The fixture label of a delay reason code (read-only), or ``None`` when unknown."""
         return self._delays.get(code) if isinstance(code, str) else None
 
+    def orders_overview(self, account_id: str | None) -> OrdersOverview:
+        """D3 of the management orchestrator (ADR 0018): not a tool, read only.
+
+        Counts by status (statuses present only, in the fixed status order) and the late
+        orders: status other than ``expediee`` and a revised date after the promised one,
+        sorted by revised date, then id. An unknown account gives an empty overview.
+        """
+        orders = [o for o in self._orders.values() if account_id in (None, o.account_id)]
+        counts = Counter(o.status for o in orders)
+        late = sorted(
+            (
+                o
+                for o in orders
+                if o.status != "expediee"
+                and o.revised_date is not None
+                and o.revised_date > o.promised_date
+            ),
+            key=lambda o: (o.revised_date, o.order_id),
+        )
+        rows = tuple(
+            LateOrderRow(
+                order_id=o.order_id,
+                account_id=o.account_id,
+                account_label=(
+                    None
+                    if self._accounts[o.account_id].natural_person
+                    else self._accounts[o.account_id].label
+                ),
+                promised_date=o.promised_date,
+                revised_date=o.revised_date,
+                delay_label=self._delays.get(o.delay_reason_code or "", "motif non précisé"),
+            )
+            for o in late
+        )
+        return OrdersOverview(
+            as_of=self.as_of,
+            account_id=account_id if account_id in self._accounts else None,
+            total=len(orders),
+            by_status=tuple((st, counts[st]) for st in get_args(OrderStatus) if counts[st]),
+            late=rows,
+        )
+
     def record_reply_prepared(
         self, order_id: OrderId, draft_sha256: str, *, token: WriteToken
     ) -> WriteReceipt:
@@ -666,6 +712,41 @@ class SimGmao:
         Read by the 3b routing code to recognise a symptom in a request; not a tool.
         """
         return MappingProxyType({s.code: s.label for s in self._fixture.symptom_codes})
+
+    def maintenance_overview(
+        self, asset_id: str | None, start: dt.date, end: dt.date
+    ) -> MaintenanceOverview:
+        """D4 of the management orchestrator (ADR 0018): not a tool, read only.
+
+        Corrective work orders opened from ``start`` to ``end`` (inclusive), by equipment
+        and by failure code, most frequent first, then by id. No technician field, remark,
+        shift, time or duration.
+        """
+        rows = [
+            w
+            for w in self._work_orders.values()
+            if w.kind == "correctif"
+            and asset_id in (None, w.asset_id)
+            and start <= w.opened_on <= end
+        ]
+        labels = {f.code: f.label for f in self._fixture.failure_codes}
+        labels[self._fixture.indeterminate_code] = "cause indéterminée"
+        by_asset = Counter(w.asset_id for w in rows)
+        by_failure = Counter(w.failure_code for w in rows if w.failure_code)
+        return MaintenanceOverview(
+            asset_id=asset_id if asset_id in self._assets else None,
+            start=start,
+            end=end,
+            corrective=len(rows),
+            by_asset=tuple(
+                (a, self._assets[a].name, n)
+                for a, n in sorted(by_asset.items(), key=lambda kv: (-kv[1], kv[0]))
+            ),
+            by_failure=tuple(
+                (code, labels.get(code, code), n)
+                for code, n in sorted(by_failure.items(), key=lambda kv: (-kv[1], kv[0]))
+            ),
+        )
 
     def failure_catalog(self) -> tuple[FailureCodeView, ...]:
         """The 16 catalogue codes, in fixture order (``INDETERMINE`` is not an entry)."""

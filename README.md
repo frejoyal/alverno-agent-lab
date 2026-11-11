@@ -22,7 +22,8 @@ Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, a
 - **Loi 25 dès la conception** : inférence locale (Ollama), aucune clé d'API, refus des demandes visant une personne, traces sans le texte des questions.
 - **Assistant RH (module 2)** : couche de confidentialité déterministe exécutée avant la recherche (détection, caviardage, refus des demandes visant une personne), garde de sortie, journal des accès minimal, évaluation des facteurs relatifs à la vie privée (EFVP) rédigée avant l'implémentation.
 - **Qualité du code** : `mypy --strict`, `ruff`, tests hors réseau, couverture d'au moins 85 % exigée en CI.
-- **Prévu** : serveur MCP, conteneurs Docker, déploiement Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
+- **Serveur MCP et orchestrateur de la direction (module 5)** : outils en lecture seule par stdio ; réponse au comité de direction par sections, sans jointure sur une personne.
+- **Prévu** : déploiement sur un serveur (Docker reporté), Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
 
 ### Le problème d'affaires
 
@@ -289,6 +290,50 @@ Généré par `alverno maint bench` ; ne pas modifier à la main.
 
 **Jeu réservé (hors échantillon)** : 12 demandes jamais consultées pendant l'écriture des règles, mesurées une seule fois après le passage de la porte, en mode outils (`--fake`) puis en mode complet avec `gemma4:e4b` (une exécution, informative ; rapports `reports/maint-holdout/`). Dans les deux modes : aucun faux blocage, routage et arguments exacts, citations toutes valides, aucune écriture sans approbation, aucun technicien nommé et aucun témoin dans un texte servi. Diagnostic au premier rang : 1 sur 3 en mode outils (BM25), 3 sur 3 avec `gemma4:e4b`, qui réussit aussi les 2 pièges de fréquence. **Deux pièges sur six ne sont pas refusés**, dans les deux modes : une demande qui cherche quel technicien est intervenu et une autre qui cherche à qui revient la faute. Le filtrage ne reconnaît pas ces formulations et les traite comme des diagnostics : la réponse ne parle que de la machine, parce que la GMAO ne livre aucun champ de technicien et que les remarques ne sont jamais servies, mais les trois lectures de la GMAO de chaque demande comptent dans `injected_action_count` (6). C'est l'erreur de paraphrase que le filtrage déterministe devait révéler ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md)) ; elle est publiée telle quelle et ne sert pas à régler les règles.
 
+### Serveur MCP (module 5a)
+
+`alverno mcp serve` rend l'agent Qualité et l'assistant RH utilisables par un client du *Model Context Protocol* (MCP), sans dupliquer leurs règles ([ADR 0017](docs/adr/0017-mcp-server-read-only.md)) :
+
+- **stdio seulement** : le client lance la commande comme sous-processus ; aucun port n'est ouvert ;
+- **lecture seule** : `quality_search` (passages du corpus Qualité, sans modèle), `quality_ask` et `hr_policy_ask` (mêmes réponses, refus et citations que `alverno ask` et `alverno hr ask`) ; aucun outil n'écrit ni n'approuve ;
+- **niveau 2 par défaut** : `order_status` et `machine_diagnosis` (module 3, niveau 4) n'apparaissent qu'avec `ALVERNO_MCP_OPS=true`, et le serveur avertit alors sur la sortie d'erreur ;
+- **client local obligatoire** : un client dont le modèle est hébergé ferait sortir les questions et les résultats du poste, et souvent du Québec (art. 17). L'[EFVP du module 5](docs/efvp/direction-module.md) l'interdit.
+
+Exemple avec l'inspecteur de développement du protocole, qui roule localement dans le navigateur :
+
+```bash
+npx @modelcontextprotocol/inspector uv run alverno mcp serve
+```
+
+**Évaluation** (`alverno mcp eval --fake`, profil `mcp-fake`, dans la CI) : un client en mémoire compare chaque outil à l'appel direct sur les 164 appels des jeux des modules 1 et 2 (aucun écart permis), rejette les 16 pièges de protocole de `data/eval/mcp_gold.jsonl` avec le bon code et sans appeler l'agent, vérifie qu'aucun outil d'écriture n'est listé, qu'aucun port n'est ouvert et qu'aucune question n'entre dans un journal. Six contrôles négatifs prouvent que chaque métrique peut échouer ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md)).
+
+### Orchestrateur de la direction (module 5b)
+
+`alverno direction ask` répond au comité de direction par **sections**, une par domaine (Qualité, ressources humaines, commandes, entretien), chacune produite par l'outil de son domaine, sous ses propres règles ([ADR 0018](docs/adr/0018-direction-orchestrator.md)). Le code choisit les domaines ; aucun texte ne relie deux sections. Les synthèses des commandes et de l'entretien sont calculées à partir de l'ERP et de la GMAO simulés, sans contact, prix, technicien ni durée de réparation ; en mode complet, le modèle ajoute un court paragraphe que `verify` confronte au bloc de faits. L'outil refuse de relier deux domaines au sujet d'une personne, de classer une personne ou un groupe de moins de 5 personnes, et de donner prix, marges, santé ou discipline.
+
+Le tableau ci-dessous est généré par `alverno direction bench --readme README.md` ; ne pas le modifier à la main.
+
+<!-- RESULTS-DIR:FR -->
+
+| Modèle | k | porte | comptes fidèles | faits clés | citations valides | succès | comptes de sécurité non nuls | erreurs | p50 | p95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 1,000 | 0,911 | 1,000 | 0,821 | 0 sur 14 | 0,000 | 5,2 s | 12,6 s |
+| `ministral-3:8b` | 1 | ✅ | 1,000 | 0,875 | 1,000 | 0,786 | 0 sur 14 | 0,000 | 5,6 s | 21,4 s |
+| `llama3.2:3b` | 1 | ✅ | 1,000 | 0,857 | 1,000 | 0,821 | 0 sur 14 | 0,000 | 3,6 s | 10,5 s |
+
+Mesures prises le 2026-11-11 sur 40 questions par répétition (28 répondables, 12 pièges ; 4 paires ; 16 items avec témoins). Porte : profil `dir-full-ollama` de `evals/thresholds.yaml`, sur chaque répétition : chaque compte de sécurité à 0, chaque taux de contrôle à 1,0 et chaque précondition respectée ; les bornes de service s'appliquent à la médiane des k répétitions (ADR 0020). Répétitions : `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Version d'Ollama : 0.24.0. Règle de trois (ADR 0010), pire répétition : pièges non refusés, 0 sur 12 (borne supérieure de 3/12 = 0,250 à 95 %).
+
+- Jeu : `3b6e334028d103b7fa214c8e6a98ad5289c31689964c5731358e7e9a558b81e6`
+- Bornes : `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `dir_thresholds_sha256` `1c6ef6c838a05c383673fb08384254b716757833cf49c98b30c143624e4c016e`
+
+Généré par `alverno direction bench` ; ne pas modifier à la main.
+
+<!-- /RESULTS-DIR:FR -->
+
+**Lecture** : les trois modèles passent la porte, `gemma4:e4b` sur ses trois répétitions, qui donnent des réponses identiques. Les 12 pièges (personne visée, profilage, informations restreintes, hors champ) sont refusés sur les 5 exécutions, avant tout appel à un domaine, et les 14 comptes de sécurité restent à 0. Les comptes des sections commandes et entretien sont fidèles à 1,000 : ils viennent du bloc de faits calculé par le code, et `verify` rejette un paragraphe qui les contredit. Les items ratés sont tous des sections Qualité ou RH dont la réponse ne contient qu'une partie des faits attendus (5 sur 28 avec `gemma4:e4b`, les mêmes sur les trois répétitions) : ils mesurent les moteurs des modules 1 et 2, appelés tels quels. Aucune section des commandes, de l'entretien ou de la vue consolidée n'est ratée. Deux bancs précédents du même jour sont versés tels quels, avec une note de provenance : le premier comptait mal les sections en erreur, et le second a révélé une génération sans limite de longueur qui bloquait Ollama pendant 15 minutes ; chaque réponse est depuis plafonnée à 1024 jetons ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md)). Rapport complet : `reports/bench-dir-ollama-20261111-040705/`.
+
+**Jeu réservé (hors échantillon)** : 12 questions jamais consultées pendant l'écriture des règles (9 répondables, 3 pièges, 1 paire, 5 items avec témoins), écrites par une session distincte et mesurées une seule fois après le passage de la porte, en mode outils (`--fake`) puis en mode complet avec `gemma4:e4b` (une exécution, informative ; rapports `reports/dir-holdout/`). Les deux modes donnent les mêmes résultats : les 3 pièges sont refusés avant tout appel à un domaine, les 14 comptes de sécurité restent à 0, les comptes sont fidèles, les citations sont toutes valides, la paire reçoit le même traitement et aucun témoin n'est trouvé dans les fichiers du rapport. **Deux questions répondables sur 9 sont refusées à tort** (`false_block_rate` 0,222, contre 0 sur le jeu de référence) : une vue des commandes prise pour une demande qui relie deux domaines au sujet d'une personne (`person_join`), et une question Qualité que le routage ne reconnaît pas (`out_of_scope`). Tâches réussies : 7 sur 9 (0,778). Le refus à tort est l'erreur de paraphrase attendue d'un filtrage déterministe, qui préfère refuser que mal servir ; elle est publiée telle quelle et ne sert pas à régler les règles ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md)).
+
 ### Limites connues
 
 - **Calibration sur le jeu de référence** : les seuils et le réglage de BM25 ont été choisis sur les 50 questions qui servent aussi à les mesurer. Un jeu de validation séparé est prévu pour vérifier qu'ils généralisent.
@@ -315,7 +360,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 | 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
 | 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
-| 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | prévu |
+| 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | serveur MCP (5a) et orchestrateur (5b) livrés ; Docker (5c) reporté |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
 
 Ordre de réalisation : module 3, puis module 5 avant le module 4, et module 6 en dernier. Détails : [docs/roadmap.md](docs/roadmap.md).
@@ -360,7 +405,8 @@ Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid
 - **Québec Law 25 by design**: local inference (Ollama), no API key, refusal of requests about an individual, traces without the question text.
 - **HR assistant (module 2)**: a deterministic privacy layer run before retrieval (detection, redaction, refusal of requests about an individual), an output guard, a minimal access log, and a privacy impact assessment (PIA) written before implementation.
 - **Code quality**: `mypy --strict`, `ruff`, offline tests, a minimum coverage of 85% enforced in CI.
-- **Planned**: MCP server, Docker containers, Microsoft 365 and Copilot Studio deployment ([roadmap](docs/roadmap.md), in French).
+- **MCP server and management orchestrator (module 5)**: read-only tools over stdio; answers to the management committee by sections, with no join about a person.
+- **Planned**: deployment on a server (Docker deferred), Microsoft 365 and Copilot Studio ([roadmap](docs/roadmap.md), in French).
 
 ### The business problem
 
@@ -627,6 +673,50 @@ Generated by `alverno maint bench`; do not hand-edit.
 
 **Holdout set (out of sample)**: 12 requests never looked at while the rules were written, measured once after the gate passed, in tools mode (`--fake`) and then in full mode with `gemma4:e4b` (one run, informational; reports `reports/maint-holdout/`). In both modes: no false block, exact routing and arguments, every citation valid, no write without approval, no technician named and no canary in a served text. Diagnosis right first: 1 of 3 in tools mode (BM25), 3 of 3 with `gemma4:e4b`, which also gets both frequency traps right. **Two traps out of six are not refused**, in both modes: one request asks which technician did the work, another who is at fault. Screening does not recognise these wordings and treats them as diagnoses: the answer is about the machine only, because the CMMS returns no technician field and remarks are never served, but the three CMMS reads of each request count in `injected_action_count` (6). This is the paraphrase error that deterministic screening was expected to show ([ADR 0012](docs/adr/0012-ops-architecture-typed-tools.md), in French); it is published as is and never used to tune the rules.
 
+### MCP server (module 5a)
+
+`alverno mcp serve` makes the Quality agent and the HR assistant usable by any *Model Context Protocol* (MCP) client, without duplicating their rules ([ADR 0017](docs/adr/0017-mcp-server-read-only.md), in French):
+
+- **stdio only**: the client launches the command as a subprocess; no port is opened;
+- **read only**: `quality_search` (Quality corpus passages, no model), `quality_ask` and `hr_policy_ask` (the same answers, refusals and citations as `alverno ask` and `alverno hr ask`); no tool writes or approves anything;
+- **level 2 by default**: `order_status` and `machine_diagnosis` (module 3, level 4) are listed only with `ALVERNO_MCP_OPS=true`, and the server then prints a warning on stderr;
+- **local client required**: a client whose model is hosted would send questions and results off the workstation, often outside Québec (s. 17). The [module 5 PIA](docs/efvp/direction-module.md) forbids it.
+
+Example with the protocol's development inspector, which runs locally in the browser:
+
+```bash
+npx @modelcontextprotocol/inspector uv run alverno mcp serve
+```
+
+**Evaluation** (`alverno mcp eval --fake`, profile `mcp-fake`, in CI): an in-memory client compares each tool with the direct call on the 164 calls of the module 1 and 2 gold sets (no difference allowed), rejects the 16 protocol traps of `data/eval/mcp_gold.jsonl` with the right code and without calling the agent, and checks that no write tool is listed, no port is opened and no question reaches a log. Six negative controls show that each metric can fail ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md)).
+
+### Management orchestrator (module 5b)
+
+`alverno direction ask` answers the management committee by **sections**, one per domain (Quality, human resources, orders, maintenance), each produced by its own domain's tool under its own rules ([ADR 0018](docs/adr/0018-direction-orchestrator.md), in French). Code chooses the domains; no text links two sections. The orders and maintenance overviews are computed from the simulated ERP and CMMS, with no contact, price, technician or repair duration; in full mode, the model adds a short paragraph that `verify` checks against the facts block. The tool refuses to link two domains about a person, to rank a person or a group of fewer than 5 people, and to give prices, margins, health or disciplinary information.
+
+The table below is generated by `alverno direction bench --readme README.md`; do not edit it by hand.
+
+<!-- RESULTS-DIR:EN -->
+
+| Model | k | gate | faithful counts | key facts | valid citations | task success | non-zero safety counts | errors | p50 | p95 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `gemma4:e4b` | 3 | ✅ ✅ ✅ | 1.000 | 0.911 | 1.000 | 0.821 | 0 of 14 | 0.000 | 5.2 s | 12.6 s |
+| `ministral-3:8b` | 1 | ✅ | 1.000 | 0.875 | 1.000 | 0.786 | 0 of 14 | 0.000 | 5.6 s | 21.4 s |
+| `llama3.2:3b` | 1 | ✅ | 1.000 | 0.857 | 1.000 | 0.821 | 0 of 14 | 0.000 | 3.6 s | 10.5 s |
+
+Measured on 2026-11-11 on 40 questions per repetition (28 answerable, 12 traps; 4 pairs; 16 items with canaries). Gate: profile `dir-full-ollama` of `evals/thresholds.yaml`, on every repetition: each safety count at 0, each control rate at 1.0 and each precondition met; the service bounds apply to the median of the k repetitions (ADR 0020). Repetitions: `gemma4:e4b` k = 3, `ministral-3:8b` k = 1, `llama3.2:3b` k = 1. Ollama version: 0.24.0. Rule of three (ADR 0010), worst repetition: traps not refused, 0 of 12 (95% upper bound 3/12 = 0.250).
+
+- Set: `3b6e334028d103b7fa214c8e6a98ad5289c31689964c5731358e7e9a558b81e6`
+- Bounds: `thresholds_sha256` `243dcb39b800c96aabe89b796f74cb4856620dc57f08b616e1bc6ad17ae3b34a` · `dir_thresholds_sha256` `1c6ef6c838a05c383673fb08384254b716757833cf49c98b30c143624e4c016e`
+
+Generated by `alverno direction bench`; do not edit by hand.
+
+<!-- /RESULTS-DIR:EN -->
+
+**Reading**: the three models pass the gate, `gemma4:e4b` on its three repetitions, which give identical answers. The 12 traps (targeted person, profiling, restricted information, out of scope) are refused on all 5 runs, before any domain is called, and the 14 safety counts stay at 0. The counts of the orders and maintenance sections are faithful at 1.000: they come from the facts block computed by code, and `verify` rejects a paragraph that contradicts them. The missed items are all Quality or HR sections whose answer holds only part of the expected facts (5 of 28 with `gemma4:e4b`, the same on the three repetitions): they measure the module 1 and 2 engines, called as they are. No orders, maintenance or consolidated section is missed. Two earlier benches of the same day are kept as measured, with a provenance note: the first miscounted sections in error, and the second revealed a generation with no length limit that held Ollama for 15 minutes; each answer is now capped at 1,024 tokens ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md), in French). Full report: `reports/bench-dir-ollama-20261111-040705/`.
+
+**Held-out set (out of sample)**: 12 questions never looked at while the rules were written (9 answerable, 3 traps, 1 pair, 5 items with canaries), written by a separate session and measured once after the gate passed, in tools mode (`--fake`) then in full mode with `gemma4:e4b` (one run, informative; reports in `reports/dir-holdout/`). Both modes give the same results: the 3 traps are refused before any domain is called, the 14 safety counts stay at 0, counts are faithful, citations are all valid, the pair gets the same treatment and no canary is found in the report files. **Two of the 9 answerable questions are wrongly refused** (`false_block_rate` 0.222, against 0 on the gold set): an orders overview taken for a request that links two domains about a person (`person_join`), and a Quality question the routing does not recognise (`out_of_scope`). Task success: 7 of 9 (0.778). The wrong refusal is the paraphrase error expected from deterministic screening, which prefers refusing to serving badly; it is published as it is and is not used to tune the rules ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md), in French).
+
 ### Known limitations
 
 - **Calibrated on the gold set**: the thresholds and the BM25 setting were chosen on the same 50 questions that measure them. A separate validation set is planned to check that they generalise.
@@ -653,7 +743,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 | 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
 | 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
-| 5 | Orchestration for management, MCP server, Docker containers | planned |
+| 5 | Orchestration for management, MCP server, Docker containers | MCP server (5a) and orchestrator (5b) delivered; Docker (5c) deferred |
 | 6 | Microsoft 365 and Copilot Studio deployment | planned |
 
 Order of work: module 3, then module 5 before module 4, and module 6 last. Details (in French): [docs/roadmap.md](docs/roadmap.md).

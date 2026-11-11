@@ -194,3 +194,7 @@ Négatives :
 - Le journal ne prouve pas qu'un brouillon servi était exempt de RP ; cette preuve vient de la garde de sortie et des évaluations de l'[ADR 0015](0015-ops-evaluation-protocol.md).
 
 Voir aussi l'[EFVP du module 3](../efvp/ops-module.md), le [registre juridique du module 3](../ops-legal-sources.md) et les ADR [0012](0012-ops-architecture-typed-tools.md), [0013](0013-ops-human-approval-and-state.md) et [0015](0015-ops-evaluation-protocol.md).
+
+## Précision du module 5 (2026-11-10)
+
+Le champ `channel` accepte une troisième valeur, `mcp`, pour une demande reçue par le serveur MCP local ([ADR 0017](0017-mcp-server-read-only.md)). Aucun autre champ ne change, et le texte de la demande reste exclu. Tout appel reçu par le serveur porte `mcp`, y compris pendant `alverno mcp eval`, qui le vérifie (`channel_mismatch`) ; les appels directs de cette évaluation gardent `eval`.

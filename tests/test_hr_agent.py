@@ -223,7 +223,11 @@ def test_note_after_the_footer_when_pi_was_removed(
     (record,) = records(agent)
     assert record.pi_types == (PIType.NAS,) and record.pi_count == 1
     assert record.subject == "self"
-    assert "046" not in log_text(agent.access_log.directory)
+    # The NAS never reaches the log. Not a bare "046" on the whole line: the random
+    # 32-hex event_id holds it in about 1 run in 100 (flaky test, 2026-11-11).
+    text = log_text(agent.access_log.directory)
+    assert not any(form in text for form in ("046 454 286", "046454286", "046-454-286"))
+    assert "046" not in re.sub(r'"event_id": ?"[0-9a-f]{32}"', "", text)
 
 
 def test_note_follows_a_refusal_and_no_footer(tmp_path: Path, privacy_ctx: PrivacyContext) -> None:

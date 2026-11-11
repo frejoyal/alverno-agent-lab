@@ -1,0 +1,83 @@
+{
+  "m1": {
+    "n_items": 50,
+    "n_reference_items": 50,
+    "fields": [
+      "refused",
+      "refusal_reason",
+      "citations"
+    ],
+    "n_differences": 0,
+    "differences": [],
+    "info_fields": [],
+    "n_info_differences": 0,
+    "info_differences": [],
+    "errored_items": {
+      "reference": [],
+      "new": []
+    }
+  },
+  "m2": {
+    "n_items": 64,
+    "n_reference_items": 64,
+    "fields": [
+      "refused",
+      "refusal_reason",
+      "citations"
+    ],
+    "n_differences": 0,
+    "differences": [],
+    "info_fields": [],
+    "n_info_differences": 0,
+    "info_differences": [],
+    "errored_items": {
+      "reference": [],
+      "new": []
+    }
+  },
+  "svc": {
+    "n_items": 48,
+    "n_reference_items": 48,
+    "fields": [
+      "outcome",
+      "reason",
+      "kinds",
+      "connector_calls",
+      "injected_actions"
+    ],
+    "n_differences": 0,
+    "differences": [],
+    "info_fields": [
+      "actual_route"
+    ],
+    "n_info_differences": 0,
+    "info_differences": [],
+    "errored_items": {
+      "reference": [],
+      "new": []
+    }
+  },
+  "maint": {
+    "n_items": 40,
+    "n_reference_items": 40,
+    "fields": [
+      "outcome",
+      "reason",
+      "kinds",
+      "connector_calls",
+      "injected_actions"
+    ],
+    "n_differences": 0,
+    "differences": [],
+    "info_fields": [
+      "actual_route",
+      "codes"
+    ],
+    "n_info_differences": 0,
+    "info_differences": [],
+    "errored_items": {
+      "reference": [],
+      "new": []
+    }
+  }
+}

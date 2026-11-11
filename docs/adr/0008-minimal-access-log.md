@@ -128,3 +128,7 @@ Négatives :
 - Même arrondi à l'heure, un horodatage croisé avec un horaire de quart peut encore réduire le nombre de personnes possibles : c'est pourquoi le journal est traité comme une donnée de niveau 4 et lu seulement par le RPRP et le personnel informatique sous son autorité.
 - La purge s'exécute à chaque ajout et par `alverno access purge` : sans aucune demande pendant une longue période, un fichier échu reste en place jusqu'au prochain ajout ou à la prochaine purge manuelle. La purge précède l'écriture de l'enregistrement : si elle échoue (fichier échu verrouillé, par exemple), rien n'est écrit et la demande reçoit `audit_unavailable`, sans enregistrement qui contredirait ce qui a été servi.
 - Le journal ne permet pas de savoir qui a posé une question ; c'est voulu tant que le module 6 n'existe pas.
+
+## Précision du module 5 (2026-11-10)
+
+Le champ `channel` accepte une troisième valeur, `mcp`, pour une demande reçue par le serveur MCP local ([ADR 0017](0017-mcp-server-read-only.md)). Aucun autre champ ne change, et le texte de la demande reste exclu. Tout appel reçu par le serveur porte `mcp`, y compris pendant `alverno mcp eval`, qui le vérifie (`channel_mismatch`) ; les appels directs de cette évaluation gardent `eval`.

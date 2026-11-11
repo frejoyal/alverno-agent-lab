@@ -77,6 +77,7 @@ from alverno_lab.privacy.ops_policy import MAINT_MAILBOX, SERVICE_MAILBOX, OpsRe
 from alverno_lab.privacy.ops_screen import screen_maintenance, screen_service
 from alverno_lab.privacy.quarantine import scrub_tool_text
 from alverno_lab.privacy.scope import ScopeIndex, build_scope_index
+from alverno_lab.privacy.types import Channel
 from alverno_lab.tools.authority import ApprovalAuthority
 from alverno_lab.tools.executor import ToolExecutor
 
@@ -221,7 +222,7 @@ def build_service_rig(
     mode: OpsMode,
     fake: bool,
     log: TimelineLog,
-    channel: Literal["cli", "eval"],
+    channel: Channel,
     timeline: Timeline | None = None,
     ctx: PrivacyContext | None = None,
 ) -> OpsRig:
@@ -310,7 +311,7 @@ def build_maint_rig(
     mode: OpsMode,
     fake: bool,
     log: TimelineLog,
-    channel: Literal["cli", "eval"],
+    channel: Channel,
     timeline: Timeline | None = None,
     ctx: PrivacyContext | None = None,
 ) -> OpsRig:

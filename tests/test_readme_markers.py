@@ -2,7 +2,8 @@
 
 Each bench rewrites only its own marker family: ``RESULTS`` (``alverno bench``),
 ``RESULTS-HR`` (``alverno hr bench``), ``RESULTS-SVC`` (``alverno service bench``) and
-``RESULTS-MAINT`` (``alverno maint bench``). Every family appears exactly once per
+``RESULTS-MAINT`` (``alverno maint bench``), and ``RESULTS-DIR`` (``alverno direction
+bench``, module 5). Every family appears exactly once per
 language, the opening marker before the closing one, each on a line of its own, French in
 the French part and English in the English part, in that order. Rewriting one family
 leaves every other byte of the README identical, the other three families included.
@@ -13,12 +14,18 @@ from __future__ import annotations
 
 import pytest
 
-from alverno_lab.cli import MAINT_MARKERS, SVC_MARKERS, replace_marked_block
+from alverno_lab.cli import DIR_MARKERS, MAINT_MARKERS, SVC_MARKERS, replace_marked_block
 
 from .conftest import REPO_ROOT
 
 README = REPO_ROOT / "README.md"
-FAMILIES: tuple[str, ...] = ("RESULTS", "RESULTS-HR", "RESULTS-SVC", "RESULTS-MAINT")
+FAMILIES: tuple[str, ...] = (
+    "RESULTS",
+    "RESULTS-HR",
+    "RESULTS-SVC",
+    "RESULTS-MAINT",
+    "RESULTS-DIR",
+)
 LANGS: tuple[str, ...] = ("FR", "EN")
 ENGLISH_HEADING = "## English"
 
@@ -94,7 +101,11 @@ def test_the_families_follow_each_other_in_both_languages() -> None:
         assert positions == sorted(positions), lang
         # Each module 3 block comes right after the previous family, with no other
         # family between.
-        for before, after in (("RESULTS-HR", "RESULTS-SVC"), ("RESULTS-SVC", "RESULTS-MAINT")):
+        for before, after in (
+            ("RESULTS-HR", "RESULTS-SVC"),
+            ("RESULTS-SVC", "RESULTS-MAINT"),
+            ("RESULTS-MAINT", "RESULTS-DIR"),
+        ):
             end = bare.index(_markers(before, lang)[1])
             start = bare.index(_markers(after, lang)[0])
             between = bare[end + 1 : start]
@@ -104,6 +115,7 @@ def test_the_families_follow_each_other_in_both_languages() -> None:
 def test_the_cli_writes_the_module_3_families() -> None:
     assert SVC_MARKERS == ("RESULTS-SVC:FR", "RESULTS-SVC:EN")
     assert MAINT_MARKERS == ("RESULTS-MAINT:FR", "RESULTS-MAINT:EN")
+    assert DIR_MARKERS == ("RESULTS-DIR:FR", "RESULTS-DIR:EN")
 
 
 @pytest.mark.parametrize("lang", LANGS)
@@ -136,7 +148,7 @@ def test_rewriting_one_family_leaves_every_other_byte_identical(family: str) -> 
                 assert _block(after, name, lang) == _block(before, name, lang), (family, name)
 
 
-@pytest.mark.parametrize("family", ["RESULTS-SVC", "RESULTS-MAINT"])
+@pytest.mark.parametrize("family", ["RESULTS-SVC", "RESULTS-MAINT", "RESULTS-DIR"])
 def test_a_rewrite_is_stable_when_repeated(family: str) -> None:
     once = _rewritten(_text(), family)
     assert _rewritten(once, family) == once

@@ -60,9 +60,9 @@ from alverno_lab.privacy import (
     screen,
 )
 from alverno_lab.privacy.access_log import PI_COUNT_CAP
+from alverno_lab.privacy.types import Channel
 from alverno_lab.retrieval import GateSignal, Hit, HybridRetriever
 
-Channel = Literal["cli", "eval"]
 Decision = Literal["answered", "refused", "error"]
 
 # Level of every HR document: the corpus check refuses any other (spec §5.7).

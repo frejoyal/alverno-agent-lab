@@ -38,3 +38,11 @@ def test_ollama_cloud_model_needs_explicit_opt_in(name: str) -> None:
         make_embedder(Settings(embed_model=name), fake=False)
     assert Settings(allow_remote_ollama=True).check_model_is_local(name) == name
     assert Settings().check_model_is_local("gemma4:e4b") == "gemma4:e4b"
+
+
+def test_chat_answer_length_is_capped() -> None:
+    # Regression (ADR 0020, précision du 2026-11-11): a looping generation held the single
+    # Ollama slot for about 15 minutes and every queued request timed out.
+    assert Settings().num_predict == 1024
+    chat = make_chat(Settings(num_predict=256), fake=False, model="gemma4:e4b")
+    assert getattr(chat, "num_predict", None) == 256

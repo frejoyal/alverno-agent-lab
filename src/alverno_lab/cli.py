@@ -102,6 +102,7 @@ from alverno_lab.privacy import (
     PrivacyConfigError,
     scan_paths,
 )
+from alverno_lab.privacy.direction_access_log import DirectionAccessLogRecord
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 from alverno_lab.retrieval import HybridRetriever, RerankerUnavailableError
 from alverno_lab.tools.registry import registry_sha256
@@ -149,6 +150,20 @@ maint_app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(maint_app, name="maint")
+mcp_app = typer.Typer(
+    help="Local MCP server (module 5a): read-only tools over stdio, level 2 by default.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(mcp_app, name="mcp")
+direction_app = typer.Typer(
+    help="Management orchestrator (module 5b): one section per domain, never a fusion.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(direction_app, name="direction")
 
 
 class MarkerError(ValueError):
@@ -1818,8 +1833,9 @@ def access_purge(
 ) -> None:
     """Delete access log day files older than the retention period (90 days at most).
 
-    Three logs share the folder, each purged by its own instance: HR (``hr-``), customer
-    service (``service-``) and maintenance (``maint-``), with the same retention. The HR
+    Four logs share the folder, each purged by its own instance: HR (``hr-``), customer
+    service (``service-``), maintenance (``maint-``) and management (``direction-``), with
+    the same retention. The HR
     line keeps its format; the other prefixes add one line each.
     """
     settings = _settings()
@@ -1837,11 +1853,295 @@ def access_purge(
     )
     verb = "Would remove" if dry_run else "Removed"
     shown = _shown_path(directory)
-    for log, kind in ((hr_log, ""), (service_log, "service "), (maint_log, "maint ")):
+    direction_log = _guard(
+        lambda: AccessLog(
+            directory,
+            prefix="direction",
+            record_type=DirectionAccessLogRecord,
+            retention_days=days,
+        )
+    )
+    logs = (
+        (hr_log, ""),
+        (service_log, "service "),
+        (maint_log, "maint "),
+        (direction_log, "direction "),
+    )
+    for log, kind in logs:
         paths = _guard(partial(log.purge, dry_run=dry_run))
         for path in paths:
             typer.echo(f"{verb} {_shown_path(path)}")
         typer.echo(f"{verb} {len(paths)} {kind}day file(s) older than {days} days in {shown}.")
+
+
+# --------------------------------------------------------------------------- module 5a
+@mcp_app.command("serve")
+def mcp_serve(
+    fake: FakeOpt = False,
+    model: Annotated[str | None, typer.Option("--model", help="Chat model.")] = None,
+) -> None:
+    """Serve the MCP tools on stdin and stdout, for a client that launches this command.
+
+    No port is opened. The Quality and HR tools are listed by default; ``order_status``
+    and ``machine_diagnosis`` only with ``ALVERNO_MCP_OPS=true``, and then only for a
+    client whose model runs on this workstation (docs/adr/0017). Exit 2 on a user error
+    (index missing, remote Ollama, cloud model, unwritable access log).
+    """
+    # Imported here: the SDK loads its web stack at import, which no other command needs.
+    from alverno_lab.mcp_server.adapters import build_backends
+    from alverno_lab.mcp_server.server import run_stdio
+
+    settings = _settings()
+    backends = _hr_guard(lambda: build_backends(settings, fake=fake, model=model))
+    run_stdio(backends, settings)
+
+
+@mcp_app.command("eval")
+def mcp_eval(
+    fake: FakeOpt = False,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+) -> None:
+    """Run the MCP evaluation (profile mcp-fake) and write ``<out>/eval-mcp-fake.{json,md}``.
+
+    Parity with the command line on the Quality and HR gold sets, the 16 protocol traps of
+    ``mcp_gold.jsonl`` and the structural checks (ADR 0020). Needs ``--fake``: parity is
+    measured where both paths are deterministic. Exit 1 when the gate fails, 2 on a user
+    error.
+    """
+    from alverno_lab.evals.mcp_eval import run_mcp_eval  # the SDK, see mcp_serve
+
+    if not fake:
+        raise typer.BadParameter(
+            "the MCP evaluation runs in fake mode only: add --fake (profile mcp-fake)",
+            param_hint="--fake",
+        )
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    report = _hr_guard(lambda: run_mcp_eval(settings, out_dir=settings.reports_dir))
+    typer.echo(f"Evaluated {report.n_parity_items} parity calls and {len(report.traps)} traps.")
+    for key, value in report.metrics.items():
+        typer.echo(f"  {key:30} {value}")
+    stem = settings.reports_dir / "eval-mcp-fake"
+    typer.echo(f"Reports: {stem}.json, {stem}.md")
+    if gate:
+        code = _hr_guard(lambda: _gate(report, settings.thresholds_path))
+        if code:
+            raise typer.Exit(code=code)
+
+
+# --------------------------------------------------------------------------- module 5b
+def _direction_mode(mode: str) -> Literal["tools", "full"]:
+    value = mode.lower()
+    if value not in ("tools", "full"):
+        raise typer.BadParameter("mode must be tools or full", param_hint="--mode")
+    return "tools" if value == "tools" else "full"
+
+
+@direction_app.command("ask")
+def direction_ask(
+    fake: FakeOpt = False,
+    mode: Annotated[
+        str, typer.Option("--mode", help="tools (facts only) or full (summary by the model).")
+    ] = "tools",
+    model: Annotated[str | None, typer.Option("--model", help="Chat model.")] = None,
+) -> None:
+    """Answer one management question, read on stdin, by sections (ADR 0018).
+
+    The notice (art. 8) is printed on stderr first. Exit 0 when answered or refused, 2 on
+    a user error (index missing, remote Ollama, cloud model, unwritable access log).
+    """
+    from alverno_lab.agents.direction.notice import direction_notice
+    from alverno_lab.direction_pipeline import build_direction_rig
+
+    settings = _settings()
+    rig = _hr_guard(
+        lambda: build_direction_rig(
+            settings, mode=_direction_mode(mode), fake=fake, channel="cli", model=model
+        )
+    )
+    typer.echo(direction_notice(settings.access_log_retention_days), err=True)
+    question = _read_question()
+    result = _hr_guard(lambda: rig.agent.ask(question))
+    typer.echo(result.answer)
+    if result.refused:
+        typer.echo(f"[refused: {result.refusal_reason}]")
+
+
+@direction_app.command("eval")
+def direction_eval(
+    mode: Annotated[str, typer.Option("--mode", help="tools or full.")] = "tools",
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Management gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int, typer.Option("--repeats", min=1, max=9, help="Repetitions (k); one report each.")
+    ] = 1,
+    model: Annotated[str | None, typer.Option("--model", help="Chat model.")] = None,
+) -> None:
+    """Run the management set (profile dir-<mode>-<backend>) and write its reports.
+
+    Writes ``<out>/eval-dir-<mode>-<backend>.{json,md}`` (``-r<i>`` per repetition), the
+    served answers in ``<out>/answers/`` and the access logs in ``<out>/access/``. Tools
+    mode needs ``--fake``. ``--limit`` makes the preconditions fail by design. Exit 1 when
+    the gate fails, 2 on a user error.
+    """
+    from alverno_lab.evals.direction_eval import run_direction_eval
+
+    dir_mode = _direction_mode(mode)
+    if dir_mode == "tools" and not fake:
+        raise typer.BadParameter(
+            "tools mode calls no model for the overviews: add --fake (profile dir-tools-fake)",
+            param_hint="--fake",
+        )
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    path = dataset or settings.dir_eval_path
+    backend = "fake" if fake else "ollama"
+    codes: list[int] = []
+    for index in range(1, repeats + 1):
+        stem = f"eval-dir-{dir_mode}-{backend}" + (f"-r{index}" if repeats > 1 else "")
+        report = _hr_guard(
+            partial(
+                run_direction_eval,
+                settings,
+                mode=dir_mode,
+                fake=fake,
+                dataset=path,
+                out_dir=settings.reports_dir,
+                stem=stem,
+                model=model,
+                limit=limit,
+            )
+        )
+        typer.echo(f"Evaluated {report.n_items} management items ({dir_mode}, {backend}).")
+        for key, value in report.metrics.items():
+            typer.echo(f"  {key:30} {value}")
+        typer.echo(f"Reports: {settings.reports_dir / stem}.json, {settings.reports_dir / stem}.md")
+        if gate:
+            codes.append(_hr_guard(partial(_gate, report, settings.thresholds_path)))
+    if any(codes):
+        raise typer.Exit(code=1)
+
+
+DIR_MARKERS = ("RESULTS-DIR:FR", "RESULTS-DIR:EN")
+
+
+@direction_app.command("bench")
+def direction_bench(
+    models: Annotated[str, typer.Option("--models", help="Comma-separated chat models.")],
+    fake: FakeOpt = False,
+    dataset: Annotated[
+        Path | None, typer.Option("--dataset", help="Management gold set JSONL.")
+    ] = None,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    limit: LimitOpt = None,
+    repeats: Annotated[
+        int,
+        typer.Option("--repeats", min=1, max=9, help="Repetitions (k) of the default chat model."),
+    ] = 3,
+    readme: Annotated[
+        Path | None,
+        typer.Option(
+            "--readme",
+            exists=True,
+            dir_okay=False,
+            help="Also update the RESULTS-DIR:FR and RESULTS-DIR:EN blocks.",
+        ),
+    ] = None,
+) -> None:
+    """Run the full management evaluation for each chat model (ADR 0020 « Répétitions »).
+
+    The default chat model runs ``--repeats`` times, every other model once; each
+    repetition is gated on its own counts, rates and preconditions and on the median of
+    the service metrics (profile dir-full-ollama, or dir-full-fake with ``--fake``).
+    Writes ``<out>/bench-dir-<backend>-<stamp>/`` with one report per repetition,
+    summary.md and summary.fr.md. The README is rewritten (RESULTS-DIR blocks only) when no
+    repetition has an error or a persisted canary, every precondition is met and the run
+    folder holds no canary; otherwise exit 1. A folder with a canary hit is renamed
+    ``<folder>.quarantine``. Exit 2 on a user error.
+    """
+    from alverno_lab.evals.canaries import load_canaries
+    from alverno_lab.evals.direction_bench import (
+        dir_bench_blockers,
+        dir_bench_note,
+        dir_bench_table,
+        gate_row,
+    )
+    from alverno_lab.evals.direction_eval import run_direction_eval
+    from alverno_lab.evals.direction_gold import load_dir_set
+    from alverno_lab.evals.direction_oracle import load_oracle
+
+    names = _bench_names(models)
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    path = dataset or settings.dir_eval_path
+    oracle = _hr_guard(lambda: load_oracle(settings.ops_erp_path, settings.ops_gmao_path))
+    _hr_guard(lambda: load_dir_set(path, oracle))
+    canaries = list(dict.fromkeys(c.canary for c in load_canaries(path)))
+    if readme is not None:
+        text = readme.read_text(encoding="utf-8")
+        for marker in DIR_MARKERS:
+            _guard(partial(replace_marked_block, text, marker, ""))
+    backend = "fake" if fake else "ollama"
+    version = "fake" if fake else ollama_server_version(settings.ollama_url)
+    run_dir = settings.reports_dir / f"bench-dir-{backend}-{dt.datetime.now():%Y%m%d-%H%M%S}"
+    rows = []
+    taken = {"summary", "summary.fr"}
+    for name in names:
+        k = repeats if name == settings.chat_model else 1
+        reports = []
+        for index, stem in enumerate(_bench_stems(name, k, taken), start=1):
+            typer.echo(f"Benchmarking {name} (repetition {index} of {k}) on the 5b set...")
+            reports.append(
+                _hr_guard(
+                    partial(
+                        run_direction_eval,
+                        settings.model_copy(update={"chat_model": name}),
+                        mode="full",
+                        fake=fake,
+                        dataset=path,
+                        out_dir=run_dir,
+                        stem=stem,
+                        model=name,
+                        limit=limit,
+                    )
+                )
+            )
+        rows.append(gate_row(name, reports, settings.thresholds_path))
+    measured = dt.date.today().isoformat()
+    blank = "\n\n"
+    tables = {
+        lang: dir_bench_table(rows, lang)
+        + blank
+        + dir_bench_note(rows, lang, ollama_version=version, measured=measured)
+        for lang in ("fr", "en")
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_lf(run_dir / "summary.md", f"# Benchmark — management (5b){blank}{tables['en']}\n")
+    _write_lf(run_dir / "summary.fr.md", f"# Banc d'essai — direction (5b){blank}{tables['fr']}\n")
+    hits = canary_hit_files([run_dir], canaries)
+    if hits:
+        quarantine = run_dir.with_name(f"{run_dir.name}.quarantine")
+        run_dir.rename(quarantine)
+        run_dir = quarantine
+    blocked = dir_bench_blockers(rows, settings.thresholds_path)
+    if readme is not None and not blocked and not hits and canaries:
+        text = readme.read_text(encoding="utf-8")
+        for marker, lang in zip(DIR_MARKERS, ("fr", "en"), strict=True):
+            text = _guard(partial(replace_marked_block, text, marker, tables[lang]))
+        _write_lf(readme, text)
+        typer.echo(f"Updated {readme}")
+    typer.echo(tables["en"])
+    typer.echo(f"Reports: {run_dir}")
+    if blocked or hits:
+        why = ", ".join(blocked) if blocked else f"{len(hits)} canary hit(s) in the run folder"
+        typer.secho(f"Error: {why}: the README is not updated.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":  # pragma: no cover

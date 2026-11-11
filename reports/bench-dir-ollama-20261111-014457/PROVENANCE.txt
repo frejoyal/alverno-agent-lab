@@ -1,0 +1,12 @@
+Second Ollama bench of the management orchestrator (module 5b, 2026-11-11), kept as
+measured. It ran after the fix of ADR 0020 « Précision de l'étape I7 », which made it
+visible: gemma4:e4b (repetitions 1 and 2) and llama3.2:3b each had 7 items in error on 40,
+so error_rate = 0.175 and the README was not rewritten. ministral-3:8b passed its gate.
+
+Cause, from the Ollama server log: each block of 7 errors starts with one generation that
+loops. Without a cap on the answer length it runs until the context is full (about 15
+minutes on the 8 GB card), Ollama does not stop it when the client gives up at 120 s, and
+the next 7 requests queued behind it time out at 120 s each. It is not a defect of the
+answers of the model: repetition 3 of gemma4:e4b served the same items without error.
+Fix: ADR 0020 « Précision de l'étape I7 : plafond de génération » (num_predict = 1024).
+The README blocks RESULTS-DIR come from the next bench, run after that fix.
