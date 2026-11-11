@@ -194,6 +194,40 @@ def test_a_question_copied_into_an_error_is_counted(
     assert report.metrics["log_content_hits"] > 0
 
 
+def test_reports_of_other_runs_in_the_folder_are_not_counted(
+    small: Settings, tmp_path: Path
+) -> None:
+    # Regression (CI, 2026-11-11): reports/ci holds the module 1 to 3 reports, which quote
+    # their questions, and the module 3 logs, their order ids; the scan counted them
+    # (log_content_hits = 429, then 2).
+    out = tmp_path / "out"
+    out.mkdir()
+    question = json.loads(small.eval_path.read_text(encoding="utf-8").splitlines()[0])
+    (out / "eval-full-fake.md").write_text(question["question"], encoding="utf-8")
+    # Another module's log in the shared access folder: an order id equal to a trap argument.
+    trap = next(
+        json.loads(line)
+        for line in small.mcp_eval_path.read_text(encoding="utf-8").splitlines()
+        if line and "order_id" in json.loads(line)["arguments"]
+    )
+    (out / "access").mkdir()
+    (out / "access" / "service-2026-11-11.jsonl").write_text(
+        json.dumps({"order_ids": [trap["arguments"]["order_id"]]}), encoding="utf-8"
+    )
+    report = run_mcp_eval(small, out_dir=out)
+    assert report.metrics["log_content_hits"] == 0
+
+
+def test_a_question_in_the_run_access_log_is_counted(small: Settings, tmp_path: Path) -> None:
+    # The scan still reads this run's access folder.
+    out = tmp_path / "out"
+    (out / "access" / "mcp").mkdir(parents=True)
+    question = json.loads(small.eval_path.read_text(encoding="utf-8").splitlines()[0])
+    (out / "access" / "mcp" / "stray.txt").write_text(question["question"], encoding="utf-8")
+    report = run_mcp_eval(small, out_dir=out)
+    assert report.metrics["log_content_hits"] > 0
+
+
 # --------------------------------------------------------------------------- cli
 def test_the_eval_command_needs_fake() -> None:
     result = CliRunner().invoke(app, ["mcp", "eval"])

@@ -271,6 +271,10 @@ Le deuxième banc (`reports/bench-dir-ollama-20261111-014457/`), lancé après l
 
 Depuis cette précision, chaque appel au modèle de clavardage porte `num_predict` = 1024 (réglage `ALVERNO_NUM_PREDICT`). La plus longue réponse des rapports publiés compte 307 jetons ; le plafond en laisse plus du triple. Le changement touche aussi les modules 1 à 3 : la non-régression de l'étape I9 compare leurs items un à un avec le code de clôture du module 3, qui n'a pas ce plafond. Aucune borne ne change. Le deuxième banc est versé tel quel, avec une note de provenance ; le README vient du banc suivant.
 
+## Précision de l'étape I10 : portée de `log_content_hits` en 5a (2026-11-11)
+
+La première CI de la PR a fait échouer `mcp-fake` : `log_content_hits` valait 429, puis 2 après une première correction, alors qu'il valait 0 sur le poste. L'évaluation MCP balayait tout son dossier de sortie, et `reports/ci` contient aussi les rapports des modules 1 à 3, qui reprennent leurs questions, et les journaux du module 3, qui consignent des identifiants de commande dont deux sont aussi des arguments de pièges. Rien ne venait de l'exécution MCP. Depuis cette précision, l'évaluation MCP écrit ses journaux dans un dossier à elle (`access/mcp/`) et ne balaie que ce dossier et ses deux rapports ; deux tests le vérifient, dont un contrôle qui place une question dans ce dossier et doit la compter. Aucune borne ne change.
+
 ## État du critère de sortie (2026-11-11, étape I10)
 
 | Point | État | Preuve |

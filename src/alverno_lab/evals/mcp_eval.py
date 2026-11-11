@@ -207,7 +207,9 @@ def run_mcp_eval(
 ) -> McpEvalReport:
     """Run the 5a evaluation in ``--fake`` mode and write its reports under ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    access = out_dir / "access"
+    # A folder of its own: in CI, out_dir/access also holds the logs of the module 2 and 3
+    # runs, whose order ids can match a trap argument (log_content_hits).
+    access = out_dir / "access" / "mcp"
     run_settings = settings.model_copy(update={"access_log_dir": access})
     quality_items = _jsonl(settings.eval_path)
     hr_items = _jsonl(settings.hr_eval_path)
@@ -253,7 +255,10 @@ def run_mcp_eval(
         str(v) for t in traps for v in t["arguments"].values() if isinstance(v, str)
     ]
     fragments = set().union(*(_fragments(q) for q in questions))
-    texts = [p.read_text(encoding="utf-8", errors="replace") for p in run_files(out_dir)]
+    # This run's files only: its access folder and its two reports. ``out_dir`` may hold
+    # the reports of other runs (``reports/ci`` in CI), which quote their own questions.
+    own = [*run_files(access), *(out_dir / f"{stem}{ext}" for ext in (".json", ".md"))]
+    texts = [p.read_text(encoding="utf-8", errors="replace") for p in own if p.is_file()]
     texts.append(errors_text)
     log_hits = sum(1 for text in texts for frag in fragments if frag in text)
     ops_names = {t.name for t in OPS_TOOLS}
