@@ -184,6 +184,10 @@ def run_direction_eval(
         if answer.refused and calls:
             totals["refused_reached_backend"] += calls
         results.append(_result(item, answer, oracle, calls))
+        # A section that failed (a model or a connector that did not answer) is an error
+        # of the run, like an item that raised: it counts in error_rate (ADR 0020).
+        if any(section["outcome"] == "error" for section in answer.sections):
+            totals["errors"] += 1
         for section in answer.sections:
             if section["purpose"] == "maintenance_overview":
                 totals["duration_exposure"] += len(_DURATION.findall(str(section["text"])))

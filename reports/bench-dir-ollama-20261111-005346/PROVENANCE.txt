@@ -1,0 +1,5 @@
+First Ollama bench of the management orchestrator (module 5b, 2026-11-11), kept as
+measured. It ran before the fix of ADR 0020 « Précision de l'étape I7 »: a section in
+error did not count in error_rate. ministral-3:8b had 7 sections in error (3 HR, 4 orders)
+on 40 items; with the fix its error_rate is 7/40 = 0.175 and the README would not have
+been rewritten. The README blocks RESULTS-DIR come from the next bench, run after the fix.

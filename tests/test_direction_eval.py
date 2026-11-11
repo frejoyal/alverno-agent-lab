@@ -177,3 +177,16 @@ def test_ci_runs_both_direction_gates_before_the_scan() -> None:
     full = "uv run alverno direction eval --mode full --fake --out reports/ci"
     assert workflow.index(tools) < workflow.index(full) < workflow.index("privacy scan")
     assert "--dataset data/eval/dir_gold.jsonl" in workflow
+
+
+def test_a_section_in_error_counts_as_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A model that does not answer is swallowed by its section; the run must still say so.
+    def down(*args: Any, **kwargs: Any) -> Any:
+        raise TimeoutError
+
+    monkeypatch.setattr(sim.SimErp, "orders_overview", down)
+    report = _run(tmp_path, dataset=_subset(tmp_path, {"d013", "d021"}))
+    assert report.metrics["error_rate"] == 0.5
+    assert [i.sections[0]["outcome"] for i in report.items] == ["error", "served"]

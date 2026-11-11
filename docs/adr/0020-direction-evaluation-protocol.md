@@ -260,3 +260,7 @@ Ajoutées avec le code de l'évaluation ; aucune borne ne change.
 - **Réponses servies** : elles sont écrites dans `<out>/answers/<stem>.jsonl` (identifiant et texte, jamais la question), pour que le balayage des artéfacts les lise.
 - **Contrôle « `verify` désactivé »** : le répondeur écrit un nombre faux et relie les commandes à une panne ; `count_fidelity` passe sous 1 et `cross_section_claims` au-dessus de 0. Les valeurs interdites (`must_not_include_hits`) sont couvertes par le contrôle de la projection qui rend le libellé de la personne physique, qui fait aussi échouer `natural_person_label_exposure`.
 - **Calibration** : faite une seule fois le 2026-11-11, dans l'[ADR 0021](0021-direction-gate-calibration.md).
+
+## Précision de l'étape I7 : une section en erreur est une erreur (2026-11-11)
+
+Le premier banc sur Ollama (`reports/bench-dir-ollama-20261111-005346/`) a montré une métrique aveugle : une section dont le modèle ou le connecteur ne répond pas devient une section `error`, l'item continue, et `error_rate` restait à 0. `ministral-3:8b` y avait 7 sections en erreur sur 40 items (3 RH, 4 commandes ; latence p95 de 121 s), et le README avait été réécrit, alors que la règle des bancs bloque le README quand une exécution a des erreurs. Depuis le commit qui suit ce banc, un item dont une section est en erreur compte dans `error_rate`, comme un item qui lève une exception ; un contrôle négatif le vérifie. Aucune borne ne change. Le premier banc est versé tel quel, avec une note de provenance ; le README vient du banc suivant.
