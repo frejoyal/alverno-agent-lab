@@ -27,6 +27,7 @@ for name, filename in FILES.items():
         for field in sorted((set(a) | set(b)) - SKIP):
             if a.get(field) != b.get(field):
                 diffs.append((item_id, field))
-    print(f"{name}: items {len(new_items)} / {len(ref_items)}; differing (item, field) pairs: {len(diffs)}")
+    counts = f"items {len(new_items)} / {len(ref_items)}"
+    print(f"{name}: {counts}; differing (item, field) pairs: {len(diffs)}")
     for d in diffs:
         print("  ", *d)
