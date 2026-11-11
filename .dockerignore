@@ -1,0 +1,19 @@
+# Never in the image (docs/adr/0019): held-out sets, reports, logs, caches, secrets, git.
+data/eval/*holdout*.jsonl
+reports/
+logs/
+.cache/
+.env
+.env.*
+.git/
+# Not needed at run time.
+.github/
+.venv/
+docs/
+tests/
+**/__pycache__/
+**/*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage

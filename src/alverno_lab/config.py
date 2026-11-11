@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # the workstation (Law 25, docs/loi25.md): it needs ALVERNO_ALLOW_REMOTE_OLLAMA=true.
     ollama_url: str = "http://localhost:11434"
     allow_remote_ollama: bool = False
+    # Host names of the same machine that count as local, for docker compose only
+    # (docs/adr/0019): the agents reach Ollama as "ollama" on an internal network with
+    # no way out. Unlike ALVERNO_ALLOW_REMOTE_OLLAMA, it never opens the cloud models.
+    trusted_ollama_hosts: frozenset[str] = frozenset()
     # Best measured model on the gold set (README results).
     chat_model: str = "gemma4:e4b"
     embed_model: str = "qwen3-embedding:0.6b"
@@ -122,7 +126,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:
         host = (urlsplit(self.ollama_url).hostname or "").lower()
-        if host in LOCAL_HOSTS:
+        if host in LOCAL_HOSTS or host in {h.lower() for h in self.trusted_ollama_hosts}:
             return self
         if not self.allow_remote_ollama:
             raise RemoteOllamaError(

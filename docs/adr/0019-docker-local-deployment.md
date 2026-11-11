@@ -1,6 +1,6 @@
 # ADR 0019 — Module 5c : images Docker et `docker compose` pour un serveur de l'usine, sans port publié ni registre
 
-- **Statut** : accepté le 2026-11-10, à l'approbation de l'[EFVP du module 5](../efvp/direction-module.md#7-avis-du-responsable-décision-et-approbation) par la présidente (dans ce labo, le responsable du dépôt dans ce rôle) ; **mise en œuvre reportée** le 2026-11-11 (voir « Report de l'étape I8 »)
+- **Statut** : accepté le 2026-11-10, à l'approbation de l'[EFVP du module 5](../efvp/direction-module.md#7-avis-du-responsable-décision-et-approbation) par la présidente (dans ce labo, le responsable du dépôt dans ce rôle) ; mise en œuvre reportée, puis reprise le 2026-11-11 (voir « Report de l'étape I8 » et « Reprise de l'étape I8 »)
 - **Date** : 2026-11-10
 
 ## Contexte
@@ -75,3 +75,15 @@ Voir aussi l'[ADR 0017](0017-mcp-server-read-only.md), l'[ADR 0018](0018-directi
 Le 2026-11-11, le responsable du dépôt a décidé de ne pas réaliser le sous-module 5c pour l'instant, ni avec Docker ni avec WSL, et de chercher une autre façon de déployer les agents sur un serveur. L'étape I8 n'est pas réalisée : aucun `Dockerfile`, aucun fichier `compose` et aucun travail Docker n'existe dans la CI. La décision ci-dessus reste acceptée comme conception de référence ; elle sera revue, ou remplacée par un nouvel ADR, avant toute mise en œuvre d'un déploiement.
 
 Conséquences : le point 5 du critère de sortie de l'[ADR 0020](0020-direction-evaluation-protocol.md) n'est pas atteint pour sa partie Docker ; l'affirmation G6 et les risques R12 et R13 de l'[EFVP du module 5](../efvp/direction-module.md) restent sans mesure, et leur preuve sera produite avec le déploiement retenu.
+
+## Reprise de l'étape I8 (2026-11-11)
+
+Le même jour, le responsable du dépôt a retenu comme solution de remplacement la décision ci-dessus elle-même : l'image est construite et vérifiée **dans la CI seulement**, sans Docker ni WSL sur le poste du labo. L'étape I8 est réalisée ainsi :
+
+- `Dockerfile`, `.dockerignore`, `compose.yaml` et `compose.offline.yaml` à la racine ; images de base épinglées par empreinte (Python 3.13 minimale, `ollama/ollama:0.24.0`), lues dans le registre public le 2026-11-11 ;
+- travail `docker` de la CI : construction, contrôles structurels (`.github/scripts/check_docker.py`), puis portes `--fake` des modules 1 et 5 et `alverno privacy eval` dans le conteneur, sans réseau et en lecture seule ;
+- `tests/test_docker_files.py` épingle les fichiers eux-mêmes, sans Docker : exclusions, utilisateur, ports, réseaux, épinglage, travail de la CI sans `push` ni `login`.
+
+**Précision : hôte d'Ollama dans `compose`.** Dans `compose`, les agents joignent Ollama par `http://ollama:11434`. Le labo refuse toute adresse non locale, sauf avec `ALVERNO_ALLOW_REMOTE_OLLAMA=true` ; or cette option ouvre aussi les modèles infonuagiques d'Ollama, et le conteneur d'Ollama a une sortie vers Internet pour télécharger ses modèles. Un nouveau réglage, `ALVERNO_TRUSTED_OLLAMA_HOSTS` (liste JSON, vide par défaut), fait accepter un nom d'hôte de la même machine comme local, **sans** ouvrir les modèles infonuagiques ; `compose.yaml` le fixe à `["ollama"]` et n'utilise pas l'option distante. Deux tests le vérifient.
+
+**Ce qui n'est pas vérifié.** `docker compose up` avec Ollama et un processeur graphique reste documenté, non testé ; aucun serveur n'est déployé ; les droits du volume des journaux restent à vérifier par le soutien informatique avant une mise en service (EFVP du module 5, R12).

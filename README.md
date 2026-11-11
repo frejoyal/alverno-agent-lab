@@ -23,7 +23,7 @@ Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, a
 - **Assistant RH (module 2)** : couche de confidentialité déterministe exécutée avant la recherche (détection, caviardage, refus des demandes visant une personne), garde de sortie, journal des accès minimal, évaluation des facteurs relatifs à la vie privée (EFVP) rédigée avant l'implémentation.
 - **Qualité du code** : `mypy --strict`, `ruff`, tests hors réseau, couverture d'au moins 85 % exigée en CI.
 - **Serveur MCP et orchestrateur de la direction (module 5)** : outils en lecture seule par stdio ; réponse au comité de direction par sections, sans jointure sur une personne.
-- **Prévu** : déploiement sur un serveur (Docker reporté), Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
+- **Prévu** : banc d'essai de modèles par tâche, Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
 
 ### Le problème d'affaires
 
@@ -334,6 +334,26 @@ Généré par `alverno direction bench` ; ne pas modifier à la main.
 
 **Jeu réservé (hors échantillon)** : 12 questions jamais consultées pendant l'écriture des règles (9 répondables, 3 pièges, 1 paire, 5 items avec témoins), écrites par une session distincte et mesurées une seule fois après le passage de la porte, en mode outils (`--fake`) puis en mode complet avec `gemma4:e4b` (une exécution, informative ; rapports `reports/dir-holdout/`). Les deux modes donnent les mêmes résultats : les 3 pièges sont refusés avant tout appel à un domaine, les 14 comptes de sécurité restent à 0, les comptes sont fidèles, les citations sont toutes valides, la paire reçoit le même traitement et aucun témoin n'est trouvé dans les fichiers du rapport. **Deux questions répondables sur 9 sont refusées à tort** (`false_block_rate` 0,222, contre 0 sur le jeu de référence) : une vue des commandes prise pour une demande qui relie deux domaines au sujet d'une personne (`person_join`), et une question Qualité que le routage ne reconnaît pas (`out_of_scope`). Tâches réussies : 7 sur 9 (0,778). Le refus à tort est l'erreur de paraphrase attendue d'un filtrage déterministe, qui préfère refuser que mal servir ; elle est publiée telle quelle et ne sert pas à régler les règles ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md)).
 
+### Déploiement Docker (module 5c)
+
+Pour un serveur de l'usine, `compose.yaml` lance Ollama et les agents ([ADR 0019](docs/adr/0019-docker-local-deployment.md)) :
+
+- **aucun port publié** : on utilise les agents par `docker compose run --rm -i alverno <commande>`, y compris le serveur MCP, en stdio ;
+- **aucune sortie vers Internet pour les agents** : ils joignent Ollama sur un réseau interne ; seul Ollama sort, pour télécharger ses modèles, et `compose.offline.yaml` lui retire ensuite cette sortie ;
+- **image sans jeu réservé, sans rapport ni journal**, utilisateur non privilégié, système de fichiers en lecture seule sauf les volumes de l'index et des journaux ;
+- **construite et vérifiée dans la CI seulement**, jamais poussée vers un registre : portes `--fake` dans le conteneur, sans réseau, et contrôles structurels. Aucun Docker n'est requis sur le poste du labo.
+
+```bash
+docker compose up -d ollama
+docker compose exec ollama ollama pull gemma4:e4b
+docker compose exec ollama ollama pull qwen3-embedding:0.6b
+docker compose -f compose.yaml -f compose.offline.yaml up -d ollama
+docker compose run --rm alverno index
+docker compose run --rm -i alverno ask "Quand le comité MRB se réunit-il ?"
+```
+
+Le processeur graphique exige le NVIDIA Container Toolkit sur l'hôte ; sans lui, Ollama roule sur le processeur central, plus lentement. `docker compose up` avec Ollama n'est pas testé en CI.
+
 ### Limites connues
 
 - **Calibration sur le jeu de référence** : les seuils et le réglage de BM25 ont été choisis sur les 50 questions qui servent aussi à les mesurer. Un jeu de validation séparé est prévu pour vérifier qu'ils généralisent.
@@ -360,7 +380,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 | 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
 | 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
-| 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | serveur MCP (5a) et orchestrateur (5b) livrés ; Docker (5c) reporté |
+| 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | livré : serveur MCP (5a), orchestrateur (5b), Docker (5c) |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
 
 Ordre de réalisation : module 3, puis module 5 avant le module 4, et module 6 en dernier. Détails : [docs/roadmap.md](docs/roadmap.md).
@@ -406,7 +426,7 @@ Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid
 - **HR assistant (module 2)**: a deterministic privacy layer run before retrieval (detection, redaction, refusal of requests about an individual), an output guard, a minimal access log, and a privacy impact assessment (PIA) written before implementation.
 - **Code quality**: `mypy --strict`, `ruff`, offline tests, a minimum coverage of 85% enforced in CI.
 - **MCP server and management orchestrator (module 5)**: read-only tools over stdio; answers to the management committee by sections, with no join about a person.
-- **Planned**: deployment on a server (Docker deferred), Microsoft 365 and Copilot Studio ([roadmap](docs/roadmap.md), in French).
+- **Planned**: per-task model benchmark, Microsoft 365 and Copilot Studio ([roadmap](docs/roadmap.md), in French).
 
 ### The business problem
 
@@ -717,6 +737,26 @@ Generated by `alverno direction bench`; do not edit by hand.
 
 **Held-out set (out of sample)**: 12 questions never looked at while the rules were written (9 answerable, 3 traps, 1 pair, 5 items with canaries), written by a separate session and measured once after the gate passed, in tools mode (`--fake`) then in full mode with `gemma4:e4b` (one run, informative; reports in `reports/dir-holdout/`). Both modes give the same results: the 3 traps are refused before any domain is called, the 14 safety counts stay at 0, counts are faithful, citations are all valid, the pair gets the same treatment and no canary is found in the report files. **Two of the 9 answerable questions are wrongly refused** (`false_block_rate` 0.222, against 0 on the gold set): an orders overview taken for a request that links two domains about a person (`person_join`), and a Quality question the routing does not recognise (`out_of_scope`). Task success: 7 of 9 (0.778). The wrong refusal is the paraphrase error expected from deterministic screening, which prefers refusing to serving badly; it is published as it is and is not used to tune the rules ([ADR 0020](docs/adr/0020-direction-evaluation-protocol.md), in French).
 
+### Docker deployment (module 5c)
+
+For a plant server, `compose.yaml` runs Ollama and the agents ([ADR 0019](docs/adr/0019-docker-local-deployment.md), in French):
+
+- **no published port**: use the agents with `docker compose run --rm -i alverno <command>`, the MCP server included, over stdio;
+- **no way out to the Internet for the agents**: they reach Ollama on an internal network; only Ollama goes out, to pull its models, and `compose.offline.yaml` then removes that way out;
+- **an image with no held-out set, report or log**, a non-root user and a read-only file system except the index and log volumes;
+- **built and checked in CI only**, never pushed to a registry: `--fake` gates inside the container, without network, and structural checks. The lab workstation needs no Docker.
+
+```bash
+docker compose up -d ollama
+docker compose exec ollama ollama pull gemma4:e4b
+docker compose exec ollama ollama pull qwen3-embedding:0.6b
+docker compose -f compose.yaml -f compose.offline.yaml up -d ollama
+docker compose run --rm alverno index
+docker compose run --rm -i alverno ask "When does the MRB committee meet?"
+```
+
+The GPU needs the NVIDIA Container Toolkit on the host; without it, Ollama runs on the CPU, more slowly. `docker compose up` with Ollama is not tested in CI.
+
 ### Known limitations
 
 - **Calibrated on the gold set**: the thresholds and the BM25 setting were chosen on the same 50 questions that measure them. A separate validation set is planned to check that they generalise.
@@ -743,7 +783,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 | 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
 | 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
-| 5 | Orchestration for management, MCP server, Docker containers | MCP server (5a) and orchestrator (5b) delivered; Docker (5c) deferred |
+| 5 | Orchestration for management, MCP server, Docker containers | delivered: MCP server (5a), orchestrator (5b), Docker (5c) |
 | 6 | Microsoft 365 and Copilot Studio deployment | planned |
 
 Order of work: module 3, then module 5 before module 4, and module 6 last. Details (in French): [docs/roadmap.md](docs/roadmap.md).
