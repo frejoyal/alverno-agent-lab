@@ -81,6 +81,9 @@ jobs:
       - name: Management orchestrator eval (full, fake) + gate
         run: uv run alverno direction eval --mode full --fake --out reports/ci
 
+      - name: Microsoft 365 eval (sync, API, tokens, Copilot Studio files) + gate
+        run: uv run alverno m365 eval --fake --out reports/ci/m365
+
       # Nothing is uploaded unless the scan finds no canary of the HR, customer service and
       # maintenance gold sets (ADR 0015). Holdouts never enter CI.
       - name: Canary scan before upload

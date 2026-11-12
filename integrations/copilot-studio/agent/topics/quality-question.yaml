@@ -1,0 +1,23 @@
+kind: AdaptiveDialog
+name: Question Qualité
+beginDialog:
+  kind: OnUnknownIntent
+  actions:
+    - kind: InvokeConnectorAction
+      connector: Alverno Qualité
+      operationId: AskQuality
+      input:
+        question: =System.Activity.Text
+      output:
+        answer: Topic.Answer
+        refused: Topic.Refused
+        sources: Topic.Sources
+    - kind: ConditionGroup
+      conditions:
+        - condition: =Topic.Refused
+          actions:
+            - kind: SendActivity
+              activity: "{Topic.Answer}"
+      elseActions:
+        - kind: SendActivity
+          activity: "{Topic.Answer}\n\nSources : {Concat(Topic.Sources, Value, \", \")}"

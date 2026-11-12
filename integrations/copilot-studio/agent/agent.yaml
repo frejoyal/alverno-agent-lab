@@ -1,0 +1,32 @@
+# Assistant Qualité Alverno — description de l'agent Copilot Studio (ADR 0027).
+# Labo, entreprise fictive. Ce fichier décrit les réglages à appliquer ; il n'est pas
+# importé tel quel : Copilot Studio change ses formats d'exportation selon les versions.
+# Chaque réglage génératif est écrit explicitement à false : un réglage absent compte
+# comme activé dans la porte m365-fake (generative_flags).
+kind: AgentDefinition
+name: Assistant Qualité Alverno
+description: >-
+  Répond aux questions sur la documentation qualité d'Alverno, avec citations, à partir
+  de l'agent local du labo. Aucune IA générative hébergée.
+language: fr-CA
+channels:
+  - teams
+audience:
+  group: Assistant Qualité — utilisateurs
+settings:
+  generativeAnswers: false
+  generativeOrchestration: false
+  generativeActions: false
+  useModelKnowledge: false
+  webBrowsing: false
+  moveDataAcrossRegions: false
+knowledgeSources: []
+connectors:
+  - name: Alverno Qualité
+    definition: ../connector/apiDefinition.swagger.json
+    properties: ../connector/apiProperties.json
+topics:
+  - topics/greeting.yaml
+  - topics/quality-question.yaml
+  - topics/fallback.yaml
+  - topics/goodbye.yaml
