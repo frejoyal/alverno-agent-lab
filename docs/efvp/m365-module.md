@@ -4,15 +4,15 @@
 
 | Élément | Valeur |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 approuvée le 2026-11-11 |
+| Statut | version 1.0 approuvée le 2026-11-11 ; version 1.1 (résultats) en attente de l'avis du RPRP et de l'approbation |
 | Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 6 n'existe |
 | Gabarit | [template.md](template.md) |
 | Volets | 6a, bibliothèque SharePoint simulée comme source du corpus ; 6b, API locale de l'agent Qualité avec jeton de l'organisation ; 6c, agent Copilot Studio publié dans Teams, décrit par des fichiers |
 | Lecteurs visés | le responsable de la protection des renseignements personnels (RPRP), la présidente, le soutien informatique |
 
-**Les nombres de cette EFVP.** Chaque nombre est une borne préenregistrée ([ADR 0028](../adr/0028-m365-evaluation-protocol.md)), un compte prévu à la conception ou un prix publié, daté et sourcé. Aucun résultat n'est mesuré à cette date ; les résultats entreront dans la version 1.1.
+**Les nombres de cette EFVP.** Chaque nombre est une borne préenregistrée ([ADR 0028](../adr/0028-m365-evaluation-protocol.md)), un compte prévu à la conception ou un prix publié, daté et sourcé. Les résultats mesurés le 2026-11-11 sont dans la section 5 (version 1.1).
 
 ## 0. Résumé
 
@@ -32,6 +32,8 @@
 | [Art. 8](https://www.legisquebec.gouv.qc.ca/fr/document/lc/P-39.1#se:8) (`lprp_information_collecte`) | L'agent recueille la question de l'employé. | Avis au premier message (fins, conservation dans Teams, aucun RP à écrire, RPRP). |
 
 **Ce que le projet affirme.** Six affirmations vérifiables (M1 à M6, [annexe B](#b-affirmations-et-preuves)). Les deux principales : l'API donne exactement les mêmes réponses que l'agent appelé directement (M2) ; elle refuse tout jeton invalide ou sans le rôle (M3).
+
+**Résultats (version 1.1).** La porte `m365-fake` passe : corpus synchronisé identique, 50 réponses de l'API identiques à celles de l'agent, 9 jetons invalides tous refusés, aucun contenu dans le journal, aucun réglage génératif ; chaque contrôle négatif échoue comme prévu (section 5).
 
 **Risques résiduels principaux.** R1 (une question contient un RP, conservé dans Teams), R2 (lieu de traitement du canal Teams non établi par le dépôt) et R6 (une mise en service réelle activerait par erreur les fonctions génératives, traitées aux États-Unis) reposent sur l'avis, le refus de l'API, les réglages de l'environnement et la vérification avant mise en service. Ils sont soumis à la présidente (section 7).
 
@@ -138,13 +140,35 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP), qualite@alverno.examp
 | R7 | La synchronisation lit un document que l'agent ne devrait pas voir | Groupe de service et étiquettes vérifiés ; `Sites.Selected` limité au site Qualité | `sync_excluded_wrong_group` = 0 ; contrôle négatif | faible |
 | R8 | La couche Microsoft 365 change les réponses de l'agent | Agent inchangé ; corpus synchronisé identique | `sync_identical` = 1 ; `api_parity` = 1,0 | faible |
 
+### Résultats mesurés (version 1.1)
+
+Mesures du 2026-11-11, `alverno m365 eval --fake` (porte `m365-fake`, [ADR 0028](../adr/0028-m365-evaluation-protocol.md)), sur les 50 questions de `quality_gold` :
+
+| Métrique | Résultat | Borne |
+|---|---|---|
+| `sync_identical` | 1 : 31 documents synchronisés, identiques octet pour octet à `data/corpus/` | = 1 |
+| `sync_excluded_wrong_group` | 0 sur l'export de contrôle (15 éléments sans le groupe de l'agent) | = 0 |
+| `api_parity` | 1,0 : les 50 réponses de l'API (texte, citations, refus, motif) sont identiques à celles de l'agent appelé directement | = 1,0 |
+| `auth_bypass` | 0 sur 9 cas : jeton absent, signature inconnue, expiré, pas encore valide, mauvais émetteur, mauvaise audience, mauvais locataire, algorithme symétrique (401) ; rôle absent (403) | = 0 |
+| `auth_false_reject` | 0 sur 50 appels avec un jeton valide | = 0 |
+| `log_content_hits` | 0 | = 0 |
+| `canary_hits` | 0 (témoins des huit jeux) | = 0 |
+| `spec_api_coverage` | 1,0 (2 routes, décrites dans les deux sens) | = 1,0 |
+| `topic_action_valid` | 1 (une action, `AskQuality`) | = 1 |
+| `generative_flags` | 0 (6 réglages explicitement à `false`, aucune source de connaissances) | = 0 |
+| `error_rate` | 0 | = 0 |
+
+Chaque compte a son contrôle négatif dans `tests/test_m365.py`, et chacun échoue comme prévu : une synchronisation qui ignore le groupe retient des éléments ; un vérificateur qui oublie le rôle laisse passer le cas « rôle absent » ; un journal qui garde la question est détecté, même échappée en JSON ; un sujet qui appelle une action inconnue, un réglage génératif activé ou retiré, une source de connaissances ajoutée et une route non décrite sont tous détectés.
+
+**Ce que ces résultats ne montrent pas.** Ils portent sur la couche Microsoft 365 du dépôt, avec le modèle simulé du labo et des clés de test. Teams, Copilot Studio, la passerelle et la rétention de Microsoft 365 ne sont ni exécutés ni mesurés ; les risques R1, R2 et R6 restent **moyens**.
+
 ## 6. Plan d'action
 
 | Action | Responsable (rôle) | Échéance | Critère |
 |---|---|---|---|
 | Confirmer l'avis du RPRP | RPRP | Avant tout code | Avis daté à la section 7 |
 | Approuver l'EFVP et décider des risques R1, R2 et R6 | Présidente | Avant tout code | Approbation datée ; ADR 0025 à 0028 passent à « accepté » |
-| Réaliser la synchronisation, l'API, l'agent et la porte | Responsable du dépôt | Incréments I1 à I5 | Critère de sortie de l'[ADR 0028](../adr/0028-m365-evaluation-protocol.md) |
+| Réaliser la synchronisation, l'API, l'agent et la porte | Responsable du dépôt | Fait le 2026-11-11 | Critère de sortie de l'[ADR 0028](../adr/0028-m365-evaluation-protocol.md) |
 | Vérifier le contrat avec Microsoft et les engagements de résidence des données | RPRP | Avant toute mise en service | Vérification datée dans l'analyse de l'art. 17 |
 | Fixer la rétention de Teams et du journal d'activité de l'agent | Soutien informatique et RPRP | Avant toute mise en service | Politique datée dans la gouvernance |
 | Publier la version 1.1 | Responsable du dépôt et RPRP | Après l'incrément I5 | Résultats recopiés ; avis confirmé ; approbation |
@@ -182,12 +206,15 @@ Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée
 | Décisions de conception 1 à 10 | Approuvées par le responsable du dépôt le 2026-11-11 |
 | Risques R1, R2 et R6 | Acceptés par la présidente le 2026-11-11 |
 | Approbation de la version 1.0 | Approuvée |
+| Avis du RPRP sur la version 1.1 | En attente |
+| Approbation de la version 1.1 | En attente |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
 | Date | 2026-11-11 (version 1.0) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-11 |
+| 1.1 | 2026-11-11 | Résultats de la porte `m365-fake` et des contrôles négatifs (section 5) ; avis du RPRP et approbation en attente |
 
 ## Annexes
 

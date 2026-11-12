@@ -62,6 +62,16 @@ Le module 6 est livré quand :
 | I4 | `alverno m365 eval` et porte `m365-fake` dans la CI |
 | I5 | documents `docs/m365/` ; EFVP v1.1 ; livraison |
 
+## État du critère de sortie (2026-11-11, étape I5)
+
+| Point | État |
+|---|---|
+| 1. EFVP v1.0 et ADR approuvés avant le code | atteint : approuvés le 2026-11-11, avant le premier commit `src/` du module |
+| 2. CI verte, porte `m365-fake` et portes existantes | atteint avec la PR du module : porte `m365-fake` franchie localement ; empreintes inchangées |
+| 3. Contrôles négatifs | atteint : chacun échoue comme prévu (`tests/test_m365.py`) |
+| 4. Documents `docs/m365/` | atteint |
+| 5. EFVP v1.1 avec les résultats | rédigée ; avis du RPRP et approbation en attente |
+
 ## Solutions écartées
 
 - **Mesurer dans un locataire de développement** : écarté par le responsable du dépôt pour ce module.

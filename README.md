@@ -23,7 +23,7 @@ Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, a
 - **Assistant RH (module 2)** : couche de confidentialité déterministe exécutée avant la recherche (détection, caviardage, refus des demandes visant une personne), garde de sortie, journal des accès minimal, évaluation des facteurs relatifs à la vie privée (EFVP) rédigée avant l'implémentation.
 - **Qualité du code** : `mypy --strict`, `ruff`, tests hors réseau, couverture d'au moins 85 % exigée en CI.
 - **Serveur MCP et orchestrateur de la direction (module 5)** : outils en lecture seule par stdio ; réponse au comité de direction par sections, sans jointure sur une personne.
-- **Prévu** : banc d'essai de modèles par tâche, Microsoft 365 et Copilot Studio ([feuille de route](docs/roadmap.md)).
+- **Prévu** : banc d'essai de modèles par tâche ([feuille de route](docs/roadmap.md)).
 
 ### Le problème d'affaires
 
@@ -354,6 +354,17 @@ docker compose run --rm -i alverno ask "Quand le comité MRB se réunit-il ?"
 
 Le processeur graphique exige le NVIDIA Container Toolkit sur l'hôte ; sans lui, Ollama roule sur le processeur central, plus lentement. `docker compose up` avec Ollama n'est pas testé en CI.
 
+### Microsoft 365 et Copilot Studio (module 6, volet dépôt)
+
+L'agent Qualité peut rejoindre les employés dans Teams **sans sortir l'inférence ni les documents du poste** ([EFVP](docs/efvp/m365-module.md), ADR [0025](docs/adr/0025-sharepoint-corpus-source.md) à [0028](docs/adr/0028-m365-evaluation-protocol.md)). Aucun locataire réel n'est utilisé : tout est simulé, décrit et vérifié dans le dépôt.
+
+- **Source SharePoint** : `alverno m365 sync` lit un export simulé de la bibliothèque (empreintes, étiquettes, groupes, sans texte recopié) et reproduit le corpus actuel, octet pour octet.
+- **API locale** : `alverno m365 serve` expose l'agent Qualité, et lui seul, sur `127.0.0.1`, derrière un jeton Microsoft Entra ID et le rôle `Quality.Ask` ; la passerelle de données locale de Microsoft s'y connecte en sortie, sans port entrant. Le journal des accès ne garde ni question ni réponse.
+- **Agent Copilot Studio** : `integrations/copilot-studio/` décrit le connecteur (généré à partir de l'API), l'agent et ses sujets, **sans IA générative hébergée** : pour un environnement au Canada, Microsoft héberge le service Azure OpenAI aux États-Unis.
+- **Porte `m365-fake`** (CI) : corpus synchronisé identique, réponses de l'API identiques à celles de l'agent sur les 50 questions, 9 jetons invalides tous refusés, aucun contenu dans le journal, connecteur et sujets cohérents, aucun réglage génératif.
+
+Documents : [analyse de l'art. 17](docs/m365/article-17.md), [gouvernance](docs/m365/governance.md), [plan d'adoption](docs/m365/adoption-plan.md), [comparaison avec les capacités natives de Microsoft](docs/m365/comparison.md), [guide de déploiement](docs/m365/deployment-guide.md).
+
 ### Limites connues
 
 - **Calibration sur le jeu de référence** : les seuils et le réglage de BM25 ont été choisis sur les 50 questions qui servent aussi à les mesurer. Un jeu de validation séparé est prévu pour vérifier qu'ils généralisent.
@@ -381,7 +392,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 | 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
 | 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
 | 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | livré : serveur MCP (5a), orchestrateur (5b), Docker (5c) |
-| 6 | Déploiement Microsoft 365 et Copilot Studio | prévu |
+| 6 | Déploiement Microsoft 365 et Copilot Studio | livré (volet dépôt, sans locataire réel) |
 
 Ordre de réalisation : module 3, puis module 5 avant le module 4, et module 6 en dernier. Détails : [docs/roadmap.md](docs/roadmap.md).
 
@@ -426,7 +437,7 @@ Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid
 - **HR assistant (module 2)**: a deterministic privacy layer run before retrieval (detection, redaction, refusal of requests about an individual), an output guard, a minimal access log, and a privacy impact assessment (PIA) written before implementation.
 - **Code quality**: `mypy --strict`, `ruff`, offline tests, a minimum coverage of 85% enforced in CI.
 - **MCP server and management orchestrator (module 5)**: read-only tools over stdio; answers to the management committee by sections, with no join about a person.
-- **Planned**: per-task model benchmark, Microsoft 365 and Copilot Studio ([roadmap](docs/roadmap.md), in French).
+- **Planned**: per-task model benchmark ([roadmap](docs/roadmap.md), in French).
 
 ### The business problem
 
@@ -757,6 +768,17 @@ docker compose run --rm -i alverno ask "When does the MRB committee meet?"
 
 The GPU needs the NVIDIA Container Toolkit on the host; without it, Ollama runs on the CPU, more slowly. `docker compose up` with Ollama is not tested in CI.
 
+### Microsoft 365 and Copilot Studio (module 6, repository side)
+
+The Quality agent can reach employees in Teams **without moving inference or documents off the workstation** ([privacy impact assessment](docs/efvp/m365-module.md) and ADRs [0025](docs/adr/0025-sharepoint-corpus-source.md) to [0028](docs/adr/0028-m365-evaluation-protocol.md), in French). No real tenant is used: everything is simulated, described and checked in the repository.
+
+- **SharePoint source**: `alverno m365 sync` reads a simulated export of the library (hashes, labels, groups, no copied text) and reproduces the current corpus byte for byte.
+- **Local API**: `alverno m365 serve` exposes the Quality agent only, on `127.0.0.1`, behind a Microsoft Entra ID token and the `Quality.Ask` role; Microsoft's on-premises data gateway connects to it outbound, with no inbound port. The access log keeps no question or answer.
+- **Copilot Studio agent**: `integrations/copilot-studio/` describes the connector (generated from the API), the agent and its topics, **with no hosted generative AI**: for an environment in Canada, Microsoft hosts the Azure OpenAI service in the United States.
+- **`m365-fake` gate** (CI): identical synced corpus, API answers identical to the agent's on the 50 questions, all 9 invalid tokens refused, no content in the log, consistent connector and topics, no generative setting.
+
+Documents (in French): [article 17 analysis](docs/m365/article-17.md), [governance](docs/m365/governance.md), [adoption plan](docs/m365/adoption-plan.md), [comparison with Microsoft's native capabilities](docs/m365/comparison.md), [deployment guide](docs/m365/deployment-guide.md).
+
 ### Known limitations
 
 - **Calibrated on the gold set**: the thresholds and the BM25 setting were chosen on the same 50 questions that measure them. A separate validation set is planned to check that they generalise.
@@ -784,7 +806,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 | 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
 | 4 | Per-task benchmark of local models, with an optional external decision model | planned |
 | 5 | Orchestration for management, MCP server, Docker containers | delivered: MCP server (5a), orchestrator (5b), Docker (5c) |
-| 6 | Microsoft 365 and Copilot Studio deployment | planned |
+| 6 | Microsoft 365 and Copilot Studio deployment | delivered (repository side, no real tenant) |
 
 Order of work: module 3, then module 5 before module 4, and module 6 last. Details (in French): [docs/roadmap.md](docs/roadmap.md).
 

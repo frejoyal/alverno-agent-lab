@@ -71,3 +71,5 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 - Comparaison documentée : agents locaux du labo contre capacités natives de Copilot Studio, selon le coût, la qualité mesurée et la conformité.
 
 **Statut** : en cours, volet dépôt seulement (aucun locataire réel, décision du responsable du dépôt du 2026-11-11). Le 2026-11-11 (étape I0), EFVP v1.0 ([docs/efvp/m365-module.md](efvp/m365-module.md)), ADR [0025](adr/0025-sharepoint-corpus-source.md) à [0028](adr/0028-m365-evaluation-protocol.md) et documents [docs/m365/](m365/article-17.md) rédigés avant tout code ; EFVP approuvée et ADR acceptés le 2026-11-11.
+
+**Livré le 2026-11-11 (volet dépôt)** : synchronisation de la bibliothèque simulée, API locale avec jeton Entra ID, fichiers Copilot Studio ; porte `m365-fake` franchie dans la CI ; documents [docs/m365/](m365/article-17.md). EFVP v1.1, avec les résultats, à approuver. Une mise en service réelle reste soumise à la liste de vérification du [guide de déploiement](m365/deployment-guide.md).
