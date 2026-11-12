@@ -1,0 +1,9 @@
+kind: AdaptiveDialog
+name: Service indisponible
+beginDialog:
+  kind: OnError
+  actions:
+    - kind: SendActivity
+      activity: >-
+        L'assistant Qualité n'est pas disponible pour le moment. Consultez la
+        documentation qualité dans SharePoint ou écrivez à qualite@alverno.example.
