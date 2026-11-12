@@ -170,16 +170,42 @@ def _json_strings(node: object) -> list[str]:
     return []
 
 
+# A number written by a report: digits with spaces, dots or commas, then an optional unit.
+_MEASURE = r"[-+]?\d[\d\s.,]*(?:\s*(?:%|s|ms|Go|GB|\$))?"
+_MD_CELL_RE = re.compile(rf"^\s*{_MEASURE}\s*$")
+_MD_METRIC_LINE_RE = re.compile(rf"^\s*[-*]\s+`?[A-Za-z][\w ()/.@-]*`?\s*:\s*{_MEASURE}\s*$")
+
+
+def markdown_without_measurements(text: str) -> str:
+    """``text`` without its measurement cells and metric lines (see :func:`_numeric_scope`)."""
+    kept: list[str] = []
+    for line in text.splitlines():
+        if _MD_METRIC_LINE_RE.match(line):
+            continue
+        if line.lstrip().startswith("|"):
+            cells = line.strip().strip("|").split("|")
+            kept.append(" | ".join(c for c in cells if not _MD_CELL_RE.match(c)))
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
 def _numeric_scope(path: Path) -> str:
     """The text in which a numeric canary is looked for.
 
     In a JSON or JSONL file, the string values and keys only: a JSON number is a
     measurement the evaluation wrote (a count, a rate, a latency), never fixture text, and
     a count such as ``23.0`` once equalled a fixture margin by chance (step I8). A line
-    that does not parse is kept whole, so nothing is skipped silently. Any other file is
-    decoded whole.
+    that does not parse is kept whole, so nothing is skipped silently. In a Markdown file,
+    the same rule applies to what the reports write as measurements: a table cell or a
+    ``- metric: value`` line that holds nothing but a number (with an optional unit) is
+    left out; every other text, an answer quoted in a table included, is kept (precision
+    of 2026-11-12, module 4: four p50 latencies and counts had equalled short numeric
+    canaries). Any other file is decoded whole.
     """
     text = decode_artifact(path.read_bytes())
+    if path.suffix.lower() == ".md":
+        return markdown_without_measurements(text)
     if path.suffix.lower() not in {".json", ".jsonl"}:
         return text
     blocks = [text] if path.suffix.lower() == ".json" else text.splitlines()

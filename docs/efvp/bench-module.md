@@ -4,15 +4,15 @@
 
 | Élément | Valeur |
 |---|---|
-| Version | 1.0 |
-| Date | 2026-11-11 |
-| Statut | version 1.0 approuvée le 2026-11-11 |
+| Version | 1.1 |
+| Date | 2026-11-12 |
+| Statut | version 1.0 approuvée le 2026-11-11 ; version 1.1 (résultats) en attente de l'avis du RPRP et de l'approbation |
 | Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 4 n'existe |
 | Gabarit | [template.md](template.md) |
 | Volets | 4a, matrice tâches × modèles locaux et mesures du matériel (`alverno matrix`) ; 4b, référence hébergée facultative (`--reference`) ; 4c, recommandation écrite |
 | Lecteurs visés | le responsable de la protection des renseignements personnels (RPRP), la présidente, le soutien informatique |
 
-**Les nombres de cette EFVP.** Chaque nombre est une règle préenregistrée, un compte prévu à la conception (jeux d'évaluation existants, modèles installés), une valeur de politique du labo ou une caractéristique du poste du labo. Aucun résultat n'est mesuré à cette date ; les résultats entreront dans la version 1.1.
+**Les nombres de cette EFVP.** Chaque nombre est une règle préenregistrée, un compte prévu à la conception (jeux d'évaluation existants, modèles installés), une valeur de politique du labo ou une caractéristique du poste du labo. Les résultats mesurés les 2026-11-11 et 2026-11-12 sont dans la section 5 (version 1.1).
 
 ## 0. Résumé
 
@@ -31,6 +31,8 @@
 | Art. 21 | Aucune communication de RP à des fins d'étude, de recherche ou de statistiques ; le banc n'utilise que des données synthétiques. Le contenu de l'article n'est pas résumé (énoncé exclu du [registre du module 3](../ops-legal-sources.md#énoncés-exclus)). | **Sans objet.** |
 
 **Ce que le projet affirme.** Cinq affirmations vérifiables (B1 à B5, [annexe B](#b-affirmations-et-preuves)). Les deux principales : la référence hébergée ne reçoit aucun RP, aucun piège et aucune spécification de client (B2) ; la recommandation découle d'une règle écrite avant les mesures, appliquée telle quelle (B4).
+
+**Résultats (version 1.1).** La matrice couvre les 29 paires prévues ; chaque tâche a un modèle confirmé à k = 3 (T1 et T3b `ministral-3:8b`, T2 et T3a `gemma4:e4b`, T5b `llama3.2:3b`, T0 `bge-m3`) et le palier d'ensemble est de 12 Go. La référence hébergée a reçu 15 invites, sans aucun RP, piège ni extrait de spécification de client (section 5).
 
 **Risques résiduels principaux.** R3 (la référence hébergée reçoit des documents internes de niveau 2, que [loi25.md](../loi25.md) garde locaux par défaut) et R6 (l'interface en ligne de commande du fournisseur peut évoluer) reposent sur l'option explicite et sur le filtre du labo. Ils sont soumis à la présidente (section 7).
 
@@ -134,13 +136,29 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP), soutien-ti@alverno.ex
 | R6 | L'interface du fournisseur change (options, modèle par défaut) et envoie plus que prévu | Appel sans outil, invite construite par le code, version de l'interface notée dans le rapport | Test de la ligne de commande construite ; version publiée | **moyen** : dépend du fournisseur ; soumis à la présidente |
 | R7 | La recommandation favorise un modèle sans preuve suffisante | Règle préenregistrée ; confirmation à k = 3 ; règle de trois publiée | Rapport de la matrice et de la confirmation | faible |
 
+### Résultats mesurés (version 1.1)
+
+Matrice du 2026-11-11 au 2026-11-12 (`reports/matrix-20261111/`, recommandation dans [docs/model-recommendation.md](../model-recommendation.md)) : 29 paires de criblage (5 modèles de conversation sur 5 tâches, `gemma4:26b` sur T1, 3 modèles de plongements), puis 6 confirmations à k = 3, toutes réussies au premier modèle classé. Aucune exécution n'a d'erreur de transport.
+
+| Affirmation | Mesure | Résultat |
+|---|---|---|
+| B1 | portes existantes et empreintes | aucune borne changée ; `thresholds_sha256`, `ops_thresholds_sha256` et `dir_thresholds_sha256` inchangées |
+| B2 | `hosted_pi_sent`, `hosted_trap_sent`, `hosted_spec_sent` | 0, 0 et 0 sur 15 invites envoyées (28 items admissibles, 13 écartés pour un extrait `SPEC-*`, 0 bloqué par le détecteur) ; chaque contrôle négatif donne 1 |
+| B3 | `hosted_calls_default` | 0 ; sans l'option, la commande s'arrête avant toute exécution (test) ; contrôle négatif : 1 |
+| B4 | règle appliquée | T1 et T3b `ministral-3:8b`, T2 et T3a `gemma4:e4b`, T5b `llama3.2:3b`, T0 `bge-m3` ; palier d'ensemble 12 Go |
+| B5 | index du labo | index de chaque modèle de plongements dans le dossier du rapport ; `.cache/` inchangé |
+
+**Balayage des témoins.** Le premier balayage final a trouvé 4 nombres courts des jeux du service à la clientèle égaux, par hasard, à des latences et à un compte écrits dans des rapports Markdown ; aucun texte servi ne les contenait. La règle a été précisée et seul le balayage a été refait ([ADR 0024](../adr/0024-bench-evaluation-protocol.md#balayage-des-témoins--précision-du-2026-11-12-après-le-criblage)) ; le balayage avec les huit jeux ne trouve plus rien.
+
+**Ce que ces résultats ne montrent pas.** Un seul poste ; les paliers de 12 à 24 Go sont estimés. La référence hébergée ne porte que sur 15 questions de niveau 2 : sur elles, Haiku obtient les mêmes faits clés que `gemma4:e4b` en local (0,933). R3 et R6 restent **moyens**.
+
 ## 6. Plan d'action
 
 | Action | Responsable (rôle) | Échéance | Critère |
 |---|---|---|---|
 | Confirmer l'avis du RPRP | RPRP | Avant tout code | Avis daté à la section 7 |
 | Approuver l'EFVP et décider des risques R3 et R6 | Présidente | Avant tout code | Approbation datée ; ADR 0022 à 0024 passent à « accepté » |
-| Réaliser la matrice, la référence et la recommandation | Responsable du dépôt | Incréments I1 à I8 | Critère de sortie de l'[ADR 0024](../adr/0024-bench-evaluation-protocol.md) |
+| Réaliser la matrice, la référence et la recommandation | Responsable du dépôt | Fait le 2026-11-12 | Critère de sortie de l'[ADR 0024](../adr/0024-bench-evaluation-protocol.md) |
 | Inscrire la règle de la référence hébergée dans la politique de gouvernance | RPRP | Avant tout usage réel | Politique mise à jour et datée |
 | Publier la version 1.1 | Responsable du dépôt et RPRP | Après l'incrément I8 | Résultats recopiés ; avis confirmé ; approbation |
 
@@ -177,12 +195,15 @@ Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée
 | Décisions de conception 1 à 10 | Approuvées par le responsable du dépôt le 2026-11-11 |
 | Risques R3 et R6 | Acceptés par la présidente le 2026-11-11 |
 | Approbation de la version 1.0 | Approuvée |
+| Avis du RPRP sur la version 1.1 | En attente |
+| Approbation de la version 1.1 | En attente |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
 | Date | 2026-11-11 (version 1.0) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-11 |
+| 1.1 | 2026-11-12 | Résultats de la matrice, des confirmations et de la référence hébergée ; précision du balayage des témoins ; avis du RPRP et approbation en attente |
 
 ## Annexes
 

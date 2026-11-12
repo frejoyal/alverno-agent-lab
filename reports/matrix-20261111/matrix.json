@@ -1,0 +1,1401 @@
+{
+  "note": {
+    "measured": "2026-11-12",
+    "backend": "ollama",
+    "ollama_version": "0.24.0",
+    "num_ctx": "8192",
+    "num_predict": "1024",
+    "embed_num_ctx": "2048",
+    "thresholds_file_sha256": "539f4588262843ade98b57353379a1537f050d281a7ac789ad073902135c70fa",
+    "limit": "none"
+  },
+  "decisions": [
+    {
+      "task": "T1",
+      "retained": "ministral-3:8b",
+      "tier_gb": 12,
+      "total_gb": 7.86,
+      "tried": [
+        "ministral-3:8b"
+      ],
+      "strongest": "gemma4:e4b"
+    },
+    {
+      "task": "T2",
+      "retained": "gemma4:e4b",
+      "tier_gb": 12,
+      "total_gb": 9.97,
+      "tried": [
+        "gemma4:e4b"
+      ],
+      "strongest": "gemma4:e4b"
+    },
+    {
+      "task": "T3a",
+      "retained": "gemma4:e4b",
+      "tier_gb": 12,
+      "total_gb": 9.97,
+      "tried": [
+        "gemma4:e4b"
+      ],
+      "strongest": "gemma4:e4b"
+    },
+    {
+      "task": "T3b",
+      "retained": "ministral-3:8b",
+      "tier_gb": 12,
+      "total_gb": 7.86,
+      "tried": [
+        "ministral-3:8b"
+      ],
+      "strongest": "gemma4:e4b"
+    },
+    {
+      "task": "T5b",
+      "retained": "llama3.2:3b",
+      "tier_gb": 8,
+      "total_gb": 3.16,
+      "tried": [
+        "llama3.2:3b"
+      ],
+      "strongest": "llama3:latest"
+    },
+    {
+      "task": "T0",
+      "retained": "bge-m3",
+      "tier_gb": 8,
+      "total_gb": 1.08,
+      "tried": [
+        "bge-m3"
+      ],
+      "strongest": "qwen3-embedding:0.6b"
+    }
+  ],
+  "overall_tier_gb": 12,
+  "screen": {
+    "T1": [
+      {
+        "task": "T1",
+        "model": "gemma4:e4b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.9476,
+          "citation_validity_rate": 1.0,
+          "trap_refusal_accuracy": 1.0
+        },
+        "latency_p50_ms": 6697.43325,
+        "latency_p95_ms": 15580.645855,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 17.9,
+        "loaded_before": [
+          "bge-m3:latest",
+          "nomic-embed-text:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T1/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      },
+      {
+        "task": "T1",
+        "model": "ministral-3:8b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.8667,
+          "citation_validity_rate": 0.9672,
+          "trap_refusal_accuracy": 1.0
+        },
+        "latency_p50_ms": 19438.4041,
+        "latency_p95_ms": 34433.172735,
+        "vram_gb": 5.3,
+        "ram_spill_gb": 2.56,
+        "context_length": 8192,
+        "tokens_per_s": 8.9,
+        "loaded_before": [
+          "gemma4:e4b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T1/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": true
+      },
+      {
+        "task": "T1",
+        "model": "llama3.2:3b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.7333,
+          "citation_validity_rate": 0.9636,
+          "trap_refusal_accuracy": 0.8667
+        },
+        "latency_p50_ms": 3800.6533,
+        "latency_p95_ms": 13700.24838,
+        "vram_gb": 3.16,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 142.7,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "screen/T1/llama3.2_3b",
+        "note": "",
+        "total_gb": 3.16,
+        "admissible": false
+      },
+      {
+        "task": "T1",
+        "model": "gemma3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.6333,
+          "citation_validity_rate": 0.8571,
+          "trap_refusal_accuracy": 1.0
+        },
+        "latency_p50_ms": 2661.8827,
+        "latency_p95_ms": 4621.827735,
+        "vram_gb": 4.13,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 83.0,
+        "loaded_before": [
+          "llama3.2:3b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T1/gemma3_latest",
+        "note": "",
+        "total_gb": 4.13,
+        "admissible": false
+      },
+      {
+        "task": "T1",
+        "model": "llama3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.8238,
+          "citation_validity_rate": 0.9434,
+          "trap_refusal_accuracy": 0.9333
+        },
+        "latency_p50_ms": 12223.43415,
+        "latency_p95_ms": 24287.482765,
+        "vram_gb": 5.32,
+        "ram_spill_gb": 0.4,
+        "context_length": 8192,
+        "tokens_per_s": 26.7,
+        "loaded_before": [
+          "gemma3:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T1/llama3_latest",
+        "note": "",
+        "total_gb": 5.72,
+        "admissible": false
+      },
+      {
+        "task": "T1",
+        "model": "gemma4:26b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.9476,
+          "citation_validity_rate": 1.0,
+          "trap_refusal_accuracy": 1.0
+        },
+        "latency_p50_ms": 70408.89195,
+        "latency_p95_ms": 99947.53245,
+        "vram_gb": 5.37,
+        "ram_spill_gb": 13.44,
+        "context_length": 8192,
+        "tokens_per_s": 7.0,
+        "loaded_before": [
+          "llama3:latest"
+        ],
+        "folder": "screen/T1/gemma4_26b",
+        "note": "",
+        "total_gb": 18.81,
+        "admissible": true
+      }
+    ],
+    "T2": [
+      {
+        "task": "T2",
+        "model": "gemma4:e4b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.8333,
+          "citation_validity_rate": 1.0,
+          "privacy_trap_refusal": 1.0
+        },
+        "latency_p50_ms": 6174.9855,
+        "latency_p95_ms": 12282.0605,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 18.5,
+        "loaded_before": [
+          "gemma4:e4b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T2/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      },
+      {
+        "task": "T2",
+        "model": "ministral-3:8b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.6389,
+          "citation_validity_rate": 1.0,
+          "privacy_trap_refusal": 1.0
+        },
+        "latency_p50_ms": 24149.1625,
+        "latency_p95_ms": 39211.65995,
+        "vram_gb": 5.3,
+        "ram_spill_gb": 2.56,
+        "context_length": 8192,
+        "tokens_per_s": 9.1,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "screen/T2/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": false
+      },
+      {
+        "task": "T2",
+        "model": "llama3.2:3b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.5556,
+          "citation_validity_rate": 0.9533,
+          "privacy_trap_refusal": 1.0
+        },
+        "latency_p50_ms": 3127.0485,
+        "latency_p95_ms": 7091.76465,
+        "vram_gb": 3.16,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 126.0,
+        "loaded_before": [
+          "llama3.2:3b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T2/llama3.2_3b",
+        "note": "",
+        "total_gb": 3.16,
+        "admissible": false
+      },
+      {
+        "task": "T2",
+        "model": "gemma3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.2222,
+          "citation_validity_rate": 1.0,
+          "privacy_trap_refusal": 1.0
+        },
+        "latency_p50_ms": 1888.2385,
+        "latency_p95_ms": 3889.01325,
+        "vram_gb": 4.13,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 78.4,
+        "loaded_before": [
+          "gemma3:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T2/gemma3_latest",
+        "note": "",
+        "total_gb": 4.13,
+        "admissible": false
+      },
+      {
+        "task": "T2",
+        "model": "llama3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.625,
+          "citation_validity_rate": 1.0,
+          "privacy_trap_refusal": 1.0
+        },
+        "latency_p50_ms": 11575.4275,
+        "latency_p95_ms": 17310.21545,
+        "vram_gb": 5.32,
+        "ram_spill_gb": 0.4,
+        "context_length": 8192,
+        "tokens_per_s": 26.8,
+        "loaded_before": [
+          "llama3:latest"
+        ],
+        "folder": "screen/T2/llama3_latest",
+        "note": "",
+        "total_gb": 5.72,
+        "admissible": false
+      }
+    ],
+    "T3a": [
+      {
+        "task": "T3a",
+        "model": "gemma4:e4b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 1.0,
+          "key_fact_recall": 1.0,
+          "status_fidelity": 1.0
+        },
+        "latency_p50_ms": 364.7199,
+        "latency_p95_ms": 14263.241835,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 18.8,
+        "loaded_before": [
+          "gemma4:e4b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T3a/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      },
+      {
+        "task": "T3a",
+        "model": "ministral-3:8b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.6154,
+          "key_fact_recall": 0.7619,
+          "status_fidelity": 0.9048
+        },
+        "latency_p50_ms": 327.88735,
+        "latency_p95_ms": 20320.379205,
+        "vram_gb": 5.3,
+        "ram_spill_gb": 2.56,
+        "context_length": 8192,
+        "tokens_per_s": 9.6,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "screen/T3a/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": false
+      },
+      {
+        "task": "T3a",
+        "model": "llama3.2:3b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.6538,
+          "key_fact_recall": 0.7989,
+          "status_fidelity": 0.8696
+        },
+        "latency_p50_ms": 315.3157,
+        "latency_p95_ms": 8050.852055,
+        "vram_gb": 3.16,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 144.1,
+        "loaded_before": [
+          "llama3.2:3b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T3a/llama3.2_3b",
+        "note": "",
+        "total_gb": 3.16,
+        "admissible": false
+      },
+      {
+        "task": "T3a",
+        "model": "gemma3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.6154,
+          "key_fact_recall": 0.841,
+          "status_fidelity": 0.875
+        },
+        "latency_p50_ms": 326.96775,
+        "latency_p95_ms": 3587.078545,
+        "vram_gb": 4.13,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 86.6,
+        "loaded_before": [
+          "gemma3:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T3a/gemma3_latest",
+        "note": "",
+        "total_gb": 4.13,
+        "admissible": false
+      },
+      {
+        "task": "T3a",
+        "model": "llama3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.5,
+          "key_fact_recall": 0.6163,
+          "status_fidelity": 0.8824
+        },
+        "latency_p50_ms": 376.1812,
+        "latency_p95_ms": 17953.79161,
+        "vram_gb": 5.32,
+        "ram_spill_gb": 0.4,
+        "context_length": 8192,
+        "tokens_per_s": 26.3,
+        "loaded_before": [
+          "llama3:latest"
+        ],
+        "folder": "screen/T3a/llama3_latest",
+        "note": "",
+        "total_gb": 5.72,
+        "admissible": false
+      }
+    ],
+    "T3b": [
+      {
+        "task": "T3b",
+        "model": "gemma4:e4b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "diagnosis_hit_at_1": 1.0,
+          "citation_validity_rate": 1.0,
+          "argument_accuracy": 1.0
+        },
+        "latency_p50_ms": 10890.4693,
+        "latency_p95_ms": 14050.953875,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 18.5,
+        "loaded_before": [
+          "gemma4:e4b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T3b/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      },
+      {
+        "task": "T3b",
+        "model": "ministral-3:8b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "diagnosis_hit_at_1": 0.9375,
+          "citation_validity_rate": 1.0,
+          "argument_accuracy": 1.0
+        },
+        "latency_p50_ms": 21418.8963,
+        "latency_p95_ms": 30583.194565,
+        "vram_gb": 5.3,
+        "ram_spill_gb": 2.56,
+        "context_length": 8192,
+        "tokens_per_s": 10.1,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "screen/T3b/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": true
+      },
+      {
+        "task": "T3b",
+        "model": "llama3.2:3b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "diagnosis_hit_at_1": 0.625,
+          "citation_validity_rate": 1.0,
+          "argument_accuracy": 1.0
+        },
+        "latency_p50_ms": 7140.18795,
+        "latency_p95_ms": 8961.936465,
+        "vram_gb": 3.16,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 122.0,
+        "loaded_before": [
+          "llama3.2:3b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T3b/llama3.2_3b",
+        "note": "",
+        "total_gb": 3.16,
+        "admissible": false
+      },
+      {
+        "task": "T3b",
+        "model": "gemma3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [
+          "must_not_include_hits"
+        ],
+        "metrics": {
+          "diagnosis_hit_at_1": 0.75,
+          "citation_validity_rate": 1.0,
+          "argument_accuracy": 1.0
+        },
+        "latency_p50_ms": 2896.78745,
+        "latency_p95_ms": 3514.88265,
+        "vram_gb": 4.13,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 87.2,
+        "loaded_before": [
+          "gemma3:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T3b/gemma3_latest",
+        "note": "",
+        "total_gb": 4.13,
+        "admissible": false
+      },
+      {
+        "task": "T3b",
+        "model": "llama3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "diagnosis_hit_at_1": 0.5,
+          "citation_validity_rate": 1.0,
+          "argument_accuracy": 1.0
+        },
+        "latency_p50_ms": 9917.20795,
+        "latency_p95_ms": 12314.498685,
+        "vram_gb": 5.32,
+        "ram_spill_gb": 0.4,
+        "context_length": 8192,
+        "tokens_per_s": 26.7,
+        "loaded_before": [
+          "llama3:latest"
+        ],
+        "folder": "screen/T3b/llama3_latest",
+        "note": "",
+        "total_gb": 5.72,
+        "admissible": false
+      }
+    ],
+    "T5b": [
+      {
+        "task": "T5b",
+        "model": "gemma4:e4b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.8214,
+          "count_fidelity": 1.0,
+          "key_fact_recall": 0.9107
+        },
+        "latency_p50_ms": 5657.815999817103,
+        "latency_p95_ms": 12159.419700037688,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 18.9,
+        "loaded_before": [
+          "gemma4:e4b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T5b/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      },
+      {
+        "task": "T5b",
+        "model": "ministral-3:8b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.7857,
+          "count_fidelity": 1.0,
+          "key_fact_recall": 0.8571
+        },
+        "latency_p50_ms": 10504.674899857491,
+        "latency_p95_ms": 30584.61800008081,
+        "vram_gb": 5.15,
+        "ram_spill_gb": 2.71,
+        "context_length": 8192,
+        "tokens_per_s": 8.1,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "screen/T5b/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": true
+      },
+      {
+        "task": "T5b",
+        "model": "llama3.2:3b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.8214,
+          "count_fidelity": 1.0,
+          "key_fact_recall": 0.8571
+        },
+        "latency_p50_ms": 3703.1097998842597,
+        "latency_p95_ms": 11584.80600011535,
+        "vram_gb": 3.16,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 122.2,
+        "loaded_before": [
+          "llama3.2:3b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T5b/llama3.2_3b",
+        "note": "",
+        "total_gb": 3.16,
+        "admissible": true
+      },
+      {
+        "task": "T5b",
+        "model": "gemma3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.7857,
+          "count_fidelity": 1.0,
+          "key_fact_recall": 0.8036
+        },
+        "latency_p50_ms": 1934.9522998090833,
+        "latency_p95_ms": 4447.313399985433,
+        "vram_gb": 4.13,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 81.8,
+        "loaded_before": [
+          "gemma3:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T5b/gemma3_latest",
+        "note": "",
+        "total_gb": 4.13,
+        "admissible": false
+      },
+      {
+        "task": "T5b",
+        "model": "llama3:latest",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.8571,
+          "count_fidelity": 1.0,
+          "key_fact_recall": 0.9107
+        },
+        "latency_p50_ms": 6824.773000087589,
+        "latency_p95_ms": 21010.36290009506,
+        "vram_gb": 5.32,
+        "ram_spill_gb": 0.4,
+        "context_length": 8192,
+        "tokens_per_s": 28.2,
+        "loaded_before": [
+          "llama3:latest"
+        ],
+        "folder": "screen/T5b/llama3_latest",
+        "note": "",
+        "total_gb": 5.72,
+        "admissible": true
+      }
+    ],
+    "T0": [
+      {
+        "task": "T0",
+        "model": "qwen3-embedding:0.6b",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "hit_at_1": 0.9714,
+          "mrr": 0.9857,
+          "context_recall": 0.9905
+        },
+        "latency_p50_ms": 132.9196,
+        "latency_p95_ms": 355.47236,
+        "vram_gb": 1.08,
+        "ram_spill_gb": 0.0,
+        "context_length": 2048,
+        "tokens_per_s": null,
+        "loaded_before": [],
+        "folder": "screen/T0/qwen3-embedding_0.6b",
+        "note": "",
+        "total_gb": 1.08,
+        "admissible": true
+      },
+      {
+        "task": "T0",
+        "model": "bge-m3",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          true
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "hit_at_1": 0.9429,
+          "mrr": 0.9714,
+          "context_recall": 0.9762
+        },
+        "latency_p50_ms": 176.8752,
+        "latency_p95_ms": 221.437485,
+        "vram_gb": 1.08,
+        "ram_spill_gb": 0.0,
+        "context_length": 2048,
+        "tokens_per_s": null,
+        "loaded_before": [
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T0/bge-m3",
+        "note": "",
+        "total_gb": 1.08,
+        "admissible": true
+      },
+      {
+        "task": "T0",
+        "model": "nomic-embed-text",
+        "stage": "screen",
+        "k": 1,
+        "gates": [
+          false
+        ],
+        "error_rates": [
+          0.0
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "hit_at_1": 0.9143,
+          "mrr": 0.9524,
+          "context_recall": 0.9095
+        },
+        "latency_p50_ms": 34.06065,
+        "latency_p95_ms": 44.652355,
+        "vram_gb": 0.55,
+        "ram_spill_gb": 0.0,
+        "context_length": 2048,
+        "tokens_per_s": null,
+        "loaded_before": [
+          "bge-m3:latest",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "screen/T0/nomic-embed-text",
+        "note": "",
+        "total_gb": 0.55,
+        "admissible": false
+      }
+    ]
+  },
+  "confirm": {
+    "T1": [
+      {
+        "task": "T1",
+        "model": "ministral-3:8b",
+        "stage": "confirm",
+        "k": 3,
+        "gates": [
+          true,
+          true,
+          true
+        ],
+        "error_rates": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.8381,
+          "citation_validity_rate": 0.9661,
+          "trap_refusal_accuracy": 1.0
+        },
+        "latency_p50_ms": 14698.3559,
+        "latency_p95_ms": 22690.431595,
+        "vram_gb": 5.91,
+        "ram_spill_gb": 1.95,
+        "context_length": 8192,
+        "tokens_per_s": 17.0,
+        "loaded_before": [
+          "gemma4:26b"
+        ],
+        "folder": "confirm/T1/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": true
+      }
+    ],
+    "T2": [
+      {
+        "task": "T2",
+        "model": "gemma4:e4b",
+        "stage": "confirm",
+        "k": 3,
+        "gates": [
+          true,
+          true,
+          true
+        ],
+        "error_rates": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "key_fact_recall": 0.8333,
+          "citation_validity_rate": 1.0,
+          "privacy_trap_refusal": 1.0
+        },
+        "latency_p50_ms": 5861.1535,
+        "latency_p95_ms": 11789.20095,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 17.9,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "confirm/T2/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      }
+    ],
+    "T3a": [
+      {
+        "task": "T3a",
+        "model": "gemma4:e4b",
+        "stage": "confirm",
+        "k": 3,
+        "gates": [
+          true,
+          true,
+          true
+        ],
+        "error_rates": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 1.0,
+          "key_fact_recall": 1.0,
+          "status_fidelity": 1.0
+        },
+        "latency_p50_ms": 342.54135,
+        "latency_p95_ms": 13679.71231,
+        "vram_gb": 3.3,
+        "ram_spill_gb": 6.67,
+        "context_length": 8192,
+        "tokens_per_s": 17.5,
+        "loaded_before": [
+          "gemma4:e4b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "confirm/T3a/gemma4_e4b",
+        "note": "",
+        "total_gb": 9.97,
+        "admissible": true
+      }
+    ],
+    "T3b": [
+      {
+        "task": "T3b",
+        "model": "ministral-3:8b",
+        "stage": "confirm",
+        "k": 3,
+        "gates": [
+          true,
+          true,
+          true
+        ],
+        "error_rates": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "diagnosis_hit_at_1": 0.9375,
+          "citation_validity_rate": 1.0,
+          "argument_accuracy": 1.0
+        },
+        "latency_p50_ms": 24697.0426,
+        "latency_p95_ms": 33292.95788,
+        "vram_gb": 5.01,
+        "ram_spill_gb": 2.85,
+        "context_length": 8192,
+        "tokens_per_s": 8.5,
+        "loaded_before": [
+          "gemma4:e4b"
+        ],
+        "folder": "confirm/T3b/ministral-3_8b",
+        "note": "",
+        "total_gb": 7.86,
+        "admissible": true
+      }
+    ],
+    "T5b": [
+      {
+        "task": "T5b",
+        "model": "llama3.2:3b",
+        "stage": "confirm",
+        "k": 3,
+        "gates": [
+          true,
+          true,
+          true
+        ],
+        "error_rates": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_codes": [
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "task_success": 0.8214,
+          "count_fidelity": 1.0,
+          "key_fact_recall": 0.8571
+        },
+        "latency_p50_ms": 4208.543400047347,
+        "latency_p95_ms": 12034.59469997324,
+        "vram_gb": 3.16,
+        "ram_spill_gb": 0.0,
+        "context_length": 8192,
+        "tokens_per_s": 124.9,
+        "loaded_before": [
+          "ministral-3:8b"
+        ],
+        "folder": "confirm/T5b/llama3.2_3b",
+        "note": "",
+        "total_gb": 3.16,
+        "admissible": true
+      }
+    ],
+    "T0": [
+      {
+        "task": "T0",
+        "model": "bge-m3",
+        "stage": "confirm",
+        "k": 3,
+        "gates": [
+          true,
+          true,
+          true
+        ],
+        "error_rates": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_codes": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "safety_nonzero": [],
+        "metrics": {
+          "hit_at_1": 0.9429,
+          "mrr": 0.9714,
+          "context_recall": 0.9762
+        },
+        "latency_p50_ms": 187.33155,
+        "latency_p95_ms": 216.06565,
+        "vram_gb": 1.08,
+        "ram_spill_gb": 0.0,
+        "context_length": 2048,
+        "tokens_per_s": null,
+        "loaded_before": [
+          "llama3.2:3b",
+          "qwen3-embedding:0.6b"
+        ],
+        "folder": "confirm/T0/bge-m3",
+        "note": "",
+        "total_gb": 1.08,
+        "admissible": true
+      }
+    ]
+  },
+  "reference": {
+    "reference": "claude-haiku",
+    "model": "claude-haiku-5-5",
+    "cli_version": "2.1.321",
+    "n_eligible": 28,
+    "n_sent_items": 15,
+    "counts": {
+      "hosted_pi_sent": 0,
+      "hosted_trap_sent": 0,
+      "hosted_spec_sent": 0,
+      "hosted_calls_default": 0
+    },
+    "pi_blocked": 0,
+    "spec_skipped": 13,
+    "calls": 15,
+    "metrics": {
+      "false_answer_rate": 0.0,
+      "over_refusal_rate": 0.0,
+      "error_rate": 0.0,
+      "latency_p50_ms": 5787.6807,
+      "latency_p95_ms": 6823.39916,
+      "citation_validity_rate": 1.0,
+      "key_fact_recall": 0.933333
+    },
+    "controls": {
+      "hosted_trap_sent": {
+        "count": 1,
+        "failed_as_planned": true
+      },
+      "hosted_spec_sent": {
+        "count": 1,
+        "failed_as_planned": true
+      },
+      "hosted_pi_sent": {
+        "count": 1,
+        "failed_as_planned": true
+      },
+      "hosted_calls_default": {
+        "count": 1,
+        "failed_as_planned": true
+      }
+    },
+    "passed": true
+  }
+}

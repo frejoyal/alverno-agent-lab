@@ -446,3 +446,24 @@ def test_a_json_number_is_never_a_numeric_canary_but_a_json_string_is(tmp_path: 
     nested.write_text(json.dumps({"a": [{"b": f"x {MARGIN}"}, 2, None]}), encoding="utf-8")
     found = [path.name for path, _ in untyped_hits([leaked, broken, keyed, nested], [canary])]
     assert found == ["leak.json", "broken.jsonl", "keyed.json", "nested.json"]
+
+
+def test_a_markdown_measurement_is_never_a_numeric_canary_but_its_text_is(tmp_path: Path) -> None:
+    # Module 4 (2026-11-12): p50 latencies and counts of Markdown reports equalled short
+    # numeric canaries by chance; a number quoted in a sentence is still a leak.
+    canary = infer_canary(MARGIN).canary
+    report = tmp_path / "report.md"
+    report.write_text(
+        f"| Model | p50 | count |\n|---|---|---|\n| `m` | {MARGIN} s | {MARGIN} |\n"
+        f"- citations_checked: {MARGIN}\n- `latency_p50_ms`: {MARGIN} ms\n",
+        encoding="utf-8",
+    )
+    assert untyped_hits([report], [canary]) == []
+    sentence = tmp_path / "answer.md"
+    sentence.write_text(f"La marge est de {MARGIN} % selon la fiche.\n", encoding="utf-8")
+    cell = tmp_path / "table.md"
+    cell.write_text(f"| q1 | La marge est de {MARGIN} % |\n", encoding="utf-8")
+    bullet = tmp_path / "bullet.md"
+    bullet.write_text(f"- La marge visée : {MARGIN} % au plus, selon la fiche\n", encoding="utf-8")
+    found = [path.name for path, _ in untyped_hits([sentence, cell, bullet], [canary])]
+    assert found == ["answer.md", "table.md", "bullet.md"]

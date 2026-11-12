@@ -1,0 +1,44 @@
+{
+  "reference": "claude-haiku",
+  "model": "claude-haiku-5-5",
+  "cli_version": "2.1.321",
+  "n_eligible": 28,
+  "n_sent_items": 15,
+  "counts": {
+    "hosted_pi_sent": 0,
+    "hosted_trap_sent": 0,
+    "hosted_spec_sent": 0,
+    "hosted_calls_default": 0
+  },
+  "pi_blocked": 0,
+  "spec_skipped": 13,
+  "calls": 15,
+  "metrics": {
+    "false_answer_rate": 0.0,
+    "over_refusal_rate": 0.0,
+    "error_rate": 0.0,
+    "latency_p50_ms": 5787.6807,
+    "latency_p95_ms": 6823.39916,
+    "citation_validity_rate": 1.0,
+    "key_fact_recall": 0.933333
+  },
+  "controls": {
+    "hosted_trap_sent": {
+      "count": 1,
+      "failed_as_planned": true
+    },
+    "hosted_spec_sent": {
+      "count": 1,
+      "failed_as_planned": true
+    },
+    "hosted_pi_sent": {
+      "count": 1,
+      "failed_as_planned": true
+    },
+    "hosted_calls_default": {
+      "count": 1,
+      "failed_as_planned": true
+    }
+  },
+  "passed": true
+}

@@ -86,6 +86,23 @@ Le module 4 est livré quand :
 - **Erreur** (bloc du README) : `error_rate` supérieur à 0, ou une commande qui se termine avec un code non nul.
 - **Modèle le plus fort** (pour information) : le modèle admissible au criblage qui a la plus haute première métrique publiée de la tâche (T1 et T2 : `key_fact_recall` ; T3a et T5b : `task_success` ; T3b : `diagnosis_hit_at_1` ; T0 : `hit_at_1`), les suivantes départageant ; sans modèle admissible, parmi tous.
 
+### Balayage des témoins : précision du 2026-11-12, après le criblage
+
+Le balayage final de la matrice (`reports/matrix-20261111/`) a trouvé 4 témoins `texte` dans des rapports Markdown : trois latences p50 (un rapport de recherche, `summary.md` du banc Qualité et `matrix.en.md`) et un compte `citations_checked` (rapport du banc de direction de `llama3:latest`). Chaque fois, un nombre court, sans type, des jeux du service à la clientèle égalait par hasard une mesure écrite par le code ; aucun texte servi ne le contenait, et le JSON voisin de chaque rapport n'avait aucune occurrence. C'est le même cas qu'à l'étape I8 du module 3 ([ADR 0016](0016-ops-gate-calibration.md)), pour les nombres JSON.
+
+La règle a été précisée dans `evals/canaries.py` : dans un fichier Markdown, un témoin numérique n'est plus cherché dans une cellule de tableau ni dans une ligne `- métrique : valeur` qui ne contient qu'un nombre, avec une unité au plus ; tout autre texte reste balayé, y compris une réponse citée dans un tableau (test `test_a_markdown_measurement_is_never_a_numeric_canary_but_its_text_is`). Puis seul le balayage a été refait : aucune exécution n'a été relancée ni écartée, et aucune valeur mesurée n'a changé. La règle de recommandation et les portes ne changent pas.
+
+## État du critère de sortie (2026-11-12, étape I8)
+
+| Point | État |
+|---|---|
+| 1. EFVP v1.0 et ADR approuvés avant le code | atteint : approuvés le 2026-11-11, avant le premier commit `src/` du module |
+| 2. CI verte, empreintes inchangées | atteint avec la PR du module |
+| 3. Criblage complet ; une confirmation ou « aucun modèle » par tâche | atteint : 29 paires ; 6 confirmations réussies |
+| 4. Comptes de la référence hébergée à 0, contrôles négatifs | atteint : 0 sur 15 invites ; chaque contrôle donne 1 |
+| 5. Recommandation et palier publiés | atteint : [docs/model-recommendation.md](../model-recommendation.md) et bloc `RESULTS-MATRIX` du README |
+| 6. EFVP v1.1 avec les résultats | rédigée ; avis du RPRP et approbation en attente |
+
 ## Solutions écartées
 
 - **Choisir le meilleur modèle de chaque tâche** : une PME paie le matériel ; le plus léger qui passe la porte est la question utile.
