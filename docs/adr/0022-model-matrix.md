@@ -1,6 +1,6 @@
 # ADR 0022 — Matrice tâches × modèles locaux et mesures du matériel (module 4a)
 
-- **Statut** : proposé le 2026-11-11, en attente de l'approbation de l'[EFVP du module 4](../efvp/bench-module.md)
+- **Statut** : accepté le 2026-11-11, avec l'approbation de la version 1.0 de l'[EFVP du module 4](../efvp/bench-module.md)
 - **Date** : 2026-11-11
 
 ## Contexte

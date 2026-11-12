@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.0 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 en attente de l'avis du RPRP et de l'approbation |
+| Statut | version 1.0 approuvée le 2026-11-11 |
 | Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 4 n'existe |
 | Gabarit | [template.md](template.md) |
 | Volets | 4a, matrice tâches × modèles locaux et mesures du matériel (`alverno matrix`) ; 4b, référence hébergée facultative (`--reference`) ; 4c, recommandation écrite |
@@ -34,7 +34,7 @@
 
 **Risques résiduels principaux.** R3 (la référence hébergée reçoit des documents internes de niveau 2, que [loi25.md](../loi25.md) garde locaux par défaut) et R6 (l'interface en ligne de commande du fournisseur peut évoluer) reposent sur l'option explicite et sur le filtre du labo. Ils sont soumis à la présidente (section 7).
 
-**Avis et approbation.** Les dix décisions de conception (section 1), l'avis du RPRP et l'approbation de la haute direction sont **en attente** (section 7).
+**Avis et approbation.** Les dix décisions de conception (section 1) sont approuvées, l'avis du RPRP est confirmé, les risques R3 et R6 sont acceptés et la version 1.0 est approuvée le 2026-11-11 (section 7).
 
 **Limites de l'évaluation.** Un seul poste de mesure (RTX 3060 Ti de 8 Go, 32 Go de mémoire vive) ; les autres paliers de matériel sont estimés à partir de la mémoire mesurée, pas mesurés. Les jeux sont ceux des modules précédents : ils sont petits et ont servi à régler ces modules, ce qui avantage le modèle par défaut (`gemma4:e4b`). Les prix du matériel sont indicatifs et datés. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
 
@@ -68,7 +68,7 @@ Aucune fin ne vise une personne : le banc mesure des modèles.
 
 ### Décisions de conception
 
-Proposées par l'agent du dépôt le 2026-11-11 et **soumises au responsable du dépôt** :
+Proposées par l'agent du dépôt le 2026-11-11 et **approuvées par le responsable du dépôt le 2026-11-11** :
 
 1. Tâches de la matrice : les cinq profils complets existants (`full-ollama`, `hr-full-ollama`, `svc-full-ollama`, `maint-full-ollama`, `dir-full-ollama`) et les deux profils de recherche (`retrieval-ollama`, `hr-retrieval-ollama`). Aucun nouveau jeu, aucune nouvelle borne.
 2. Modèles : ceux déjà installés. Conversation : `gemma4:e4b`, `ministral-3:8b`, `llama3.2:3b`, `gemma3:latest`, `llama3:latest` sur les cinq tâches ; `gemma4:26b` (18 Go, plus que la carte) sur la tâche Qualité seulement, pour mesurer le coût d'un modèle qui déborde en mémoire vive. Plongements : `qwen3-embedding:0.6b`, `bge-m3`, `nomic-embed-text`. `wizardcoder` est exclu (modèle de code). Ollama reste en version 0.24.0.
@@ -155,7 +155,7 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP), soutien-ti@alverno.ex
 
 ### Avis du RPRP
 
-**Avis proposé : favorable, sous conditions** (rédigé le 2026-11-11 ; **en attente de confirmation** par le responsable du dépôt dans le rôle du RPRP) :
+**Avis : favorable, sous conditions** (rédigé le 2026-11-11 ; **confirmé le 2026-11-11** par le responsable du dépôt dans le rôle du RPRP) :
 
 1. aucune ligne de code `src/` du module 4 avant la confirmation de cet avis et l'approbation de cette version ;
 2. la référence hébergée ne reçoit que les items retenus par le filtre de l'ADR 0023, jamais un item des modules 2, 3 ou 5 ;
@@ -167,22 +167,22 @@ Les lectures juridiques restent des lectures du labo : la signature de l'avis ne
 
 ### Risques soumis à la présidente
 
-Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée à accepter, pour la durée du labo, les risques résiduels R3 (documents internes de niveau 2 envoyés à la référence hébergée sur option) et R6 (évolution de l'interface du fournisseur) : **en attente**.
+Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée à accepter, pour la durée du labo, les risques résiduels R3 (documents internes de niveau 2 envoyés à la référence hébergée sur option) et R6 (évolution de l'interface du fournisseur) : **acceptés le 2026-11-11** par le responsable du dépôt dans le rôle de la présidente.
 
 ### Approbation de la haute direction
 
 | Élément | Contenu |
 |---|---|
-| Avis du RPRP | Favorable, sous conditions (proposé) ; en attente de confirmation |
-| Décisions de conception 1 à 10 | En attente |
-| Risques R3 et R6 | En attente |
-| Approbation de la version 1.0 | En attente |
+| Avis du RPRP | Favorable, sous conditions ; confirmé le 2026-11-11 |
+| Décisions de conception 1 à 10 | Approuvées par le responsable du dépôt le 2026-11-11 |
+| Risques R3 et R6 | Acceptés par la présidente le 2026-11-11 |
+| Approbation de la version 1.0 | Approuvée |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | — |
+| Date | 2026-11-11 (version 1.0) |
 
 | Version | Date | Changements |
 |---|---|---|
-| 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation |
+| 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-11 |
 
 ## Annexes
 
