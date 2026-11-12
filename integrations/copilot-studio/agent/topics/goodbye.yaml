@@ -1,0 +1,13 @@
+kind: AdaptiveDialog
+name: Fin
+beginDialog:
+  kind: OnRecognizedIntent
+  intent:
+    triggerQueries:
+      - merci
+      - au revoir
+      - c'est tout
+  actions:
+    - kind: SendActivity
+      activity: Bonne journée. Vérifiez toujours la source avant d'agir sur une valeur.
+    - kind: EndConversation

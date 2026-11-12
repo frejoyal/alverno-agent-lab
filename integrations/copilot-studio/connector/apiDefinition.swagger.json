@@ -1,0 +1,144 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Alverno Qualité",
+    "description": "Agent Qualité local de Fabrications Alverno (labo, entreprise fictive). Réponses à partir de la documentation qualité, avec citations.",
+    "version": "1.0"
+  },
+  "host": "127.0.0.1:8765",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "oauth2_auth": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/token",
+      "scopes": {}
+    }
+  },
+  "security": [
+    {
+      "oauth2_auth": []
+    }
+  ],
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "operationId": "Health",
+        "summary": "État du service",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service disponible"
+          }
+        }
+      }
+    },
+    "/v1/quality/ask": {
+      "post": {
+        "operationId": "AskQuality",
+        "summary": "Poser une question Qualité",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "question"
+              ],
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "maxLength": 500,
+                  "description": "Question en français, sans renseignement personnel."
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse ou refus",
+            "schema": {
+              "type": "object",
+              "required": [
+                "answer",
+                "refused",
+                "citations",
+                "sources"
+              ],
+              "properties": {
+                "answer": {
+                  "type": "string",
+                  "description": "Réponse avec citations, ou refus."
+                },
+                "refused": {
+                  "type": "boolean"
+                },
+                "refusal_reason": {
+                  "type": "string"
+                },
+                "citations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "sources": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Question absente ou trop longue",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton invalide",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rôle Quality.Ask absent",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

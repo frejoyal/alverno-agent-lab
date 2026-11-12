@@ -122,6 +122,17 @@ class Settings(BaseSettings):
     mcp_eval_path: Path = Path("data/eval/mcp_gold.jsonl")
     # Module 5b, management orchestrator (docs/adr/0018).
     dir_eval_path: Path = Path("data/eval/dir_gold.jsonl")
+    # Module 6, Microsoft 365, repository side only (docs/adr/0025 to 0028): no real
+    # tenant. The API listens on 127.0.0.1 only and needs the tenant, the audience and
+    # the tenant's public keys (JWKS file) to start.
+    m365_library_path: Path = Path("data/m365/sharepoint/library.json")
+    m365_corpus_dir: Path = Path(".cache/m365/corpus")
+    m365_integration_dir: Path = Path("integrations/copilot-studio")
+    m365_tenant_id: str = ""
+    m365_audience: str = ""
+    m365_jwks_path: Path | None = None
+    m365_port: int = Field(default=8765, ge=1024, le=65535)
+    m365_salt_path: Path = Path(".cache/m365/user-salt")
 
     @model_validator(mode="after")
     def _check_ollama_is_local(self) -> Self:

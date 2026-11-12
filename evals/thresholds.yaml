@@ -674,3 +674,23 @@ dir-full-ollama:
     n_traps: 12
     n_pairs: 4
     n_canary_items: 16
+
+# --- Module 6: Microsoft 365, repository side only ---------------------------------
+# Pre-registered on 2026-11-11 in ADR 0028, before any module 6 code: every count is 0,
+# parity and route coverage are exact, at least 50 questions and 8 rejected-token cases.
+m365-fake:
+  min:
+    sync_identical: 1
+    api_parity: 1.0
+    spec_api_coverage: 1.0
+    topic_action_valid: 1
+    n_items: 50
+    n_auth_cases: 8
+  max:
+    sync_excluded_wrong_group: 0
+    auth_bypass: 0
+    auth_false_reject: 0
+    log_content_hits: 0
+    canary_hits: 0
+    generative_flags: 0
+    error_rate: 0.0

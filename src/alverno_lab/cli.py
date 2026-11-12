@@ -104,6 +104,7 @@ from alverno_lab.privacy import (
     scan_paths,
 )
 from alverno_lab.privacy.direction_access_log import DirectionAccessLogRecord
+from alverno_lab.privacy.m365_access_log import M365AccessLogRecord
 from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 from alverno_lab.retrieval import HybridRetriever, RerankerUnavailableError
 from alverno_lab.tools.registry import registry_sha256
@@ -165,6 +166,14 @@ direction_app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 app.add_typer(direction_app, name="direction")
+m365_app = typer.Typer(
+    help="Microsoft 365 (module 6, repository side): SharePoint sync, local API, "
+    "Copilot Studio checks.",
+    no_args_is_help=True,
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
+app.add_typer(m365_app, name="m365")
 
 
 class MarkerError(ValueError):
@@ -1834,9 +1843,9 @@ def access_purge(
 ) -> None:
     """Delete access log day files older than the retention period (90 days at most).
 
-    Four logs share the folder, each purged by its own instance: HR (``hr-``), customer
-    service (``service-``), maintenance (``maint-``) and management (``direction-``), with
-    the same retention. The HR
+    Five logs share the folder, each purged by its own instance: HR (``hr-``), customer
+    service (``service-``), maintenance (``maint-``), management (``direction-``) and the
+    Microsoft 365 API (``m365-``), with the same retention. The HR
     line keeps its format; the other prefixes add one line each.
     """
     settings = _settings()
@@ -1862,11 +1871,17 @@ def access_purge(
             retention_days=days,
         )
     )
+    m365_log = _guard(
+        lambda: AccessLog(
+            directory, prefix="m365", record_type=M365AccessLogRecord, retention_days=days
+        )
+    )
     logs = (
         (hr_log, ""),
         (service_log, "service "),
         (maint_log, "maint "),
         (direction_log, "direction "),
+        (m365_log, "m365 "),
     )
     for log, kind in logs:
         paths = _guard(partial(log.purge, dry_run=dry_run))
@@ -2376,6 +2391,135 @@ def matrix(
             text = _guard(partial(replace_marked_block, text, marker, block))
         _write_lf(readme, text)
         typer.echo(f"Updated {readme}")
+
+
+# --------------------------------------------------------------------------- module 6
+@m365_app.command("sync")
+def m365_sync(
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Synced corpus folder (ALVERNO_M365_CORPUS_DIR).")
+    ] = None,
+) -> None:
+    """Sync the simulated SharePoint library into a corpus folder (ADR 0025).
+
+    Keeps the items the agent's service group may read and whose label is allowed,
+    checks each SHA-256, rewrites only changed items and moves removed ones to
+    ``.retired/``. Then index with ``ALVERNO_CORPUS_DIR=<out> alverno index``.
+    """
+    from alverno_lab.m365 import sharepoint
+
+    settings = _settings()
+    target = out or settings.m365_corpus_dir
+    try:
+        library = sharepoint.load_library(settings.m365_library_path)
+        result = sharepoint.sync(library, settings.corpus_dir, target)
+    except sharepoint.SyncError as exc:
+        typer.secho(f"Error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(
+        f"Synced {len(result.kept)} item(s) into {_shown_path(target)}: "
+        f"{len(result.written)} written, {len(result.unchanged)} unchanged, "
+        f"{len(result.retired)} retired; skipped {len(result.skipped_group)} (group), "
+        f"{len(result.skipped_label)} (label)."
+    )
+
+
+@m365_app.command("serve")
+def m365_serve(
+    fake: FakeOpt = False,
+    host: Annotated[str, typer.Option("--host", help="Listen address (127.0.0.1 only).")] = (
+        "127.0.0.1"
+    ),
+) -> None:  # pragma: no cover - runs a server; its parts are tested
+    """Serve the Quality agent's API on 127.0.0.1 (ADR 0026); needs the tenant settings."""
+    from alverno_lab.m365.api import LOOPBACK, create_app, load_salt, serve
+    from alverno_lab.m365.auth import TokenVerifier
+
+    settings = _settings()
+    if host != LOOPBACK:
+        raise typer.BadParameter(
+            "the API listens on 127.0.0.1 only (ADR 0026)", param_hint="--host"
+        )
+    if not settings.m365_tenant_id or not settings.m365_audience or not settings.m365_jwks_path:
+        typer.secho(
+            "Error: set ALVERNO_M365_TENANT_ID, ALVERNO_M365_AUDIENCE and "
+            "ALVERNO_M365_JWKS_PATH (docs/m365/deployment-guide.md).",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    verifier = TokenVerifier.from_file(
+        settings.m365_jwks_path, tenant_id=settings.m365_tenant_id, audience=settings.m365_audience
+    )
+    agent = _guard(lambda: build_agent(settings, fake=fake))
+    log = AccessLog(settings.access_log_dir, prefix="m365", record_type=M365AccessLogRecord)
+    app_ = create_app(agent.ask, verifier, log, load_salt(settings.m365_salt_path))
+    typer.echo(f"Quality API on http://{LOOPBACK}:{settings.m365_port} (Ctrl-C to stop)")
+    serve(app_, host, settings.m365_port)
+
+
+@m365_app.command("eval")
+def m365_eval(
+    fake: FakeOpt = False,
+    out: OutOpt = None,
+    thresholds: ThresholdsOpt = None,
+    gate: Annotated[bool, typer.Option("--gate/--no-gate", help="Apply release gate.")] = True,
+    limit: LimitOpt = None,
+) -> None:
+    """Profile m365-<backend> (ADR 0028): sync, API parity, token checks, log, files.
+
+    Writes ``<out>/eval-m365-<backend>.{json,md}`` and the run's API log in
+    ``<out>/access/``. Exit 1 when the gate fails, 2 on a user error.
+    """
+    from alverno_lab.m365.evaluation import Agents, run_m365_eval, write_m365_report
+
+    settings = _settings(reports_dir=out, thresholds_path=thresholds)
+    retriever, backend = _guard(lambda: build_retriever(settings, fake=fake))
+    direct = _guard(lambda: build_agent(settings, fake=fake, retriever=retriever))
+
+    def build(synced: Settings) -> Agents:
+        api_retriever, _ = build_retriever(synced, fake=fake)
+        behind = build_agent(synced, fake=fake, retriever=api_retriever)
+        return Agents(direct=direct.ask, behind_api=behind.ask)
+
+    items = _guard(lambda: load_dataset(settings.eval_path))[:limit]
+    report = _guard(
+        lambda: run_m365_eval(
+            settings, build=build, out_dir=settings.reports_dir, items=items, backend=backend.name
+        )
+    )
+    json_path, _ = write_m365_report(report, settings.reports_dir)
+    canaries = [
+        loaded.canary
+        for name in M365_CANARY_SETS
+        if (settings.eval_path.parent / name).is_file()
+        for loaded in load_canaries(settings.eval_path.parent / name)
+    ]
+    published = [p for p in (json_path, json_path.with_suffix(".md")) if p.is_file()]
+    report.metrics["canary_hits"] = float(len(canary_hit_files(published, canaries)))
+    if not canaries:
+        report.metrics["canary_hits"] = 1.0  # nothing to check is not a pass
+    json_path, md_path = write_m365_report(report, settings.reports_dir)
+    typer.echo(f"Evaluated {report.n_items} questions through the API ({report.profile}).")
+    for key, value in report.metrics.items():
+        typer.echo(f"  {key:28} {value:g}")
+    typer.echo(f"Reports: {json_path}, {md_path}")
+    if gate:
+        code = _guard(lambda: _gate(report, settings.thresholds_path))
+        if code:
+            raise typer.Exit(code=code)
+
+
+M365_CANARY_SETS = (
+    "hr_gold.jsonl",
+    "hr_holdout.jsonl",
+    "svc_gold.jsonl",
+    "svc_holdout.jsonl",
+    "maint_gold.jsonl",
+    "maint_holdout.jsonl",
+    "dir_gold.jsonl",
+    "dir_holdout.jsonl",
+)
 
 
 if __name__ == "__main__":  # pragma: no cover

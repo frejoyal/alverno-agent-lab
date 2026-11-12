@@ -39,15 +39,16 @@ if TYPE_CHECKING:
     from typing_extensions import TypeVar
 
     from alverno_lab.privacy.direction_access_log import DirectionAccessLogRecord
+    from alverno_lab.privacy.m365_access_log import M365AccessLogRecord
     from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 else:
     from typing import TypeVar
 
 MAX_RETENTION_DAYS = 90
 # File prefix of each module: hr (ADR 0008), service and maint (ADR 0014).
-AccessLogPrefix = Literal["hr", "service", "maint", "direction"]
+AccessLogPrefix = Literal["hr", "service", "maint", "direction", "m365"]
 ACCESS_LOG_PREFIXES: tuple[AccessLogPrefix, ...] = get_args(AccessLogPrefix)
-_DAY_FILE_RE = re.compile(r"^(hr|service|maint|direction)-(\d{4}-\d{2}-\d{2})\.jsonl$")
+_DAY_FILE_RE = re.compile(r"^(hr|service|maint|direction|m365)-(\d{4}-\d{2}-\d{2})\.jsonl$")
 # Fields the log fills itself.
 _LOG_FIELDS = frozenset({"event_id", "ts"})
 # Highest pi_count a record accepts. Callers pass ``min(len(spans), PI_COUNT_CAP)``, so
@@ -105,6 +106,7 @@ if TYPE_CHECKING:
         AccessLogRecord,
         OpsAccessLogRecord,
         DirectionAccessLogRecord,
+        M365AccessLogRecord,
         default=AccessLogRecord,
     )
 else:
@@ -115,6 +117,7 @@ def _record_type_of(prefix: str) -> type[BaseModel] | None:
     """The record model of a file prefix, or None for an unknown prefix."""
     # Imported here: ``ops_access_log`` imports the constants of this module.
     from alverno_lab.privacy.direction_access_log import DirectionAccessLogRecord
+    from alverno_lab.privacy.m365_access_log import M365AccessLogRecord
     from alverno_lab.privacy.ops_access_log import OpsAccessLogRecord
 
     types: dict[str, type[BaseModel]] = {
@@ -122,6 +125,7 @@ def _record_type_of(prefix: str) -> type[BaseModel] | None:
         "service": OpsAccessLogRecord,
         "maint": OpsAccessLogRecord,
         "direction": DirectionAccessLogRecord,
+        "m365": M365AccessLogRecord,
     }
     return types.get(prefix)
 
@@ -190,13 +194,27 @@ class AccessLog(Generic[R]):  # noqa: UP046
         clock: Callable[[], dt.datetime] = ...,
     ) -> None: ...
 
+    @overload
+    def __init__(
+        self: AccessLog[M365AccessLogRecord],
+        directory: Path,
+        *,
+        prefix: Literal["m365"],
+        record_type: type[M365AccessLogRecord],
+        retention_days: int = ...,
+        clock: Callable[[], dt.datetime] = ...,
+    ) -> None: ...
+
     def __init__(
         self,
         directory: Path,
         *,
         prefix: AccessLogPrefix = "hr",
         record_type: (
-            type[AccessLogRecord] | type[OpsAccessLogRecord] | type[DirectionAccessLogRecord]
+            type[AccessLogRecord]
+            | type[OpsAccessLogRecord]
+            | type[DirectionAccessLogRecord]
+            | type[M365AccessLogRecord]
         ) = AccessLogRecord,
         retention_days: int = MAX_RETENTION_DAYS,
         clock: Callable[[], dt.datetime] = utc_now,

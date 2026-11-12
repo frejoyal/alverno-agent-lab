@@ -1,0 +1,12 @@
+kind: AdaptiveDialog
+name: Accueil
+beginDialog:
+  kind: OnConversationStart
+  actions:
+    - kind: SendActivity
+      activity: >-
+        Bonjour. Je réponds aux questions sur la documentation qualité d'Alverno, avec la
+        source de chaque réponse. N'écrivez aucun renseignement personnel (nom d'un
+        collègue, numéro d'employé). Vos questions et mes réponses restent dans
+        l'historique de Teams. Questions sur la confidentialité :
+        confidentialite@alverno.example.
