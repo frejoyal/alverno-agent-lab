@@ -1,6 +1,6 @@
 # ADR 0028 — Protocole d'évaluation du module 6 et critère de sortie
 
-- **Statut** : proposé le 2026-11-11, en attente de l'approbation de l'[EFVP du module 6](../efvp/m365-module.md)
+- **Statut** : accepté le 2026-11-11, avec l'approbation de la version 1.0 de l'[EFVP du module 6](../efvp/m365-module.md)
 - **Date** : 2026-11-11
 
 ## Contexte

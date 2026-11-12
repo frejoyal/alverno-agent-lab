@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.0 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 en attente de l'avis du RPRP et de l'approbation |
+| Statut | version 1.0 approuvée le 2026-11-11 |
 | Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 6 n'existe |
 | Gabarit | [template.md](template.md) |
 | Volets | 6a, bibliothèque SharePoint simulée comme source du corpus ; 6b, API locale de l'agent Qualité avec jeton de l'organisation ; 6c, agent Copilot Studio publié dans Teams, décrit par des fichiers |
@@ -35,7 +35,7 @@
 
 **Risques résiduels principaux.** R1 (une question contient un RP, conservé dans Teams), R2 (lieu de traitement du canal Teams non établi par le dépôt) et R6 (une mise en service réelle activerait par erreur les fonctions génératives, traitées aux États-Unis) reposent sur l'avis, le refus de l'API, les réglages de l'environnement et la vérification avant mise en service. Ils sont soumis à la présidente (section 7).
 
-**Avis et approbation.** Les dix décisions de conception (section 1), l'avis du RPRP et l'approbation de la haute direction sont **en attente** (section 7).
+**Avis et approbation.** Les dix décisions de conception (section 1) sont approuvées, l'avis du RPRP est confirmé, les risques R1, R2 et R6 sont acceptés et la version 1.0 est approuvée le 2026-11-11 (section 7).
 
 **Limites de l'évaluation.** Aucun locataire réel : Teams, Copilot Studio, la passerelle et la rétention de Microsoft 365 ne sont ni exécutés ni mesurés. Les renseignements sur les services de Microsoft viennent de pages publiques à une date donnée. Les prix sont indicatifs. Le règlement sur les incidents de confidentialité et celui sur l'anonymisation n'ont pas été analysés ([points incertains du registre du module 3](../ops-legal-sources.md#points-incertains)).
 
@@ -69,7 +69,7 @@ Aucune fin ne vise à évaluer un employé : le journal ne sert qu'à la sécuri
 
 ### Décisions de conception
 
-Proposées par l'agent du dépôt le 2026-11-11 et **soumises au responsable du dépôt** :
+Proposées par l'agent du dépôt le 2026-11-11 et **approuvées par le responsable du dépôt le 2026-11-11** :
 
 1. Volet dépôt seulement : aucun locataire, jeton ou clé réels ; Teams, Copilot Studio et la passerelle sont décrits par des fichiers vérifiés par des tests.
 2. Source : export simulé d'une bibliothèque SharePoint, sans texte recopié (empreintes des fichiers de `data/corpus/`) ; synchronisation qui respecte permissions et étiquettes ; corpus synchronisé identique au corpus actuel.
@@ -160,7 +160,7 @@ Boîtes de rôle : confidentialite@alverno.example (RPRP), qualite@alverno.examp
 
 ### Avis du RPRP
 
-**Avis proposé : favorable, sous conditions** (rédigé le 2026-11-11 ; **en attente de confirmation** par le responsable du dépôt dans le rôle du RPRP) :
+**Avis : favorable, sous conditions** (rédigé le 2026-11-11 ; **confirmé le 2026-11-11** par le responsable du dépôt dans le rôle du RPRP) :
 
 1. aucune ligne de code `src/` du module 6 avant la confirmation de cet avis et l'approbation de cette version ;
 2. aucun locataire, jeton ou clé réels dans le dépôt ni dans la CI ;
@@ -172,22 +172,22 @@ Les lectures juridiques restent des lectures du labo : la signature de l'avis ne
 
 ### Risques soumis à la présidente
 
-Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée à accepter, pour la durée du labo, les risques résiduels R1 (RP écrit dans une question et conservé dans Teams), R2 (lieu de traitement du canal Teams non établi par le dépôt) et R6 (activation par erreur d'une fonction générative lors d'une mise en service) : **en attente**.
+Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée à accepter, pour la durée du labo, les risques résiduels R1 (RP écrit dans une question et conservé dans Teams), R2 (lieu de traitement du canal Teams non établi par le dépôt) et R6 (activation par erreur d'une fonction générative lors d'une mise en service) : **acceptés le 2026-11-11** par le responsable du dépôt dans le rôle de la présidente.
 
 ### Approbation de la haute direction
 
 | Élément | Contenu |
 |---|---|
-| Avis du RPRP | Favorable, sous conditions (proposé) ; en attente de confirmation |
-| Décisions de conception 1 à 10 | En attente |
-| Risques R1, R2 et R6 | En attente |
-| Approbation de la version 1.0 | En attente |
+| Avis du RPRP | Favorable, sous conditions ; confirmé le 2026-11-11 |
+| Décisions de conception 1 à 10 | Approuvées par le responsable du dépôt le 2026-11-11 |
+| Risques R1, R2 et R6 | Acceptés par la présidente le 2026-11-11 |
+| Approbation de la version 1.0 | Approuvée |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | — |
+| Date | 2026-11-11 (version 1.0) |
 
 | Version | Date | Changements |
 |---|---|---|
-| 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation |
+| 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-11 |
 
 ## Annexes
 
