@@ -76,6 +76,16 @@ Le module 4 est livré quand :
 | I7 | recommandation, paliers et prix indicatifs ; README |
 | I8 | EFVP v1.1 ; livraison |
 
+## Précisions de mise en œuvre (2026-11-11, avant toute mesure)
+
+Écrites à l'étape I2, avant le criblage ; elles ne changent ni les portes ni la règle.
+
+- **Confirmation** : trois exécutions neuves ; l'exécution de criblage n'est pas comptée. Pour T3a, T3b et T5b, le banc du module exécute le modèle trois fois et applique lui-même la médiane des métriques de service, comme ses bancs publiés. Les commandes de T1, T2 et T0 n'ont pas de répétition : elles sont lancées trois fois et **chaque exécution doit passer sa porte seule**, ce qui est plus strict qu'une médiane.
+- **Égalité de mémoire** : les modèles admissibles sont triés par mémoire totale ; un modèle rejoint le groupe du plus léger qui le précède s'il est à 0,5 Go ou moins de lui ; chaque groupe est trié par latence p95.
+- **Comptes de sécurité** : les bornes `max` entières égales à 0 du profil de la tâche, sauf les préconditions `n_*` ; pour T0, ceux de `hr-retrieval-ollama` aussi, sous le préfixe `hr_`.
+- **Erreur** (bloc du README) : `error_rate` supérieur à 0, ou une commande qui se termine avec un code non nul.
+- **Modèle le plus fort** (pour information) : le modèle admissible au criblage qui a la plus haute première métrique publiée de la tâche (T1 et T2 : `key_fact_recall` ; T3a et T5b : `task_success` ; T3b : `diagnosis_hit_at_1` ; T0 : `hit_at_1`), les suivantes départageant ; sans modèle admissible, parmi tous.
+
 ## Solutions écartées
 
 - **Choisir le meilleur modèle de chaque tâche** : une PME paie le matériel ; le plus léger qui passe la porte est la question utile.

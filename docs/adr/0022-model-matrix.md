@@ -51,6 +51,15 @@ Chaque modèle de plongements construit son index dans `<dossier du rapport>/ind
 
 `alverno matrix --tasks T1,T2,... --models ... --repeats k --out reports/matrix-<date>` écrit un rapport par paire, une matrice `matrix.json`, `matrix.md` (français) et `matrix.en.md`. Le README reçoit un bloc `RESULTS-MATRIX` seulement si aucune exécution n'a d'erreur et si le balayage des témoins est vide, comme les autres bancs.
 
+## Précisions de mise en œuvre (2026-11-11, avant toute mesure)
+
+Écrites à l'étape I2, avant le criblage ; elles ne changent ni les tâches, ni les modèles, ni les portes.
+
+- **Exécution** : `alverno matrix` lance, dans un sous-processus par paire, la commande existante de la tâche : `bench` (T1), `hr bench` (T2), `service bench` (T3a), `maint bench` (T3b), `direction bench` (T5b) ; pour T0, `index` et `hr index`, puis les deux `eval --mode retrieval`. Les agents, les portes et les rapports des modules restent ceux des modules ; la matrice lit seulement leurs rapports. Une paire terminée est relue, ce qui permet de reprendre une matrice interrompue.
+- **`tokens_per_s`** : les rapports existants ne gardent pas la durée de génération. La vitesse est donc mesurée par une sonde fixe, juste après l'exécution de la paire : la même invite en français pour chaque modèle, 128 jetons, température 0, `eval_count` divisé par `eval_duration`. Les modèles de plongements n'ont pas cette mesure.
+- **`/api/ps`** est lu aussi avant chaque exécution : la liste des modèles déjà chargés (`loaded_before`) est notée, pour vérifier que rien d'autre ne tournait.
+- **Index** : `<dossier de la paire>/index/quality/index.npz` et `.../index/hr/index.npz`. Ils contiennent le texte du corpus : ils ne sont jamais versés (`reports/**/index/` dans `.gitignore`), comme les journaux des commandes (`<dossier>/logs/`).
+
 ## Solutions écartées
 
 - **Mettre à jour Ollama pour mesurer de nouveaux modèles** : changement du système du poste ; refusé pour ce module, noté comme mesure future.

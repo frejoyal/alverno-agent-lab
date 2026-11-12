@@ -48,6 +48,15 @@ Chaque compte a un contrôle négatif qui retire la barrière correspondante et 
 
 Le résultat est **informatif** : il apparaît dans la matrice comme une ligne de référence, avec les métriques de T1 (faits clés, citations, refus), mais n'entre pas dans la règle de recommandation de l'[ADR 0024](0024-bench-evaluation-protocol.md), qui ne retient que des modèles locaux.
 
+## Précisions de mise en œuvre (2026-11-11, avant tout appel)
+
+Écrites à l'étape I3, avant l'exécution de la référence ; elles resserrent les barrières sans élargir les données envoyées.
+
+- **Ligne de commande** : `claude -p --safe-mode --disable-slash-commands --model haiku --tools "" --system-prompt … --no-session-persistence --output-format json --json-schema …`, lancée dans un dossier temporaire vide, sans `ANTHROPIC_API_KEY` ni `ANTHROPIC_AUTH_TOKEN` dans son environnement. `--safe-mode` écarte CLAUDE.md, les MCP et les crochets ; seul l'outil de sortie structurée reste. La réponse est refusée si l'interface déclare une clé d'API, un autre outil ou un serveur MCP.
+- **Extrait `SPEC-*`** : un bloc d'extrait dont l'en-tête est `[SPEC-…#…]`. Une procédure qui nomme seulement une spécification (« appliquer la SPEC-… du client ») n'en est pas un. La même définition sert au filtre et au compte `hosted_spec_sent`.
+- **Deux contrôles avant l'envoi** : un contrôle préalable par item (extraits récupérés, puis détecteur sur l'invite complète), puis les mêmes barrières dans l'adaptateur, juste avant chaque appel. Un item écarté n'entre pas dans les métriques ; il est compté (`spec_skipped`, `pi_blocked`).
+- **Contrôles négatifs** : exécutés à chaque exécution avec un envoi simulé, jamais avec le modèle hébergé. Avec `--fake`, toute la référence utilise cet envoi simulé.
+
 ## Solutions écartées
 
 - **Clé d'API payante** : contraire à la règle du labo ; l'abonnement existant suffit pour un petit sous-ensemble.
