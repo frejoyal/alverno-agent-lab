@@ -25,8 +25,8 @@ from alverno_lab.evals.maint_eval import (
     run_maint_eval,
     with_maint_medians,
 )
+from alverno_lab.evals.ops_bench_common import canary_hit_files
 from alverno_lab.evals.thresholds import check_thresholds, load_profiles
-from alverno_lab.privacy import scan_paths
 
 from .conftest import EVAL_DATA, REPO_ROOT, hr_repo_settings
 
@@ -91,7 +91,8 @@ def test_tools_mode_diagnosis_is_the_bm25_ranking(report: tuple[MaintEvalReport,
 def test_the_run_folder_holds_no_canary_and_no_text(report: tuple[MaintEvalReport, Path]) -> None:
     result, out = report
     canaries = [loaded.canary for loaded in load_canaries(MAINT_GOLD)]
-    assert canaries and not scan_paths([out], canaries)
+    # The publication rule: a number written by the run (latency, count) is a measure.
+    assert canaries and not canary_hit_files([out], canaries)
     assert result.metrics["artifact_canary_hits"] == 0
     payload = json.loads((out / "eval-maint-tools-fake.json").read_text(encoding="utf-8"))
     assert set(payload["items"][0]) == set(MaintItemResult.model_fields)

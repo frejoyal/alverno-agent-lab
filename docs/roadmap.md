@@ -4,7 +4,7 @@
 
 Le labo progresse par modules livrables. Chaque module suit les mêmes règles : local-first, typage strict, tests sans réseau, jeu d'évaluation et porte de livraison en CI, documentation Loi 25.
 
-**Ordre de réalisation** : modules 1 et 2 livrés ; ensuite le module 3, puis le module 5 avant le module 4, et le module 6 en dernier. Les numéros désignent les modules ; ils ne fixent pas l'ordre.
+**Ordre de réalisation** : modules 1 et 2 livrés ; ensuite le module 3, puis le module 5 avant le module 4, et le module 6 en dernier. Les six modules sont livrés au 2026-11-12. Les numéros désignent les modules ; ils ne fixent pas l'ordre.
 
 ## Module 1 — Agent Qualité (livré)
 
@@ -49,6 +49,8 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 - **Modèle de décision externe optionnel** : un modèle hébergé peut servir de référence ou d'arbitre pour comparer les résultats locaux. Désactivé par défaut, jamais requis en CI, utilisé seulement sur des données de niveau 1 ou 2 et documenté selon [loi25.md](loi25.md).
 - Recommandation écrite : quel modèle pour quelle tâche, et à quel prix matériel.
 
+**Statut** : EFVP v1.0 ([docs/efvp/bench-module.md](efvp/bench-module.md)) et ADR [0022](adr/0022-model-matrix.md) à [0024](adr/0024-bench-evaluation-protocol.md) approuvés le 2026-11-11, avant tout code. **Livré le 2026-11-12** : matrice de 29 paires et 6 confirmations à k = 3 (`reports/matrix-20261111/`), référence hébergée facultative sur 15 questions sans RP, recommandation et palier de 12 Go dans [docs/model-recommendation.md](model-recommendation.md). `qwen3.5:9b` n'est pas mesuré : Ollama n'a pas été mis à jour. EFVP v1.1, avec les résultats, approuvée le 2026-11-12.
+
 ## Module 5 — Orchestration pour la direction, serveur MCP et Docker
 
 **Problème** : donner à la direction une vue consolidée (qualité, RH, clients, maintenance) et rendre les agents réutilisables par d'autres outils.
@@ -72,4 +74,4 @@ Le labo progresse par modules livrables. Chaque module suit les mêmes règles :
 
 **Statut** : en cours, volet dépôt seulement (aucun locataire réel, décision du responsable du dépôt du 2026-11-11). Le 2026-11-11 (étape I0), EFVP v1.0 ([docs/efvp/m365-module.md](efvp/m365-module.md)), ADR [0025](adr/0025-sharepoint-corpus-source.md) à [0028](adr/0028-m365-evaluation-protocol.md) et documents [docs/m365/](m365/article-17.md) rédigés avant tout code ; EFVP approuvée et ADR acceptés le 2026-11-11.
 
-**Livré le 2026-11-11 (volet dépôt)** : synchronisation de la bibliothèque simulée, API locale avec jeton Entra ID, fichiers Copilot Studio ; porte `m365-fake` franchie dans la CI ; documents [docs/m365/](m365/article-17.md). EFVP v1.1, avec les résultats, à approuver. Une mise en service réelle reste soumise à la liste de vérification du [guide de déploiement](m365/deployment-guide.md).
+**Livré le 2026-11-11 (volet dépôt)** : synchronisation de la bibliothèque simulée, API locale avec jeton Entra ID, fichiers Copilot Studio ; porte `m365-fake` franchie dans la CI ; documents [docs/m365/](m365/article-17.md). EFVP v1.1, avec les résultats, approuvée le 2026-11-12. Une mise en service réelle reste soumise à la liste de vérification du [guide de déploiement](m365/deployment-guide.md).

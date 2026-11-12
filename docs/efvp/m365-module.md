@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.1 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 approuvée le 2026-11-11 ; version 1.1 (résultats) en attente de l'avis du RPRP et de l'approbation |
+| Statut | version 1.0 approuvée le 2026-11-11 ; version 1.1 (résultats) approuvée le 2026-11-12 |
 | Moment | rédigée avant l'implémentation, quand aucun code `src/` du module 6 n'existe |
 | Gabarit | [template.md](template.md) |
 | Volets | 6a, bibliothèque SharePoint simulée comme source du corpus ; 6b, API locale de l'agent Qualité avec jeton de l'organisation ; 6c, agent Copilot Studio publié dans Teams, décrit par des fichiers |
@@ -206,15 +206,15 @@ Le module n'utilise aucun renseignement de niveau 5. La présidente est invitée
 | Décisions de conception 1 à 10 | Approuvées par le responsable du dépôt le 2026-11-11 |
 | Risques R1, R2 et R6 | Acceptés par la présidente le 2026-11-11 |
 | Approbation de la version 1.0 | Approuvée |
-| Avis du RPRP sur la version 1.1 | En attente |
-| Approbation de la version 1.1 | En attente |
+| Avis du RPRP sur la version 1.1 | Favorable, sous les mêmes conditions ; confirmé le 2026-11-12 |
+| Approbation de la version 1.1 | Approuvée, avec les résultats mesurés de la section 5 |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | 2026-11-11 (version 1.0) |
+| Date | 2026-11-11 (version 1.0) ; 2026-11-12 (version 1.1) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-11 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-11 |
-| 1.1 | 2026-11-11 | Résultats de la porte `m365-fake` et des contrôles négatifs (section 5) ; avis du RPRP et approbation en attente |
+| 1.1 | 2026-11-11 | Résultats de la porte `m365-fake` et des contrôles négatifs (section 5) ; avis du RPRP confirmé et version approuvée le 2026-11-12 |
 
 ## Annexes
 

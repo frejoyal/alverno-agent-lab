@@ -33,6 +33,8 @@ traces.jsonl
 # HR access logs (Law 25, docs/adr/0008): never committed, eval runs included
 logs/
 reports/**/access/
+# Embedding indexes of the model matrix (module 4): corpus text, rebuilt on demand
+reports/**/index/
 # HR bench folders where the final scan found a canary (never published)
 reports/**/*.quarantine/
 

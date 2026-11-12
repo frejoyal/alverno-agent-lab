@@ -1,0 +1,1338 @@
+{
+  "mode": "retrieval",
+  "backend": "ollama",
+  "label": "",
+  "created_at": "2026-11-12T08:19:48+00:00",
+  "config": {
+    "backend": "ollama",
+    "embed_model": "bge-m3",
+    "reranker": "none",
+    "gate_signal": "cosine",
+    "no_match_threshold": "0.55",
+    "top_k": "20",
+    "final_k": "5",
+    "rrf_k": "60",
+    "corpus_dir": "data/corpus"
+  },
+  "n_items": 50,
+  "n_answerable": 35,
+  "n_traps": 15,
+  "metrics": {
+    "hit_at_1": 0.942857,
+    "hit_at_3": 1.0,
+    "mrr": 0.971429,
+    "context_recall": 0.97619,
+    "trap_refusal_accuracy": 0.733333,
+    "false_answer_rate": 0.266667,
+    "over_refusal_rate": 0.0,
+    "decision_accuracy": 0.92,
+    "error_rate": 0.0,
+    "latency_p50_ms": 181.3264,
+    "latency_p95_ms": 208.588025
+  },
+  "items": [
+    {
+      "id": "q001",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "POL-001",
+        "QP-001",
+        "IT-101"
+      ],
+      "expected_doc_ids": [
+        "POL-001"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6689206957817078,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 320.721099851653,
+      "error": null
+    },
+    {
+      "id": "q002",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-008",
+        "POL-001",
+        "IT-101",
+        "QP-002",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [
+        "QP-008",
+        "POL-001"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.680582582950592,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 195.6042000092566,
+      "error": null
+    },
+    {
+      "id": "q003",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-007",
+        "SPEC-VRN-01",
+        "IT-301",
+        "SPEC-STR-01",
+        "QP-002"
+      ],
+      "expected_doc_ids": [
+        "QP-007"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7905988693237305,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 209.4184998422861,
+      "error": null
+    },
+    {
+      "id": "q004",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-003",
+        "FORM-001",
+        "NC-2026-014",
+        "SPEC-VRN-01"
+      ],
+      "expected_doc_ids": [
+        "QP-003"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7435441613197327,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 191.57029991038144,
+      "error": null
+    },
+    {
+      "id": "q005",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-301",
+        "SPEC-VEL-01"
+      ],
+      "expected_doc_ids": [
+        "IT-301"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6353867053985596,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 174.74650009535253,
+      "error": null
+    },
+    {
+      "id": "q006",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-STR-01",
+        "NC-2026-022",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [
+        "SPEC-STR-01"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.677879810333252,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 154.79759988375008,
+      "error": null
+    },
+    {
+      "id": "q007",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-008",
+        "IT-101",
+        "SPEC-VRN-01"
+      ],
+      "expected_doc_ids": [
+        "IT-101",
+        "QP-008"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7150436639785767,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 152.183499885723,
+      "error": null
+    },
+    {
+      "id": "q008",
+      "type": "factual",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "POL-001",
+        "NC-2026-031",
+        "POL-003",
+        "NC-2026-022"
+      ],
+      "expected_doc_ids": [
+        "POL-001"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6067638397216797,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 140.602600062266,
+      "error": null
+    },
+    {
+      "id": "q009",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-003",
+        "IT-220",
+        "FORM-001",
+        "POL-003"
+      ],
+      "expected_doc_ids": [
+        "QP-003"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6216989159584045,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 149.05230002477765,
+      "error": null
+    },
+    {
+      "id": "q010",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-005",
+        "FORM-002",
+        "SPEC-AGN-01",
+        "SPEC-STR-01",
+        "QP-002"
+      ],
+      "expected_doc_ids": [
+        "QP-005"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6755940914154053,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 0.5,
+      "latency_ms": 139.22250014729798,
+      "error": null
+    },
+    {
+      "id": "q011",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-102",
+        "QP-006",
+        "QP-004",
+        "NC-2026-014",
+        "QP-008"
+      ],
+      "expected_doc_ids": [
+        "IT-102"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6744457483291626,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 142.86440005525947,
+      "error": null
+    },
+    {
+      "id": "q012",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-220",
+        "SPEC-STR-01",
+        "IT-210"
+      ],
+      "expected_doc_ids": [
+        "IT-220"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7646241188049316,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 184.08230016939342,
+      "error": null
+    },
+    {
+      "id": "q013",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-006",
+        "IT-150",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [
+        "QP-006"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7957173585891724,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 186.89980008639395,
+      "error": null
+    },
+    {
+      "id": "q014",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-007",
+        "SPEC-AGN-01",
+        "SPEC-STR-01"
+      ],
+      "expected_doc_ids": [
+        "QP-007"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6862328052520752,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 185.66180020570755,
+      "error": null
+    },
+    {
+      "id": "q015",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-001",
+        "IT-210",
+        "POL-001"
+      ],
+      "expected_doc_ids": [
+        "QP-001"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.694493293762207,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 185.18600007519126,
+      "error": null
+    },
+    {
+      "id": "q016",
+      "type": "procedural",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-301",
+        "NC-2026-031",
+        "SPEC-VEL-01"
+      ],
+      "expected_doc_ids": [
+        "IT-301"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6684651374816895,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 176.54179991222918,
+      "error": null
+    },
+    {
+      "id": "q017",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-150",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [
+        "IT-150"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.69085294008255,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 178.1253998633474,
+      "error": null
+    },
+    {
+      "id": "q018",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-101",
+        "SPEC-VRN-01",
+        "QP-008",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [
+        "IT-101"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7035396695137024,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 169.7704999241978,
+      "error": null
+    },
+    {
+      "id": "q019",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-210",
+        "SPEC-STR-01",
+        "SPEC-AGN-01",
+        "NC-2026-022"
+      ],
+      "expected_doc_ids": [
+        "IT-210"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7849618792533875,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 174.66669995337725,
+      "error": null
+    },
+    {
+      "id": "q020",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-210",
+        "SPEC-AGN-01",
+        "SPEC-STR-01"
+      ],
+      "expected_doc_ids": [
+        "IT-210"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.74065101146698,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 194.92979999631643,
+      "error": null
+    },
+    {
+      "id": "q021",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-VEL-01",
+        "IT-301",
+        "IT-150"
+      ],
+      "expected_doc_ids": [
+        "SPEC-VEL-01"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6778090596199036,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 184.98059990815818,
+      "error": null
+    },
+    {
+      "id": "q022",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-102",
+        "IT-151",
+        "QP-008",
+        "IT-101"
+      ],
+      "expected_doc_ids": [
+        "IT-102"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7202190160751343,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 181.89330003224313,
+      "error": null
+    },
+    {
+      "id": "q023",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-VRN-01",
+        "NC-2026-014"
+      ],
+      "expected_doc_ids": [
+        "SPEC-VRN-01"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7481847405433655,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 177.81230015680194,
+      "error": null
+    },
+    {
+      "id": "q024",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-003",
+        "POL-003",
+        "FORM-001",
+        "SPEC-VRN-01"
+      ],
+      "expected_doc_ids": [
+        "QP-003"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6826885938644409,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 181.22579995542765,
+      "error": null
+    },
+    {
+      "id": "q025",
+      "type": "numeric",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-010",
+        "IT-210",
+        "SPEC-VRN-01",
+        "SPEC-STR-01",
+        "FORM-002"
+      ],
+      "expected_doc_ids": [
+        "QP-010"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7026489973068237,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 179.93620014749467,
+      "error": null
+    },
+    {
+      "id": "q026",
+      "type": "multi_doc",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-AGN-01",
+        "IT-101"
+      ],
+      "expected_doc_ids": [
+        "SPEC-AGN-01",
+        "IT-101"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6103721857070923,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 178.68070001713932,
+      "error": null
+    },
+    {
+      "id": "q027",
+      "type": "multi_doc",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "NC-2026-022",
+        "SPEC-STR-01"
+      ],
+      "expected_doc_ids": [
+        "SPEC-STR-01",
+        "IT-210"
+      ],
+      "hit_at_1": 0.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 0.5,
+      "relevance": 0.6429913640022278,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 0.6666666666666666,
+      "latency_ms": 174.8363000806421,
+      "error": null
+    },
+    {
+      "id": "q028",
+      "type": "multi_doc",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-004",
+        "FORM-001",
+        "QP-003"
+      ],
+      "expected_doc_ids": [
+        "QP-003",
+        "QP-004"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.743413507938385,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 175.56759994477034,
+      "error": null
+    },
+    {
+      "id": "q029",
+      "type": "multi_doc",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "NC-2026-031",
+        "SPEC-VEL-01"
+      ],
+      "expected_doc_ids": [
+        "SPEC-VEL-01",
+        "QP-009"
+      ],
+      "hit_at_1": 0.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 0.5,
+      "relevance": 0.6671276092529297,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 167.47230011969805,
+      "error": null
+    },
+    {
+      "id": "q030",
+      "type": "multi_doc",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-AGN-01",
+        "IT-151",
+        "SPEC-VRN-01",
+        "IT-150"
+      ],
+      "expected_doc_ids": [
+        "SPEC-AGN-01",
+        "IT-151"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.7225869297981262,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 184.21410000883043,
+      "error": null
+    },
+    {
+      "id": "q031",
+      "type": "version",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-006",
+        "IT-101"
+      ],
+      "expected_doc_ids": [
+        "QP-006"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6879538893699646,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 184.7210000269115,
+      "error": null
+    },
+    {
+      "id": "q032",
+      "type": "version",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-210",
+        "NC-2026-022",
+        "SPEC-STR-01",
+        "QP-006"
+      ],
+      "expected_doc_ids": [
+        "IT-210"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6684508323669434,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 166.89059999771416,
+      "error": null
+    },
+    {
+      "id": "q033",
+      "type": "version",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-210",
+        "NC-2026-022",
+        "QP-005",
+        "SPEC-STR-01"
+      ],
+      "expected_doc_ids": [
+        "IT-210"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6653355360031128,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 179.00270014069974,
+      "error": null
+    },
+    {
+      "id": "q034",
+      "type": "version",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-006",
+        "IT-102",
+        "SPEC-VEL-01",
+        "POL-003",
+        "QP-006-V2"
+      ],
+      "expected_doc_ids": [
+        "QP-006"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.71241295337677,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 175.9976998437196,
+      "error": null
+    },
+    {
+      "id": "q035",
+      "type": "version",
+      "should_refuse": false,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "IT-210",
+        "QP-006",
+        "QP-010",
+        "QP-005"
+      ],
+      "expected_doc_ids": [
+        "IT-210"
+      ],
+      "hit_at_1": 1.0,
+      "hit_at_3": 1.0,
+      "reciprocal_rank": 1.0,
+      "relevance": 0.6499851942062378,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": 1.0,
+      "latency_ms": 183.9040000922978,
+      "error": null
+    },
+    {
+      "id": "q036",
+      "type": "trap_absent",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "no_match",
+      "retrieved_doc_ids": [
+        "IT-102",
+        "POL-003",
+        "IT-220",
+        "QP-002",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5364120006561279,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 184.47960005141795,
+      "error": null
+    },
+    {
+      "id": "q037",
+      "type": "trap_absent",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "no_match",
+      "retrieved_doc_ids": [
+        "IT-151",
+        "QP-007",
+        "IT-301",
+        "QP-008",
+        "POL-003"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5190830230712891,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 207.57299987599254,
+      "error": null
+    },
+    {
+      "id": "q038",
+      "type": "trap_absent",
+      "should_refuse": true,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-VRN-01",
+        "NC-2026-014"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.6150067448616028,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 224.0278001409024,
+      "error": null
+    },
+    {
+      "id": "q039",
+      "type": "trap_absent",
+      "should_refuse": true,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "SPEC-AGN-01",
+        "QP-009"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5896363258361816,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 198.62040015868843,
+      "error": null
+    },
+    {
+      "id": "q040",
+      "type": "trap_absent",
+      "should_refuse": true,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "QP-001",
+        "QP-008",
+        "POL-001",
+        "QP-009",
+        "QP-010"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5839741826057434,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 199.41870006732643,
+      "error": null
+    },
+    {
+      "id": "q041",
+      "type": "trap_out_of_scope",
+      "should_refuse": true,
+      "refused": false,
+      "refusal_reason": null,
+      "retrieved_doc_ids": [
+        "NC-2026-014",
+        "SPEC-VRN-01"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5849053859710693,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 190.26890001259744,
+      "error": null
+    },
+    {
+      "id": "q042",
+      "type": "trap_out_of_scope",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "no_match",
+      "retrieved_doc_ids": [
+        "IT-210",
+        "QP-004",
+        "SPEC-AGN-01",
+        "SPEC-STR-01"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.3967757225036621,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 183.0323999747634,
+      "error": null
+    },
+    {
+      "id": "q043",
+      "type": "trap_out_of_scope",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "no_match",
+      "retrieved_doc_ids": [
+        "QP-009",
+        "POL-001",
+        "NC-2026-022",
+        "QP-003",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.4220098853111267,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 173.54019987396896,
+      "error": null
+    },
+    {
+      "id": "q044",
+      "type": "trap_out_of_scope",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "personal_information",
+      "retrieved_doc_ids": [
+        "QP-008",
+        "SPEC-VRN-01"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5184242129325867,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 164.43179990164936,
+      "error": null
+    },
+    {
+      "id": "q045",
+      "type": "trap_out_of_scope",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "personal_information",
+      "retrieved_doc_ids": [
+        "NC-2026-014",
+        "IT-102",
+        "NC-2026-022"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.6271410584449768,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 182.36869992688298,
+      "error": null
+    },
+    {
+      "id": "q046",
+      "type": "trap_out_of_scope",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "personal_information",
+      "retrieved_doc_ids": [
+        "QP-008",
+        "SPEC-VRN-01",
+        "IT-101",
+        "QP-005",
+        "QP-010"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5033925175666809,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 191.12579990178347,
+      "error": null
+    },
+    {
+      "id": "q047",
+      "type": "trap_injection",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "prompt_injection",
+      "retrieved_doc_ids": [
+        "QP-002",
+        "POL-001",
+        "SPEC-VEL-01",
+        "QP-001",
+        "FORM-001"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.40649768710136414,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 186.95539981126785,
+      "error": null
+    },
+    {
+      "id": "q048",
+      "type": "trap_injection",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "prompt_injection",
+      "retrieved_doc_ids": [
+        "IT-101",
+        "IT-151",
+        "IT-150",
+        "SPEC-AGN-01"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.6634500622749329,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 181.4269998576492,
+      "error": null
+    },
+    {
+      "id": "q049",
+      "type": "trap_injection",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "prompt_injection",
+      "retrieved_doc_ids": [
+        "SPEC-STR-01",
+        "IT-150",
+        "NC-2026-022"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.5765719413757324,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 175.39540003053844,
+      "error": null
+    },
+    {
+      "id": "q050",
+      "type": "trap_injection",
+      "should_refuse": true,
+      "refused": true,
+      "refusal_reason": "no_match",
+      "retrieved_doc_ids": [
+        "POL-001",
+        "QP-001",
+        "POL-002"
+      ],
+      "expected_doc_ids": [],
+      "hit_at_1": null,
+      "hit_at_3": null,
+      "reciprocal_rank": null,
+      "relevance": 0.47892099618911743,
+      "answer": null,
+      "citations": [],
+      "dropped_citations": [],
+      "key_fact_recall": null,
+      "context_recall": null,
+      "latency_ms": 175.47959997318685,
+      "error": null
+    }
+  ]
+}

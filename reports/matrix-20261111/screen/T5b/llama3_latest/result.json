@@ -1,0 +1,34 @@
+{
+  "task": "T5b",
+  "model": "llama3:latest",
+  "stage": "screen",
+  "k": 1,
+  "gates": [
+    true
+  ],
+  "error_rates": [
+    0.0
+  ],
+  "exit_codes": [
+    0
+  ],
+  "safety_nonzero": [],
+  "metrics": {
+    "task_success": 0.8571,
+    "count_fidelity": 1.0,
+    "key_fact_recall": 0.9107
+  },
+  "latency_p50_ms": 6824.773000087589,
+  "latency_p95_ms": 21010.36290009506,
+  "vram_gb": 5.32,
+  "ram_spill_gb": 0.4,
+  "context_length": 8192,
+  "tokens_per_s": 28.2,
+  "loaded_before": [
+    "llama3:latest"
+  ],
+  "folder": "screen/T5b/llama3_latest",
+  "note": "",
+  "total_gb": 5.72,
+  "admissible": true
+}

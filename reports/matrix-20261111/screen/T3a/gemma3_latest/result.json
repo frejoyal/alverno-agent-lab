@@ -1,0 +1,35 @@
+{
+  "task": "T3a",
+  "model": "gemma3:latest",
+  "stage": "screen",
+  "k": 1,
+  "gates": [
+    false
+  ],
+  "error_rates": [
+    0.0
+  ],
+  "exit_codes": [
+    0
+  ],
+  "safety_nonzero": [],
+  "metrics": {
+    "task_success": 0.6154,
+    "key_fact_recall": 0.841,
+    "status_fidelity": 0.875
+  },
+  "latency_p50_ms": 326.96775,
+  "latency_p95_ms": 3587.078545,
+  "vram_gb": 4.13,
+  "ram_spill_gb": 0.0,
+  "context_length": 8192,
+  "tokens_per_s": 86.6,
+  "loaded_before": [
+    "gemma3:latest",
+    "qwen3-embedding:0.6b"
+  ],
+  "folder": "screen/T3a/gemma3_latest",
+  "note": "",
+  "total_gb": 4.13,
+  "admissible": false
+}

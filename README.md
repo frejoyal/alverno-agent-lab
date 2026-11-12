@@ -23,7 +23,6 @@ Tout roule **en local** avec [Ollama](https://ollama.com) : aucune clé d'API, a
 - **Assistant RH (module 2)** : couche de confidentialité déterministe exécutée avant la recherche (détection, caviardage, refus des demandes visant une personne), garde de sortie, journal des accès minimal, évaluation des facteurs relatifs à la vie privée (EFVP) rédigée avant l'implémentation.
 - **Qualité du code** : `mypy --strict`, `ruff`, tests hors réseau, couverture d'au moins 85 % exigée en CI.
 - **Serveur MCP et orchestrateur de la direction (module 5)** : outils en lecture seule par stdio ; réponse au comité de direction par sections, sans jointure sur une personne.
-- **Prévu** : banc d'essai de modèles par tâche ([feuille de route](docs/roadmap.md)).
 
 ### Le problème d'affaires
 
@@ -354,6 +353,29 @@ docker compose run --rm -i alverno ask "Quand le comité MRB se réunit-il ?"
 
 Le processeur graphique exige le NVIDIA Container Toolkit sur l'hôte ; sans lui, Ollama roule sur le processeur central, plus lentement. `docker compose up` avec Ollama n'est pas testé en CI.
 
+### Banc d'essai de modèles par tâche (module 4)
+
+`alverno matrix` passe chaque tâche des agents (Qualité, RH, service, entretien, direction, recherche) à chaque modèle installé, avec les portes existantes, et note la mémoire occupée sur la carte graphique et en mémoire vive ([EFVP](docs/efvp/bench-module.md), ADR [0022](docs/adr/0022-model-matrix.md) à [0024](docs/adr/0024-bench-evaluation-protocol.md)). La règle, écrite avant toute mesure, retient pour chaque tâche **le modèle admissible le plus léger**, confirmé par trois exécutions. Recommandation, paliers et prix : [docs/model-recommendation.md](docs/model-recommendation.md).
+
+Le tableau ci-dessous est généré par `alverno matrix --readme README.md` ; ne pas le modifier à la main.
+
+<!-- RESULTS-MATRIX:FR -->
+
+| Tâche | Modèle retenu | Mémoire (Go) | Palier | Confirmations tentées | Plus fort (information) |
+|---|---|---|---|---|---|
+| T1 Qualité | `ministral-3:8b` | 7,86 | 12 Go | `ministral-3:8b` | `gemma4:e4b` |
+| T2 RH | `gemma4:e4b` | 9,97 | 12 Go | `gemma4:e4b` | `gemma4:e4b` |
+| T3a Service | `gemma4:e4b` | 9,97 | 12 Go | `gemma4:e4b` | `gemma4:e4b` |
+| T3b Entretien | `ministral-3:8b` | 7,86 | 12 Go | `ministral-3:8b` | `gemma4:e4b` |
+| T5b Direction | `llama3.2:3b` | 3,16 | 8 Go | `llama3.2:3b` | `llama3:latest` |
+| T0 Recherche | `bge-m3` | 1,08 | 8 Go | `bge-m3` | `qwen3-embedding:0.6b` |
+
+**Palier d'ensemble** : 12 Go de mémoire graphique (modèle retenu le plus lourd, tâches T1 à T5b).
+
+<!-- /RESULTS-MATRIX:FR -->
+
+**Lecture** : mesures des 11 et 12 novembre 2026 sur une RTX 3060 Ti de 8 Go (Ollama 0.24.0) ; rapport complet : `reports/matrix-20261111/`. Seul `gemma4:e4b` passe les cinq tâches ; la règle retient pourtant le plus léger par tâche, d'où trois modèles. Sur la carte de 8 Go, les modèles retenus pour T1 à T3b débordent déjà en mémoire vive et `ministral-3:8b` y est lent (p95 de 34 s sur T1) : le palier recommandé est de 12 Go. `gemma4:26b` (18,8 Go) n'apporte rien de mesurable à la tâche Qualité, pour une latence médiane de 70 s. La référence hébergée (Haiku, par l'interface Claude Code, sans clé d'API) a reçu 15 questions de niveau 2 sans renseignement personnel, piège ni extrait de spécification de client ; sur ces questions, elle obtient les mêmes faits clés que `gemma4:e4b` en local (0,933). Le balayage final a d'abord trouvé 4 nombres courts égaux, par hasard, à des mesures écrites dans les rapports Markdown ; la règle a été précisée et seul le balayage a été refait ([ADR 0024](docs/adr/0024-bench-evaluation-protocol.md)).
+
 ### Microsoft 365 et Copilot Studio (module 6, volet dépôt)
 
 L'agent Qualité peut rejoindre les employés dans Teams **sans sortir l'inférence ni les documents du poste** ([EFVP](docs/efvp/m365-module.md), ADR [0025](docs/adr/0025-sharepoint-corpus-source.md) à [0028](docs/adr/0028-m365-evaluation-protocol.md)). Aucun locataire réel n'est utilisé : tout est simulé, décrit et vérifié dans le dépôt.
@@ -390,7 +412,7 @@ Détails : [docs/loi25.md](docs/loi25.md). *Ceci n'est pas un avis juridique.*
 | 1 | Agent Qualité : RAG hybride avec évaluations et porte de livraison | livré |
 | 2 | Couche Loi 25 et module RH (classification, caviardage, journalisation) | livré |
 | 3 | Service client et maintenance : agents multi-étapes en LangGraph | livré |
-| 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | prévu |
+| 4 | Banc d'essai de modèles locaux par tâche, avec modèle de décision externe optionnel | livré |
 | 5 | Orchestration pour la direction, serveur MCP, conteneurs Docker | livré : serveur MCP (5a), orchestrateur (5b), Docker (5c) |
 | 6 | Déploiement Microsoft 365 et Copilot Studio | livré (volet dépôt, sans locataire réel) |
 
@@ -437,7 +459,6 @@ Everything runs **locally** on [Ollama](https://ollama.com): no API key, no paid
 - **HR assistant (module 2)**: a deterministic privacy layer run before retrieval (detection, redaction, refusal of requests about an individual), an output guard, a minimal access log, and a privacy impact assessment (PIA) written before implementation.
 - **Code quality**: `mypy --strict`, `ruff`, offline tests, a minimum coverage of 85% enforced in CI.
 - **MCP server and management orchestrator (module 5)**: read-only tools over stdio; answers to the management committee by sections, with no join about a person.
-- **Planned**: per-task model benchmark ([roadmap](docs/roadmap.md), in French).
 
 ### The business problem
 
@@ -768,6 +789,29 @@ docker compose run --rm -i alverno ask "When does the MRB committee meet?"
 
 The GPU needs the NVIDIA Container Toolkit on the host; without it, Ollama runs on the CPU, more slowly. `docker compose up` with Ollama is not tested in CI.
 
+### Per-task model benchmark (module 4)
+
+`alverno matrix` runs every task of the agents (Quality, HR, service, maintenance, management, retrieval) with every installed model, through the existing gates, and records the memory used on the GPU and in RAM ([privacy impact assessment](docs/efvp/bench-module.md) and ADRs [0022](docs/adr/0022-model-matrix.md) to [0024](docs/adr/0024-bench-evaluation-protocol.md), in French). The rule, written before any measurement, keeps for each task **the lightest admissible model**, confirmed by three runs. Recommendation, tiers and prices: [docs/model-recommendation.md](docs/model-recommendation.md) (in French).
+
+The table below is generated by `alverno matrix --readme README.md`; do not edit it by hand.
+
+<!-- RESULTS-MATRIX:EN -->
+
+| Task | Retained model | Memory (GB) | Tier | Confirmations tried | Strongest (information) |
+|---|---|---|---|---|---|
+| T1 Quality | `ministral-3:8b` | 7.86 | 12 GB | `ministral-3:8b` | `gemma4:e4b` |
+| T2 HR | `gemma4:e4b` | 9.97 | 12 GB | `gemma4:e4b` | `gemma4:e4b` |
+| T3a Service | `gemma4:e4b` | 9.97 | 12 GB | `gemma4:e4b` | `gemma4:e4b` |
+| T3b Maintenance | `ministral-3:8b` | 7.86 | 12 GB | `ministral-3:8b` | `gemma4:e4b` |
+| T5b Management | `llama3.2:3b` | 3.16 | 8 GB | `llama3.2:3b` | `llama3:latest` |
+| T0 Retrieval | `bge-m3` | 1.08 | 8 GB | `bge-m3` | `qwen3-embedding:0.6b` |
+
+**Overall tier**: 12 GB of GPU memory (heaviest retained model, tasks T1 to T5b).
+
+<!-- /RESULTS-MATRIX:EN -->
+
+**Reading**: measured on 11 and 12 November 2026 on an 8 GB RTX 3060 Ti (Ollama 0.24.0); full report: `reports/matrix-20261111/`. Only `gemma4:e4b` passes all five tasks; the rule still keeps the lightest model per task, hence three models. On the 8 GB card, the models kept for T1 to T3b already spill into RAM and `ministral-3:8b` is slow there (p95 of 34 s on T1): the recommended tier is 12 GB. `gemma4:26b` (18.8 GB) adds nothing measurable on the Quality task, at a median latency of 70 s. The hosted reference (Haiku, through the Claude Code command line, no API key) received 15 level-2 questions with no personal information, trap or client-specification extract; on them it reaches the same key facts as `gemma4:e4b` locally (0.933). The final scan first found 4 short numbers that equalled, by chance, measurements written in the Markdown reports; the rule was made precise and only the scan was redone ([ADR 0024](docs/adr/0024-bench-evaluation-protocol.md), in French).
+
 ### Microsoft 365 and Copilot Studio (module 6, repository side)
 
 The Quality agent can reach employees in Teams **without moving inference or documents off the workstation** ([privacy impact assessment](docs/efvp/m365-module.md) and ADRs [0025](docs/adr/0025-sharepoint-corpus-source.md) to [0028](docs/adr/0028-m365-evaluation-protocol.md), in French). No real tenant is used: everything is simulated, described and checked in the repository.
@@ -804,7 +848,7 @@ Details (in French): [docs/loi25.md](docs/loi25.md). *This is not legal advice.*
 | 1 | Quality agent: hybrid RAG with evaluations and release gate | delivered |
 | 2 | Law 25 layer and HR module (classification, redaction, logging) | delivered |
 | 3 | Customer service and maintenance: multi-step LangGraph agents | delivered |
-| 4 | Per-task benchmark of local models, with an optional external decision model | planned |
+| 4 | Per-task benchmark of local models, with an optional external decision model | delivered |
 | 5 | Orchestration for management, MCP server, Docker containers | delivered: MCP server (5a), orchestrator (5b), Docker (5c) |
 | 6 | Microsoft 365 and Copilot Studio deployment | delivered (repository side, no real tenant) |
 

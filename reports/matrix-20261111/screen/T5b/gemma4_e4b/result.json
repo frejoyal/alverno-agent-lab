@@ -1,0 +1,35 @@
+{
+  "task": "T5b",
+  "model": "gemma4:e4b",
+  "stage": "screen",
+  "k": 1,
+  "gates": [
+    true
+  ],
+  "error_rates": [
+    0.0
+  ],
+  "exit_codes": [
+    0
+  ],
+  "safety_nonzero": [],
+  "metrics": {
+    "task_success": 0.8214,
+    "count_fidelity": 1.0,
+    "key_fact_recall": 0.9107
+  },
+  "latency_p50_ms": 5657.815999817103,
+  "latency_p95_ms": 12159.419700037688,
+  "vram_gb": 3.3,
+  "ram_spill_gb": 6.67,
+  "context_length": 8192,
+  "tokens_per_s": 18.9,
+  "loaded_before": [
+    "gemma4:e4b",
+    "qwen3-embedding:0.6b"
+  ],
+  "folder": "screen/T5b/gemma4_e4b",
+  "note": "",
+  "total_gb": 9.97,
+  "admissible": true
+}

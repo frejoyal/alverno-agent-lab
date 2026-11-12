@@ -1,0 +1,35 @@
+{
+  "task": "T1",
+  "model": "llama3:latest",
+  "stage": "screen",
+  "k": 1,
+  "gates": [
+    false
+  ],
+  "error_rates": [
+    0.0
+  ],
+  "exit_codes": [
+    0
+  ],
+  "safety_nonzero": [],
+  "metrics": {
+    "key_fact_recall": 0.8238,
+    "citation_validity_rate": 0.9434,
+    "trap_refusal_accuracy": 0.9333
+  },
+  "latency_p50_ms": 12223.43415,
+  "latency_p95_ms": 24287.482765,
+  "vram_gb": 5.32,
+  "ram_spill_gb": 0.4,
+  "context_length": 8192,
+  "tokens_per_s": 26.7,
+  "loaded_before": [
+    "gemma3:latest",
+    "qwen3-embedding:0.6b"
+  ],
+  "folder": "screen/T1/llama3_latest",
+  "note": "",
+  "total_gb": 5.72,
+  "admissible": false
+}

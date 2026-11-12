@@ -6,7 +6,7 @@
 |---|---|
 | Version | 1.2 |
 | Date | 2026-11-11 |
-| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 approuvée le 2026-11-11 ; version 1.2 (5c) en attente de l'avis du RPRP et de l'approbation |
+| Statut | version 1.0 approuvée le 2026-11-10 ; version 1.1 approuvée le 2026-11-11 ; version 1.2 (5c) approuvée le 2026-11-11 |
 | Moment | version 1.0 rédigée avant l'implémentation, quand aucun code `src/` du module 5 n'existait ; version 1.1 rédigée après les mesures du 2026-11-11 (portes, banc d'essai, jeu réservé, non-régression) |
 | Gabarit | [template.md](template.md) |
 | Sous-modules | 5a, serveur MCP (`alverno mcp serve`) ; 5b, orchestrateur de la direction (`alverno direction`) ; 5c, images Docker et `docker compose` |
@@ -267,16 +267,16 @@ Le module n'utilise aucun renseignement de niveau 5 : une question de ce type es
 | Approbation de la version 1.0 | Approuvée |
 | Avis du RPRP sur la version 1.1 | Favorable, sous les mêmes conditions ; confirmé le 2026-11-11 |
 | Approbation de la version 1.1 | Approuvée, avec les résultats mesurés de la section 5 |
-| Avis du RPRP sur la version 1.2 | En attente |
-| Approbation de la version 1.2 | En attente |
+| Avis du RPRP sur la version 1.2 | Favorable, sous les mêmes conditions ; confirmé le 2026-11-11 |
+| Approbation de la version 1.2 | Approuvée, avec les preuves de 5c (G6, R12, R13) |
 | Approuvé par | La présidente ; dans ce labo, le responsable du dépôt dans ce rôle |
-| Date | 2026-11-10 (version 1.0) ; 2026-11-11 (version 1.1) |
+| Date | 2026-11-10 (version 1.0) ; 2026-11-11 (versions 1.1 et 1.2) |
 
 | Version | Date | Changements |
 |---|---|---|
 | 1.0 | 2026-11-10 | Première version, rédigée avant l'implémentation ; approuvée le 2026-11-10 |
 | 1.1 | 2026-11-11 | Après les mesures : portes simulées 5a et 5b, banc d'essai de l'orchestrateur sur Ollama, jeu réservé mesuré une seule fois, non-régression des modules 1 à 3 sans écart ; risques R7, R8, R10 et R14 revus ; 5c reporté (G6, R12 et R13 sans mesure) ; ADR 0021 et rapports joints (annexe D) ; avis du RPRP confirmé et version approuvée le 2026-11-11 |
-| 1.2 | 2026-11-11 | Sous-module 5c réalisé sous la forme prévue par l'ADR 0019 (image vérifiée dans la CI seulement) ; preuves de G6, R12 et R13 ; nouveau réglage `ALVERNO_TRUSTED_OLLAMA_HOSTS` ; avis du RPRP et approbation en attente |
+| 1.2 | 2026-11-11 | Sous-module 5c réalisé sous la forme prévue par l'ADR 0019 (image vérifiée dans la CI seulement) ; preuves de G6, R12 et R13 ; nouveau réglage `ALVERNO_TRUSTED_OLLAMA_HOSTS` ; avis du RPRP confirmé et version approuvée le 2026-11-11 |
 
 ## Annexes
 

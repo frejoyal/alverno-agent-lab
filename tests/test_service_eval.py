@@ -38,6 +38,7 @@ from alverno_lab.connectors.sim import planted_markers, restricted_values, techn
 from alverno_lab.connectors.types import args_sha256
 from alverno_lab.evals import oracles
 from alverno_lab.evals.canaries import load_canaries
+from alverno_lab.evals.ops_bench_common import canary_hit_files
 from alverno_lab.evals.ops_gold import APPROVED_TEXT, ToolCall
 from alverno_lab.evals.ops_harness import ApprovalScriptDriver, OpsRig
 from alverno_lab.evals.service import SvcGoldItem, load_svc_gold
@@ -65,7 +66,7 @@ from alverno_lab.evals.service_eval import (
 from alverno_lab.evals.thresholds import check_thresholds, load_profiles
 from alverno_lab.llm import FakeChat
 from alverno_lab.ops_pipeline import build_service_rig, ops_quarantine
-from alverno_lab.privacy import AccessLogError, PIType, PrivacyContext, canary_in, scan_paths
+from alverno_lab.privacy import AccessLogError, PIType, PrivacyContext, canary_in
 from alverno_lab.privacy.ops_screen import OpsScreening, screen_service
 from alverno_lab.tools.registry import RecordReplyPreparedArgs
 
@@ -180,7 +181,8 @@ def test_reports_traces_and_access_logs_hold_no_canary(
     assert {f"{STEM}.json", f"{STEM}.md", f"traces/{STEM}.jsonl"} <= names
     assert any(name.startswith("access/service-") for name in names)
     canaries = [c.canary for path in GOLD_SETS for c in load_canaries(path)]
-    assert scan_paths([out], canaries) == []
+    # The publication rule: a number written by the run (latency, count) is a measure.
+    assert canary_hit_files([out], canaries) == []
     contacts = {value for item in gold() for value in item.contact_canaries}
     for path in files:
         text = path.read_text(encoding="utf-8")

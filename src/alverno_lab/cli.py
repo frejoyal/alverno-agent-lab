@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as dt
+import hashlib
 import io
 import json
 import re
@@ -2157,6 +2158,239 @@ def direction_bench(
         why = ", ".join(blocked) if blocked else f"{len(hits)} canary hit(s) in the run folder"
         typer.secho(f"Error: {why}: the README is not updated.", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+def _reference(
+    settings: Settings, reference: str, folder: Path, *, fake: bool, limit: int | None
+) -> Any:
+    """Run (or read back) the hosted reference of ADR 0023 into ``<folder>/reference/``."""
+    from alverno_lab.evals import hosted_reference as hosted
+    from alverno_lab.hr_pipeline import load_privacy_context
+
+    where = folder / "reference" / reference
+    done = where / "run.json"
+    if done.is_file():
+        return hosted.ReferenceRun.from_json(json.loads(done.read_text(encoding="utf-8")))
+    items = _guard(lambda: load_dataset(settings.eval_path))[:limit]
+    retriever, _ = _guard(lambda: build_retriever(settings, fake=fake))
+    ctx = _hr_guard(lambda: load_privacy_context(settings))
+    sender = hosted.simulated_sender if fake else hosted.cli_sender
+    typer.echo(f"[reference] {reference} on the eligible Quality items")
+    try:
+        run, report = hosted.run_reference(
+            reference,
+            items,
+            retriever,
+            ctx,
+            min_confidence=settings.min_confidence,
+            sender=sender,
+        )
+    except hosted.HostedReferenceDisabled as exc:
+        typer.secho(f"Error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+    write_report(report, where, stem="eval-reference")
+    _write_lf(done, json.dumps(run.to_json(), ensure_ascii=False, indent=2) + "\n")
+    return run
+
+
+# --------------------------------------------------------------------------- matrix (4)
+MATRIX_MARKERS = ("RESULTS-MATRIX:FR", "RESULTS-MATRIX:EN")
+
+
+def _csv(value: str | None, default: Sequence[str]) -> list[str]:
+    if value is None:
+        return list(default)
+    return list(dict.fromkeys(v.strip() for v in value.split(",") if v.strip()))
+
+
+@app.command()
+def matrix(
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Matrix folder (default reports/matrix-<date>).")
+    ] = None,
+    tasks: Annotated[
+        str | None, typer.Option("--tasks", help="Comma-separated tasks: T1,T2,T3a,T3b,T5b,T0.")
+    ] = None,
+    models: Annotated[
+        str | None, typer.Option("--models", help="Chat models of T1 to T5b.")
+    ] = None,
+    heavy_models: Annotated[
+        str | None, typer.Option("--heavy-models", help="Extra chat models measured on T1 only.")
+    ] = None,
+    embed_models: Annotated[
+        str | None, typer.Option("--embed-models", help="Embedding models of T0.")
+    ] = None,
+    confirm: Annotated[
+        bool, typer.Option("--confirm/--no-confirm", help="Confirm the ranked models at k = 3.")
+    ] = True,
+    fake: FakeOpt = False,
+    limit: LimitOpt = None,
+    thresholds: ThresholdsOpt = None,
+    readme: Annotated[
+        Path | None,
+        typer.Option(
+            "--readme",
+            exists=True,
+            dir_okay=False,
+            help="Also update the RESULTS-MATRIX:FR and RESULTS-MATRIX:EN blocks.",
+        ),
+    ] = None,
+    reference: Annotated[
+        str | None,
+        typer.Option(
+            "--reference",
+            help="Hosted reference on the Quality set (claude-haiku); needs "
+            "ALVERNO_ALLOW_HOSTED_REFERENCE=true (ADR 0023).",
+        ),
+    ] = None,
+) -> None:
+    """Run each task's existing bench for each model and apply the rule of ADR 0024.
+
+    Screening runs every (task, model) pair once; the lightest admissible model of each
+    task is then confirmed at k = 3, the next one on failure. Each pair runs as its own
+    ``alverno`` subprocess and writes under ``<out>/screen|confirm/<task>/<model>/``; a
+    finished pair is read back, so an interrupted matrix resumes. The model's memory is
+    read from Ollama's /api/ps right after its run (not with ``--fake``). Writes
+    matrix.json, matrix.md (French) and matrix.en.md. The README is rewritten
+    (RESULTS-MATRIX blocks only) when no run has an error and the publishable files hold
+    no canary of the eight sets; otherwise exit 1.
+
+    ``--reference claude-haiku`` also runs the Quality agent with its chat model answered
+    by ``claude -p`` (Haiku) on the answerable Quality items without a SPEC-* source
+    (informative, outside the rule). Without ALVERNO_ALLOW_HOSTED_REFERENCE=true the
+    command stops before any run (exit 2); with ``--fake`` the hosted model is simulated.
+    """
+    from alverno_lab.evals import hosted_reference as hosted
+    from alverno_lab.evals import matrix as mx
+
+    settings = _settings(thresholds_path=thresholds)
+    chosen = _csv(tasks, list(mx.TASKS))
+    unknown = [t for t in chosen if t not in mx.TASKS]
+    if unknown or not chosen:
+        raise typer.BadParameter(f"unknown task(s): {', '.join(unknown)}", param_hint="--tasks")
+    if reference is not None and reference not in hosted.REFERENCES:
+        raise typer.BadParameter(f"unknown reference {reference!r}", param_hint="--reference")
+    if reference is not None and not hosted.allowed():
+        typer.secho(
+            f"Error: --reference needs {hosted.ALLOW_ENV}=true (ADR 0023); nothing was run.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    chat = _csv(models, mx.CHAT_MODELS)
+    heavy = _csv(heavy_models, mx.T1_ONLY_MODELS)
+    embed = _csv(embed_models, mx.EMBED_MODELS)
+    if readme is not None:
+        text = readme.read_text(encoding="utf-8")
+        for marker in MATRIX_MARKERS:
+            _guard(partial(replace_marked_block, text, marker, ""))
+    folder = out or settings.reports_dir / f"matrix-{dt.date.today():%Y%m%d}"
+    probe = None if fake else mx.OllamaProbe(settings.ollama_url, settings.num_ctx)
+    runner = mx.Matrix(
+        out=folder,
+        thresholds=settings.thresholds_path,
+        fake=fake,
+        limit=limit,
+        probe=probe,
+        echo=typer.echo,
+    )
+    screened: dict[str, list[mx.Run]] = {}
+    confirmations: dict[str, list[mx.Run]] = {}
+    decisions: list[mx.Decision] = []
+    done = {
+        pair: runner.run("screen", mx.TASKS[pair[0]], pair[1])
+        for pair in mx.screening_order(chosen, chat, embed, heavy)
+    }
+    for task_id in chosen:
+        task = mx.TASKS[task_id]
+        screened[task_id] = [
+            done[(task_id, model)] for model in mx.models_for(task, chat, embed, heavy)
+        ]
+    for task_id in chosen:
+        decision, checks = mx.decide(runner, mx.TASKS[task_id], screened[task_id], confirm)
+        confirmations[task_id] = checks
+        if confirm:
+            decisions.append(decision)
+    version = "fake" if fake else ollama_server_version(settings.ollama_url)
+    note = {
+        "measured": dt.date.today().isoformat(),
+        "backend": "fake" if fake else "ollama",
+        "ollama_version": version,
+        "num_ctx": str(settings.num_ctx),
+        "num_predict": str(settings.num_predict),
+        "embed_num_ctx": str(settings.embed_num_ctx),
+        "thresholds_file_sha256": hashlib.sha256(settings.thresholds_path.read_bytes()).hexdigest(),
+        "limit": str(limit) if limit is not None else "none",
+    }
+    hosted_run = (
+        _reference(settings, reference, folder, fake=fake, limit=limit)
+        if reference is not None
+        else None
+    )
+    everything = [r for runs in (*screened.values(), *confirmations.values()) for r in runs]
+    payload = {
+        "note": note,
+        "decisions": [d.to_json() for d in decisions],
+        "overall_tier_gb": mx.overall_tier(decisions),
+        "screen": {t: [r.to_json() for r in runs] for t, runs in screened.items()},
+        "confirm": {t: [r.to_json() for r in runs] for t, runs in confirmations.items()},
+        "reference": hosted_run.to_json() if hosted_run else None,
+    }
+    folder.mkdir(parents=True, exist_ok=True)
+    _write_lf(folder / "matrix.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    for name, lang in (("matrix.md", "fr"), ("matrix.en.md", "en")):
+        _write_lf(
+            folder / name,
+            mx.matrix_markdown(screened, confirmations, decisions, note, cast(mx.Lang, lang))
+            + (
+                "\n" + mx.reference_section(hosted_run.to_json(), cast(mx.Lang, lang))
+                if hosted_run
+                else ""
+            ),
+        )
+    canaries = [
+        loaded.canary
+        for name in mx.CANARY_SETS
+        if (settings.eval_path.parent / name).is_file()
+        for loaded in load_canaries(settings.eval_path.parent / name)
+    ]
+    hits = canary_hit_files(mx.publishable_files(folder), canaries)
+    for path, label in hits:
+        typer.echo(f"{_shown_path(path)}: {label}")
+    failed = sorted(
+        {
+            f"{r.task}/{r.model}"
+            for r in everything
+            if any(e > 0 for e in r.error_rates) or any(code != 0 for code in r.exit_codes)
+        }
+    )
+    typer.echo((folder / "matrix.en.md").read_text(encoding="utf-8"))
+    typer.echo(f"Reports: {_shown_path(folder)}")
+    reference_failed = hosted_run is not None and not hosted_run.passed
+    if failed or hits or not canaries or reference_failed:
+        why = (
+            f"runs with an error: {', '.join(failed)}"
+            if failed
+            else f"{len(hits)} canary hit(s)"
+            if hits
+            else "no canary to check"
+            if not canaries
+            else "hosted reference counts or controls out of bounds (ADR 0023)"
+        )
+        untouched = f"; {readme} not updated" if readme is not None else ""
+        typer.secho(f"Error: {why}{untouched}.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    if readme is not None and decisions:
+        text = readme.read_text(encoding="utf-8")
+        for marker, lang in zip(MATRIX_MARKERS, ("fr", "en"), strict=True):
+            block = (
+                mx.decisions_table(decisions, cast(mx.Lang, lang))
+                + "\n\n"
+                + mx.overall_line(decisions, cast(mx.Lang, lang))
+            )
+            text = _guard(partial(replace_marked_block, text, marker, block))
+        _write_lf(readme, text)
+        typer.echo(f"Updated {readme}")
 
 
 # --------------------------------------------------------------------------- module 6

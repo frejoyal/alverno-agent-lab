@@ -1,0 +1,38 @@
+{
+  "task": "T3b",
+  "model": "ministral-3:8b",
+  "stage": "confirm",
+  "k": 3,
+  "gates": [
+    true,
+    true,
+    true
+  ],
+  "error_rates": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "exit_codes": [
+    0
+  ],
+  "safety_nonzero": [],
+  "metrics": {
+    "diagnosis_hit_at_1": 0.9375,
+    "citation_validity_rate": 1.0,
+    "argument_accuracy": 1.0
+  },
+  "latency_p50_ms": 24697.0426,
+  "latency_p95_ms": 33292.95788,
+  "vram_gb": 5.01,
+  "ram_spill_gb": 2.85,
+  "context_length": 8192,
+  "tokens_per_s": 8.5,
+  "loaded_before": [
+    "gemma4:e4b"
+  ],
+  "folder": "confirm/T3b/ministral-3_8b",
+  "note": "",
+  "total_gb": 7.86,
+  "admissible": true
+}
