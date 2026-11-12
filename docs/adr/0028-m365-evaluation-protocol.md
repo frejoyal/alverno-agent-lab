@@ -70,7 +70,7 @@ Le module 6 est livré quand :
 | 2. CI verte, porte `m365-fake` et portes existantes | atteint avec la PR du module : porte `m365-fake` franchie localement ; empreintes inchangées |
 | 3. Contrôles négatifs | atteint : chacun échoue comme prévu (`tests/test_m365.py`) |
 | 4. Documents `docs/m365/` | atteint |
-| 5. EFVP v1.1 avec les résultats | rédigée ; avis du RPRP et approbation en attente |
+| 5. EFVP v1.1 avec les résultats | atteint : approuvée le 2026-11-12 |
 
 ## Solutions écartées
 

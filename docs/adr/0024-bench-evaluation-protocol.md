@@ -101,7 +101,7 @@ La règle a été précisée dans `evals/canaries.py` : dans un fichier Markdown
 | 3. Criblage complet ; une confirmation ou « aucun modèle » par tâche | atteint : 29 paires ; 6 confirmations réussies |
 | 4. Comptes de la référence hébergée à 0, contrôles négatifs | atteint : 0 sur 15 invites ; chaque contrôle donne 1 |
 | 5. Recommandation et palier publiés | atteint : [docs/model-recommendation.md](../model-recommendation.md) et bloc `RESULTS-MATRIX` du README |
-| 6. EFVP v1.1 avec les résultats | rédigée ; avis du RPRP et approbation en attente |
+| 6. EFVP v1.1 avec les résultats | atteint : approuvée le 2026-11-12 |
 
 ## Solutions écartées
 
