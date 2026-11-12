@@ -2282,10 +2282,14 @@ def matrix(
     screened: dict[str, list[mx.Run]] = {}
     confirmations: dict[str, list[mx.Run]] = {}
     decisions: list[mx.Decision] = []
+    done = {
+        pair: runner.run("screen", mx.TASKS[pair[0]], pair[1])
+        for pair in mx.screening_order(chosen, chat, embed, heavy)
+    }
     for task_id in chosen:
         task = mx.TASKS[task_id]
         screened[task_id] = [
-            runner.run("screen", task, model) for model in mx.models_for(task, chat, embed, heavy)
+            done[(task_id, model)] for model in mx.models_for(task, chat, embed, heavy)
         ]
     for task_id in chosen:
         decision, checks = mx.decide(runner, mx.TASKS[task_id], screened[task_id], confirm)

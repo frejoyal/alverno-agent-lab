@@ -538,3 +538,23 @@ def test_an_unknown_task_is_a_usage_error(tmp_path: Path) -> None:
     result = _invoke(tmp_path, "--tasks", "T1,T9")
     assert result.exit_code == 2
     assert not (tmp_path / "m").exists()
+
+
+def test_the_screening_runs_retrieval_first_then_model_by_model_heavy_last() -> None:
+    order = mx.screening_order(["T1", "T2", "T0"], ["a", "b"], ["e1", "e2"], ["huge"])
+    assert order == [
+        ("T0", "e1"),
+        ("T0", "e2"),
+        ("T1", "a"),
+        ("T2", "a"),
+        ("T1", "b"),
+        ("T2", "b"),
+        ("T1", "huge"),
+    ]
+    every = {
+        (t, m)
+        for t in mx.TASKS
+        for m in mx.models_for(mx.TASKS[t], mx.CHAT_MODELS, mx.EMBED_MODELS, mx.T1_ONLY_MODELS)
+    }
+    full = mx.screening_order(list(mx.TASKS), mx.CHAT_MODELS, mx.EMBED_MODELS, mx.T1_ONLY_MODELS)
+    assert set(full) == every and len(full) == len(every) == 29

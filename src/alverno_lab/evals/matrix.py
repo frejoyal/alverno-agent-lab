@@ -166,6 +166,24 @@ def models_for(
     return list(chat) + (list(heavy) if task.id == "T1" else [])
 
 
+def screening_order(
+    tasks: Sequence[str], chat: Sequence[str], embed: Sequence[str], heavy: Sequence[str]
+) -> list[tuple[str, str]]:
+    """Execution order of the screening: the order changes no result, only the time.
+
+    Retrieval first (minutes), then every task of one chat model before the next model
+    (no reload of the card between tasks), and the heavy models last: they cannot
+    change a decision unless every lighter model fails.
+    """
+    pairs = [("T0", model) for model in embed if "T0" in tasks]
+    for model in [*chat, *heavy]:
+        for task_id in tasks:
+            task = TASKS[task_id]
+            if task.kind == "chat" and model in models_for(task, chat, embed, heavy):
+                pairs.append((task_id, model))
+    return pairs
+
+
 def stem(model: str) -> str:
     return re.sub(r"[^\w.-]+", "_", model)
 
